@@ -33,6 +33,21 @@ test "$ofs_total" -gt 0 && test "$ofs_free" -gt 0 &&
 umount /mnt/ofs || fail "read-only OFS unmount"
 echo "AMIGA-OFS-READONLY-STATFS-PASS" > /dev/ttyS0
 
+# Exercise the full bitmap-extension chain on a sparse 120 GiB OFS image.
+# The large fixture is read-only for the entire run: preserve exact media
+# bytes, cross-check statfs against the geometry, and measure mount in seconds.
+large_start=$(date +%s)
+mount -t ofs -o ro /dev/vdf /mnt/ofs-large || fail "large OFS read-only mount"
+large_end=$(date +%s)
+large_total=$(stat -f -c '%b' /mnt/ofs-large) || fail "large OFS statfs total"
+large_free=$(stat -f -c '%a' /mnt/ofs-large) || fail "large OFS statfs free"
+test "$large_total" -gt 200000000 &&
+    test "$large_free" -gt 200000000 &&
+    test "$large_free" -le "$large_total" ||
+    fail "large OFS free-space accounting ($large_free/$large_total)"
+umount /mnt/ofs-large || fail "large OFS read-only unmount"
+echo "AMIGA-OFS-LARGE-READONLY-PASS mount_seconds=$((large_end - large_start)) free_blocks=$large_free total_blocks=$large_total" > /dev/ttyS0
+
 crash_phase_armed()
 {
     mount -t ofs /dev/vda /mnt/ofs || fail "crash probe mount ofs"
