@@ -20,7 +20,7 @@ for filename in uefi_driver reader; do
     gcc -Os -std=gnu11 -fpic -ffreestanding -fno-builtin -fshort-wchar \
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
       -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror \
-      -DEFIX64 -DEFI_FUNCTION_WRAPPER \
+      -DEFIX64 '-DEFIAPI=__attribute__((ms_abi))' -DEFI_FUNCTION_WRAPPER \
       -I/usr/include/efi -I/usr/include/efi/x86_64 -I/usr/include/efi/protocol \
       -I"$ofs/efi" -I"$ofs/core" \
       -c "$ofs/efi/$filename.c" -o "$work/$filename.o"
@@ -29,7 +29,7 @@ for filename in ofs_core ofs_primitives; do
     gcc -Os -std=gnu11 -fpic -ffreestanding -fno-builtin -fshort-wchar \
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
       -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror \
-      -DEFIX64 -DEFI_FUNCTION_WRAPPER \
+      -DEFIX64 '-DEFIAPI=__attribute__((ms_abi))' -DEFI_FUNCTION_WRAPPER \
       -I/usr/include/efi -I/usr/include/efi/x86_64 -I/usr/include/efi/protocol \
       -I"$ofs/efi" -I"$ofs/core" \
       -c "$ofs/core/$filename.c" -o "$work/$filename.o"
