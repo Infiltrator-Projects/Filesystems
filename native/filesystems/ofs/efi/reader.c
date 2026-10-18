@@ -44,7 +44,7 @@ static int name_valid(const uint8_t b[512])
 static int entry(const IfsOfsEfiVolume *v, uint32_t block,
                  uint32_t parent, uint8_t b[512], IfsOfsEfiEntry *out)
 {
-    const uint32_t kind;
+    uint32_t kind;
     if (!out || metadata(v, block, b) != 0 ||
         word(b, 1) != block || word(b, 125) != parent ||
         !name_valid(b))
