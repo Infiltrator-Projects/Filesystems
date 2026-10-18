@@ -14,6 +14,8 @@
 #include <linux/slab.h>
 #include <linux/bitops.h>
 #include <linux/ktime.h>
+#include <linux/bio.h>
+#include <linux/mm.h>
 #include <linux/math64.h>
 
 static void ifs_ofs_bitmap_drop_cache(struct affs_sb_info *sbi)
@@ -353,6 +355,99 @@ static int ifs_ofs_bitmap_normalize_tail(
     return 0;
 }
 
+/*
+ * Read a bounded contiguous extent of 512-byte OFS bitmap blocks with one
+ * block-layer BIO instead of issuing 61k separate half-kilobyte reads.
+ * It is mount-time, read-only I/O: allocated pages are temporary, and the
+ * existing buffer-head path is retained for fragmented or unsupported media.
+ *
+ * This does not defer metadata validation. Every bitmap still passes the
+ * canonical AmigaDOS checksum and free-bit accounting before mount completes.
+ */
+static int ifs_ofs_account_bitmap_extent(
+    struct super_block *sb, struct affs_bm_info *bitmap,
+    const u32 first, const u32 count,
+    u64 *const io_ns, u64 *const checksum_ns, u64 *const counts_ns)
+{
+    enum { IFS_OFS_BIO_PAGES = 16, IFS_OFS_BIO_BYTES = 16 * PAGE_SIZE };
+    struct page *pages[IFS_OFS_BIO_PAGES] = { NULL };
+    struct bio *bio = NULL;
+    unsigned int page_count;
+    unsigned int page_index;
+    u32 index;
+    int status = 0;
+    u64 step_ns;
+
+    if (sb->s_blocksize != 512U || count == 0U ||
+        count > IFS_OFS_BIO_BYTES / 512U)
+        return -EOPNOTSUPP;
+
+    page_count = DIV_ROUND_UP(count * 512U, (u32)PAGE_SIZE);
+    for (page_index = 0U; page_index < page_count; ++page_index) {
+        pages[page_index] = alloc_page(GFP_KERNEL);
+        if (!pages[page_index]) {
+            status = -ENOMEM;
+            goto out;
+        }
+    }
+
+    bio = bio_alloc(sb->s_bdev, page_count, REQ_OP_READ, GFP_KERNEL);
+    if (!bio) {
+        status = -ENOMEM;
+        goto out;
+    }
+
+    /* On this fast path one OFS 512B block equals one 512B BIO sector.
+     * All block numbers were already validated when collecting bitmap keys. */
+    bio->bi_iter.bi_sector = (sector_t)bitmap[first].bm_key;
+    for (page_index = 0U; page_index < page_count; ++page_index) {
+        const unsigned int offset_bytes = page_index * PAGE_SIZE;
+        const unsigned int remaining_bytes = count * 512U - offset_bytes;
+        const unsigned int bytes = min_t(
+            unsigned int, remaining_bytes, PAGE_SIZE);
+
+        if (bio_add_page(bio, pages[page_index], bytes, 0U) != bytes) {
+            /* Some block queues cannot accept the proposed extent. Retain
+             * the portable synchronous buffer-head fallback instead. */
+            status = -EOPNOTSUPP;
+            goto out;
+        }
+    }
+
+    step_ns = ktime_get_ns();
+    status = submit_bio_wait(bio);
+    *io_ns += ktime_get_ns() - step_ns;
+    if (status)
+        goto out;
+
+    for (index = 0U; index < count; ++index) {
+        const u32 byte_offset = index * 512U;
+        const unsigned int p = byte_offset / PAGE_SIZE;
+        const unsigned int off = byte_offset % PAGE_SIZE;
+        const u8 *const data = (const u8 *)page_address(pages[p]) + off;
+
+        step_ns = ktime_get_ns();
+        if (ifs_ofs_block_checksum(data, 512U) != 0U) {
+            status = -EUCLEAN;
+            goto out;
+        }
+        *checksum_ns += ktime_get_ns() - step_ns;
+
+        step_ns = ktime_get_ns();
+        bitmap[first + index].bm_free =
+            memweight(data + sizeof(__be32), 512U - sizeof(__be32));
+        *counts_ns += ktime_get_ns() - step_ns;
+    }
+
+out:
+    if (bio)
+        bio_put(bio);
+    for (page_index = 0U; page_index < ARRAY_SIZE(pages); ++page_index)
+        if (pages[page_index])
+            __free_page(pages[page_index]);
+    return status;
+}
+
 int affs_init_bitmap(struct super_block *sb, int *flags)
 {
     struct affs_sb_info *sbi = AFFS_SB(sb);
@@ -366,21 +461,22 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     u32 index;
     u32 data_blocks;
     u32 last_valid_bits;
-    u32 prefetch_next = 0U;
     u64 began_ns;
     u64 keys_ns;
-    u64 readahead_ns = 0U;
+    u64 batched_io_ns = 0U;
     u64 reads_ns = 0U;
     u64 checksums_ns = 0U;
     u64 counts_ns = 0U;
     u64 measured_ns;
+    u32 batches = 0U;
+    u32 batched_blocks = 0U;
+    u32 fallback_blocks = 0U;
     int result = 0;
 
-    /* A real 120 GiB OFS partition holds ~61k 512-byte bitmaps. Serial
-     * sb_bread() calls turn mount into a high-latency, tiny-I/O workload.
-     * Preserve full checksumming and fail-closed semantics while queueing
-     * only a bounded number of read-ahead requests. */
-    enum { IFS_OFS_BITMAP_READAHEAD_WINDOW = 128 };
+    /* A real 120 GiB OFS partition holds ~61k 512B bitmap blocks.
+     * A bounded direct BIO fast path coalesces adjacent blocks, while the
+     * portable bh reader handles fragmented/unsupported bitmap layouts. */
+    enum { IFS_OFS_BITMAP_BIO_BLOCKS = 128 };
 
     began_ns = ktime_get_ns();
 
@@ -462,21 +558,44 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     extension_bh = NULL;
     keys_ns = ktime_get_ns() - began_ns;
 
-    /* Phase 2: queue a modest sliding window of asynchronous bitmap reads.
-     * sb_breadahead is an advisory cache fill: synchronous reads below remain
-     * the final authority, and every bitmap must still pass its checksum.
-     * This never scans file data or writes to the mounted block device. */
-    for (index = 0U; index < sbi->s_bmap_count; ++index) {
-        u32 key = bitmap[index].bm_key;
+    /* Phase 2: coalesce physically adjacent bitmap keys. The canonical
+     * key chain is not assumed contiguous: fragmented runs fall back to
+     * the existing buffer-head reader, one validated block at a time. */
+    for (index = 0U; index < sbi->s_bmap_count;) {
+        const u32 key = bitmap[index].bm_key;
+        u32 run = 1U;
         u64 step_ns;
 
-        step_ns = ktime_get_ns();
-        while (prefetch_next < sbi->s_bmap_count &&
-               prefetch_next - index < IFS_OFS_BITMAP_READAHEAD_WINDOW) {
-            sb_breadahead(sb, bitmap[prefetch_next].bm_key);
-            ++prefetch_next;
+        if (sb->s_blocksize == 512U) {
+            while (run < IFS_OFS_BITMAP_BIO_BLOCKS &&
+                   index + run < sbi->s_bmap_count &&
+                   bitmap[index + run].bm_key == key + run)
+                ++run;
         }
-        readahead_ns += ktime_get_ns() - step_ns;
+
+        if (run >= 8U) {
+            result = ifs_ofs_account_bitmap_extent(
+                sb, bitmap, index, run,
+                &batched_io_ns, &checksums_ns, &counts_ns);
+            if (result == 0) {
+                ++batches;
+                batched_blocks += run;
+                index += run;
+                continue;
+            }
+            if (result == -EUCLEAN) {
+                pr_warn("Bitmap checksum invalid in extent from %u on %s"
+                        " - mounting read only\n", key, sb->s_id);
+                *flags |= SB_RDONLY;
+                result = 0;
+                goto readonly;
+            }
+            if (result != -ENOMEM && result != -EOPNOTSUPP)
+                goto fail;
+            /* Resource/queue limitation: validate through bh below.
+             * Re-attempting contiguous BIO allocation on the next key is
+             * harmless, but avoid per-key allocations for this run. */
+        }
 
         affs_brelse(bitmap_bh);
         bitmap_bh = NULL;
@@ -504,6 +623,22 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
             memweight(bitmap_bh->b_data + sizeof(__be32),
                       sb->s_blocksize - sizeof(__be32));
         counts_ns += ktime_get_ns() - step_ns;
+        ++fallback_blocks;
+        ++index;
+    }
+
+    /* Tail normalization uses a writable buffer_head when RW, and observes
+     * only valid bits when RO. The BIO path never leaves one cached. */
+    affs_brelse(bitmap_bh);
+    bitmap_bh = affs_bread(sb, bitmap[sbi->s_bmap_count - 1U].bm_key);
+    if (!bitmap_bh) {
+        result = -EIO;
+        goto fail;
+    }
+    if (affs_checksum_block(sb, bitmap_bh) != 0U) {
+        *flags |= SB_RDONLY;
+        result = 0;
+        goto readonly;
     }
 
     data_blocks = (u32)sbi->s_partition_size - (u32)sbi->s_reserved;
@@ -524,11 +659,12 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
      * Counters include only their named phase; total covers all phases. */
     if (sbi->s_bmap_count >= 4096U) {
         measured_ns = ktime_get_ns() - began_ns;
-        pr_info("OFS bitmap mount: blocks=%u keys=%llu ms readahead=%llu ms "
+        pr_info("OFS bitmap mount: blocks=%u batches=%u batched_blocks=%u "
+                "fallback_blocks=%u keys=%llu ms batched_io=%llu ms "
                 "reads=%llu ms checksum=%llu ms count=%llu ms total=%llu ms\n",
-                sbi->s_bmap_count,
+                sbi->s_bmap_count, batches, batched_blocks, fallback_blocks,
                 (unsigned long long)div_u64(keys_ns, 1000000U),
-                (unsigned long long)div_u64(readahead_ns, 1000000U),
+                (unsigned long long)div_u64(batched_io_ns, 1000000U),
                 (unsigned long long)div_u64(reads_ns, 1000000U),
                 (unsigned long long)div_u64(checksums_ns, 1000000U),
                 (unsigned long long)div_u64(counts_ns, 1000000U),
