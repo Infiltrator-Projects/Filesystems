@@ -12,29 +12,42 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Preserve premerge heads and remove superseded branches
+      - name: Safely resume history-preserving branch cleanup
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           repo="${GITHUB_REPOSITORY}"
+          get_sha() {
+            gh api "repos/$repo/git/ref/$1" 2>/dev/null | jq -r '.object.sha // empty' || true
+          }
           while IFS='|' read -r branch pinned; do
-            test -n "$branch" && test -n "$pinned"
-            test "$branch" != main
-            actual="$(gh api "repos/$repo/git/ref/heads/$branch" --jq '.object.sha')"
-            test "$actual" = "$pinned"
+            test -n "$branch" && test -n "$pinned" && test "$branch" != main
+            current="$(get_sha "heads/$branch")"
+            test -z "$current" || test "$current" = "$pinned"
             archive="archive/2026-10-18/filesystems-${branch//\//-}"
-            existing="$(gh api "repos/$repo/git/ref/tags/$archive" 2>/dev/null | jq -r '.object.sha // empty' 2>/dev/null || true)"
-            echo "Archive existing ref: ${existing:-<none>}"
-            if test -z "$existing"; then
+            archived="$(get_sha "tags/$archive")"
+            if test -z "$archived"; then
+              test "$current" = "$pinned"
               gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$archive" -f "sha=$pinned" >/dev/null
             else
-              test "$existing" = "$pinned"
+              test "$archived" = "$pinned"
             fi
-            test "$(gh api "repos/$repo/git/ref/tags/$archive" --jq '.object.sha')" = "$pinned"
-            gh api -X DELETE "repos/$repo/git/refs/heads/$branch"
-            echo "Archived and deleted branch $branch"
+            test "$(get_sha "tags/$archive")" = "$pinned"
+            if test -n "$current"; then
+              removed=false
+              for attempt in 1 2 3; do
+                if gh api -X DELETE "repos/$repo/git/refs/heads/$branch" >/dev/null; then
+                  removed=true
+                  break
+                fi
+                sleep 2
+              done
+              test "$removed" = true
+            fi
+            test -z "$(get_sha "heads/$branch")"
+            echo "Archived/verified then removed: $branch"
           done <<'RETIRED_BRANCHES'
           fix/bigbedroom-dependency-gate|4f2fe890a9570b89821db07ac73e75fd74576649
           fix/coexist-infiltratorfs-desktop-0.5.36|d8a91f002d47609bc8572d34ca861bd585bbdaef
@@ -46,6 +59,6 @@ jobs:
           work/hybrid-runners-filesystems|92ed4c04083b73ffc242df69ad9ec4c3d1a03c2d
           work/ofs-uefi-reader|7181147247212bc117f78165e30d166b579173f6
           RETIRED_BRANCHES
-          actual="$(gh api "repos/$repo/branches?per_page=100" --jq '.[].name')"
-          test "$actual" = main
-          echo "Filesystems now has only main; all retired branch histories are archived as Git tags."
+          remaining="$(gh api "repos/$repo/branches?per_page=100" --jq '.[].name')"
+          test "$remaining" = main
+          echo 'All retired Filesystems branches safely archived and removed.'
