@@ -11,6 +11,13 @@ not a request to run every project job on whatever runner is idle.
 | Amiga and EXT image/boot/runtime qualification | GitHub-hosted Ubuntu 24.04 | Requires QEMU, preinstalled dependencies and many temporary image paths; keep on isolated hosted runners until separately hardened. |
 | Release packages, Windows builds and central APT publication | GitHub-hosted | Clean independent qualification, controlled release, and reproducible publication. |
 
+The home lane is **opt-in**. Unless the repository Actions variable
+`FILESYSTEMS_BIGBEDROOM_READY` is exactly `true`, all jobs use hosted
+runners. This prevents a missing home dependency from disrupting main CI.
+Enable that variable only after the manually-dispatched
+`BigBedroom runner preflight` workflow passes and the owner explicitly
+approves the necessary system packages.
+
 The known Linux labels are used by the organisation's other projects:
 `[self-hosted, Linux, X64, linux-native, bigbedroom]`. RunnerScope counts
 alone are not proof that this exact label set is registered in Filesystems'
@@ -19,7 +26,7 @@ trusted main push before claiming that routing works.
 
 ## Non-negotiable safety rules
 
-- Only `push` to `refs/heads/main` requests self-hosted runners in the two
+- Only `push` to `refs/heads/main` **with the readiness variable enabled** requests self-hosted runners in the two
   module API jobs. A PR, manual run or future new event stays GitHub-hosted.
 - Self-hosted jobs must not execute `sudo apt-get install` or mutate machine
   configuration. Check for prerequisite tools and libraries and fail clearly
