@@ -208,6 +208,15 @@ target_include_directories(infiltratr-fs-ofs-core
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core")
 filesystems_configure(infiltratr-fs-ofs-core)
 
+# Portable read-only OFS boot reader. This is not an EFI protocol driver.
+add_library(infiltratr-fs-ofs-efi-reader STATIC
+    native/filesystems/ofs/efi/reader.c)
+target_link_libraries(infiltratr-fs-ofs-efi-reader
+    PUBLIC infiltratr-fs-ofs-core)
+target_include_directories(infiltratr-fs-ofs-efi-reader
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi")
+filesystems_configure(infiltratr-fs-ofs-efi-reader)
+
 add_library(infiltratr-fs-ffs-core STATIC
     native/filesystems/ffs/core/ffs_core.c
     native/filesystems/ffs/core/ffs_primitives.c)
@@ -535,4 +544,12 @@ if(UNIX)
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "policykit-1, apt, dpkg, kmod, mokutil")
     include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/amiga-desktop-detection.cmake")
     include(CPack)
+endif()
+
+if(BUILD_TESTING)
+    add_executable(infiltratr-fs-ofs-efi-reader-test tests/ofs_efi_reader_test.c)
+    target_link_libraries(infiltratr-fs-ofs-efi-reader-test
+        PRIVATE infiltratr-fs-ofs-efi-reader)
+    filesystems_configure(infiltratr-fs-ofs-efi-reader-test)
+    add_test(NAME ofs-efi-reader COMMAND infiltratr-fs-ofs-efi-reader-test)
 endif()
