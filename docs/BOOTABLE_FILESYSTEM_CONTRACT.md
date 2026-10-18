@@ -4,8 +4,8 @@ This document records the agreed cross-project boot/install target for **Boot**,
 
 Ownership remains deliberately separate:
 
-- [Boot](https://github.com/Infiltrator-Projects/Boot/blob/main/docs/ARCHITECTURE.md) owns UEFI discovery, dynamic driver loading and handoff, but not filesystem-specific driver source or driver releases.
-- [Filesystems](NATIVE_FILESYSTEM_VISION.md) owns on-media format identities, format capabilities, native adapters, EFI filesystem-driver builds and distribution, qualification, and format-specific installation planning.
+- [Boot](https://github.com/Infiltrator-Projects/Boot/blob/main/docs/ARCHITECTURE.md) owns UEFI discovery, loading and handoff, including dynamic EFI filesystem drivers.
+- [Filesystems](NATIVE_FILESYSTEM_VISION.md) owns on-media format identities, format capabilities, native adapters, qualification and format-specific installation planning.
 - [InfiltratorOS](https://github.com/Infiltrator-Projects/InfiltratorOS/blob/main/docs/FILESYSTEM.md) owns operating-system namespaces and runtime expectations.
 - **Setup** is the reserved name for the future installer and coordinates these owners. It is not a completed installer today.
 - [InfiltratorFS](https://github.com/Infiltrator-Projects/InfiltratorFS/blob/main/docs/PLATFORM_ADAPTERS.md) owns its own on-disk format and adapters. It is not the name of the shared Filesystems catalogue.
@@ -71,7 +71,7 @@ The current InfiltratorOS native layout reserves `/System/Kernel/Images` and `/S
 
 ## Development phases and acceptance criteria
 
-**Phase A — current reality:** Boot temporarily bundles its previously qualified ext4 reader for Linux kernel discovery but no longer builds or distributes the experimental InfiltratorFS EFI driver. Filesystems owns the independent OFS EFI implementation and its experimental build artifact; its full physical OFS-to-Linux boot qualification is not yet complete. A Filesystems-owned InfiltratorFS EFI driver and a separately packaged replacement for Boot's transitional ext4 reader remain unimplemented and must not be advertised as released. The old Boot releases may still contain historic artifacts. No Setup installer or native InfiltratorOS kernel is claimed.
+**Phase A — current reality:** Boot's ext4 EFI reader is enabled in the release bundle; the InfiltratorFS EFI reader is shipped disabled pending qualification. Boot has loaded Linux from ext4 on the physical Dell; broader startup optimisation has not yet been physically verified. Filesystems contains independent OFS and FFS Linux modules, but their existence does not imply a qualified AmigaDOS EFI reader or root installation. No Setup installer or native InfiltratorOS kernel is claimed.
 
 **Phase B — prove boot-source independence:** create and verify an authentic AmigaDOS OFS test image/device, implement and qualify a *read-only* OFS UEFI reader (including Amiga RDB layouts as applicable), load an EFI-compatible Linux kernel and initramfs from OFS, and successfully boot Linux with its root still on a separately supported filesystem. Show that removing the OFS EFI reader only removes that boot source, not Boot itself.
 
