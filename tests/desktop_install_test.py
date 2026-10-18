@@ -160,33 +160,62 @@ check_files(set(), prepared=False)
 run(helper, 'install', kinds[0], success=False)
 check_files(set(), prepared=False)
 
-# A foreign Disks diversion blocks package-level preparation before any
-# filesystem state is touched.
+# A foreign Disks diversion such as InfiltratorFS must be preserved.
+# The Filesystems package still configures, and Nemo and native filesystem
+# rules continue to work independently. Never replace another owner's binary.
 run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--add', '--rename',
     '--divert', '/usr/bin/gnome-disks.foreign', '/usr/bin/gnome-disks')
-run(helper, 'sync', success=False)
-assert not list((private / 'desktop/active').glob('*.so'))
-assert not list((root / 'etc/udev/rules.d').glob('99-infiltrator-*.rules'))
-assert not list((root / 'etc/udev/rules.d').glob('59-infiltrator-*.rules'))
+disks.symlink_to(sys.executable)  # foreign owner installed its own launcher
+foreign_disks_target = os.readlink(disks)
+run(helper, 'sync')
 assert owner('/usr/bin/gnome-disks') == 'foreign-test-owner'
+assert os.readlink(disks) == foreign_disks_target
+assert owner('/usr/bin/nemo') == 'filesystems'
+assert not (root / 'usr/bin/gnome-disks.filesystems-original').exists()
+run(helper, 'install', kinds[0])
+assert (private / 'desktop/active' / f'{kinds[0]}.so').is_file()
+run(helper, 'purge')
+run(helper, 'unprepare')
+assert owner('/usr/bin/gnome-disks') == 'foreign-test-owner'
+assert os.readlink(disks) == foreign_disks_target
 assert owner('/usr/bin/nemo') == ''
+disks.unlink()
 run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--remove', '--rename',
     '--divert', '/usr/bin/gnome-disks.foreign', '/usr/bin/gnome-disks')
 check_files(set(), prepared=False)
 
-# A conflict discovered at the second shared launcher must not leave the first
-# launcher diverted. This is the package-level transaction boundary that was
-# historically vulnerable to half-prepared configuration.
+# Likewise, a foreign Nemo diversion must not cause Filesystems to
+# roll back its independent, package-owned GNOME Disks integration.
 run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--add', '--rename',
     '--divert', '/usr/bin/nemo.foreign', '/usr/bin/nemo')
-run(helper, 'sync', success=False)
+nemo.symlink_to(sys.executable)
+foreign_nemo_target = os.readlink(nemo)
+run(helper, 'sync')
+assert owner('/usr/bin/gnome-disks') == 'filesystems'
+assert owner('/usr/bin/nemo') == 'foreign-test-owner'
+assert os.readlink(nemo) == foreign_nemo_target
+run(helper, 'install', kinds[0])
+assert (private / 'desktop/active' / f'{kinds[0]}.so').is_file()
+run(helper, 'purge')
+run(helper, 'unprepare')
 assert owner('/usr/bin/gnome-disks') == ''
 assert owner('/usr/bin/nemo') == 'foreign-test-owner'
-assert hashlib.sha256(disks.read_bytes()).hexdigest() == original_disks_hash
-assert not list((private / 'desktop/active').glob('*.so'))
-assert not list((root / 'etc/udev/rules.d').glob('99-infiltrator-*.rules'))
+assert os.readlink(nemo) == foreign_nemo_target
+nemo.unlink()
 run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--remove', '--rename',
     '--divert', '/usr/bin/nemo.foreign', '/usr/bin/nemo')
+check_files(set(), prepared=False)
+
+# A foreign diversion without its own launcher is genuinely incomplete:
+# report it before changing any package-owned launcher or active rules.
+run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--add', '--rename',
+    '--divert', '/usr/bin/gnome-disks.foreign', '/usr/bin/gnome-disks')
+run(helper, 'sync', success=False)
+assert owner('/usr/bin/gnome-disks') == 'foreign-test-owner'
+assert owner('/usr/bin/nemo') == ''
+assert not list((private / 'desktop/active').glob('*.so'))
+run('dpkg-divert', f'--root={root}', '--package', 'foreign-test-owner', '--remove', '--rename',
+    '--divert', '/usr/bin/gnome-disks.foreign', '/usr/bin/gnome-disks')
 check_files(set(), prepared=False)
 
 # Re-prepare, prove one filesystem transaction leaves launcher ownership alone,
