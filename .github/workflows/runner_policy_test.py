@@ -27,7 +27,7 @@ for name in ("linux-native-modules-6-12", "linux-amiga-v7-module-api"):
     source = job(build, name)
     assert "github.event_name == 'push'" in source, name
     assert "github.ref == 'refs/heads/main'" in source, name
-    assert "vars.FILESYSTEMS_BIGBEDROOM_READY == 'true'" in source, name
+    assert "vars.FILESYSTEMS_BIGBEDROOM_READY != 'false'" in source, name
     assert selfhost in source and hosted in source, name
     assert "runner.environment" in source, name
     assert 'if [[ "${{ runner.environment }}" == "github-hosted" ]]' in source, name
