@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.37 — 2026-10-18
+
+- Fix the native Linux kernel-module installer incorrectly hashing relative source
+  file paths from the caller's working directory instead of the installed
+  source directory. This caused `sha256sum: native/filesystems/...: No such
+  file or directory` and prevented `ofs.ko` from building on the Latitude.
+- Scope source enumeration and checksum execution to one consistent package
+  working directory without changing the caller's directory.
+- Add a read-only `native-module-helper source-digest <filesystem-id>`
+  diagnostic and CTest regression coverage for unrelated working directories,
+  source edits, ignored documentation and missing sources.
+- Correct OFS Linux statfs reporting 100% used on a read-only freshly formatted
+  SD card. Read-only mounts now validate and count the existing bitmap while
+  preserving media bytes; read-only remounts retain the accounting and only
+  read-write operations may normalise unused tail bits.
+- Extend the QEMU Amiga runtime qualification to require nonzero free blocks
+  from a true read-only OFS mount before any media writes. No device contents,
+  boot paths or filesystem on-disk structures change.
+
 ## 0.5.36 — 2026-10-18
 
 - Fix package configuration on systems where InfiltratorFS already owns the

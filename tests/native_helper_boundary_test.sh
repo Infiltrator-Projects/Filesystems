@@ -82,8 +82,13 @@ for required in (
 ):
     if required not in kernel:
         raise SystemExit(f'kernel state observation lost contract: {required}')
-if coordinator_code.index('if [[ $# -eq 2 && ( $1 == is-installed || $1 == status ) ]]') > coordinator_code.index('[[ ${EUID} -eq 0 ]]'):
+readonly_dispatch = 'if [[ $# -eq 2 && ( $1 == is-installed || $1 == status || $1 == source-digest ) ]]'
+if readonly_dispatch not in coordinator_code:
+    raise SystemExit('coordinator no longer delegates every read-only query')
+if coordinator_code.index(readonly_dispatch) > coordinator_code.index('[[ ${EUID} -eq 0 ]]'):
     raise SystemExit('read-only native state query was moved behind the privilege gate')
+if 'exec "$kernel_helper" "$1" "$2"' not in coordinator_code:
+    raise SystemExit('read-only state delegation to kernel authority is missing')
 for forbidden in ('/lib/modules/', '.source-sha256', 'native_source_digest_for'):
     if forbidden in coordinator_code:
         raise SystemExit(f'kernel state policy leaked into coordinator: {forbidden}')

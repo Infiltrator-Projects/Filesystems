@@ -15,7 +15,7 @@ export PATH
 
 usage() {
     echo "usage: $0 <install|remove> <filesystem-id> <module-name>" >&2
-    echo "       $0 <is-installed|status> <filesystem-id>" >&2
+    echo "       $0 <is-installed|status|source-digest> <filesystem-id>" >&2
     exit 2
 }
 
@@ -31,7 +31,7 @@ desktop_helper="$self_dir/desktop-integration"
 # Read-only state belongs to the kernel authority but does not require
 # privilege. Keeping these queries usable by the unprivileged manager removes
 # any reason for presentation code to infer /lib/modules layout itself.
-if [[ $# -eq 2 && ( $1 == is-installed || $1 == status ) ]]; then
+if [[ $# -eq 2 && ( $1 == is-installed || $1 == status || $1 == source-digest ) ]]; then
     exec "$kernel_helper" "$1" "$2"
 fi
 

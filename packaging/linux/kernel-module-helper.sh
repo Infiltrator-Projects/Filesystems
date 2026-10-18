@@ -15,6 +15,7 @@ export PATH
 usage() {
     echo "usage: $0 <install|remove> <filesystem-id> <module-name>" >&2
     echo "       $0 <is-installed|status> <filesystem-id>" >&2
+    echo "       $0 source-digest <filesystem-id>" >&2
     echo "       $0 remove-all" >&2
     exit 2
 }
@@ -89,17 +90,22 @@ native_source_digest_for() {
     # unrelated documentation or adapter change from making a current module
     # appear stale and forcing a needless unload/rebuild.
     (
+        # find prints paths relative to this directory. Keep the entire hash
+        # pipeline in the same subshell, so invocation from ~/ or an arbitrary
+        # application working directory cannot change the file identities.
         cd "$self_dir"
-        find \
-            "native/filesystems/$requested/core" \
-            "native/filesystems/$requested/linux" \
-            -type f \
-            \( -name 'Makefile' -o -name '*.c' -o -name '*.h' \) \
-            -print0
-        if uses_shared_linux_kernel_adapter "$requested"; then
-            printf '%s\0' "native/platform/linux_kernel/vfs_compat.h"
-        fi
-    ) | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | awk '{print $1}'
+        {
+            find \
+                "native/filesystems/$requested/core" \
+                "native/filesystems/$requested/linux" \
+                -type f \
+                \( -name 'Makefile' -o -name '*.c' -o -name '*.h' \) \
+                -print0
+            if uses_shared_linux_kernel_adapter "$requested"; then
+                printf '%s\0' "native/platform/linux_kernel/vfs_compat.h"
+            fi
+        } | LC_ALL=C sort -z | xargs -0 -r sha256sum | sha256sum | awk '{print $1}'
+    )
 }
 
 preferred_module_filename_for() {
@@ -190,6 +196,17 @@ remove_stale_kernel_directories() {
 # manager need observed state, not mutation rights, and forcing them to elevate
 # would either cause authentication prompts during scans or encourage policy
 # duplication outside this authority.
+# Read-only source fingerprint for support diagnostics and regression tests.
+# This uses the identical digest routine as both status and installation.
+if [[ $# -eq 2 && $1 == source-digest ]]; then
+    if ! managed_module_for "$2" >/dev/null; then
+        echo "refusing unmanaged native filesystem: $2" >&2
+        exit 2
+    fi
+    native_source_digest_for "$2"
+    exit $?
+fi
+
 if [[ $# -eq 2 && $1 == is-installed ]]; then
     filesystem=$2
     if ! module=$(managed_module_for "$filesystem"); then

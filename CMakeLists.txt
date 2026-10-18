@@ -432,6 +432,10 @@ if(BUILD_TESTING)
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/ofs_image_test.py"
                 "$<TARGET_FILE:filesystems-ofs-image>")
+        add_test(NAME filesystems-native-source-digest
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_source_digest_test.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
 
     add_executable(filesystems-ofs-core-test

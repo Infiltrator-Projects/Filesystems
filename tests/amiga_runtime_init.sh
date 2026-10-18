@@ -21,6 +21,18 @@ for fs in ofs ffs sfs sfs2 pfs3; do
     insmod "/$fs.ko" || fail "insmod $fs"
 done
 
+# A freshly formatted OFS volume must expose free blocks even when
+# mounted read-only. This caught the physical 119 GiB SD regression where
+# statfs returned 100% used despite an empty root. Do not write to media.
+mount -t ofs -o ro /dev/vda /mnt/ofs || fail "read-only OFS mount"
+ofs_total=$(stat -f -c '%b' /mnt/ofs) || fail "read-only OFS statfs total"
+ofs_free=$(stat -f -c '%a' /mnt/ofs) || fail "read-only OFS statfs free"
+test "$ofs_total" -gt 0 && test "$ofs_free" -gt 0 &&
+    test "$ofs_free" -le "$ofs_total" ||
+    fail "read-only OFS free-space accounting ($ofs_free/$ofs_total)"
+umount /mnt/ofs || fail "read-only OFS unmount"
+echo "AMIGA-OFS-READONLY-STATFS-PASS" > /dev/ttyS0
+
 crash_phase_armed()
 {
     mount -t ofs /dev/vda /mnt/ofs || fail "crash probe mount ofs"

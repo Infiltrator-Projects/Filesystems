@@ -735,9 +735,9 @@ static int affs_remount(struct super_block *sb, int *flags, char *data)
     kfree(old_prefix);
 
     if ((bool)(*flags & SB_RDONLY) != sb_rdonly(sb)) {
-        if ((*flags & SB_RDONLY) != 0)
-            affs_free_bitmap(sb);
-        else {
+        /* Retain cached free-space accounting when changing to read-only.
+         * A ro->rw transition revalidates and refreshes the allocation map. */
+        if ((*flags & SB_RDONLY) == 0) {
             result = affs_init_bitmap(sb, flags);
             if (result != 0)
                 goto out;
@@ -794,9 +794,9 @@ static int affs_reconfigure(struct fs_context *fc)
     kfree(old_prefix);
 
     if ((bool)(fc->sb_flags & SB_RDONLY) != sb_rdonly(sb)) {
-        if ((fc->sb_flags & SB_RDONLY) != 0) {
-            affs_free_bitmap(sb);
-        } else {
+        /* Read-only remount must not discard the validated bitmap cache
+         * used by statfs, even though allocation itself is disabled. */
+        if ((fc->sb_flags & SB_RDONLY) == 0) {
             int bitmap_flags = fc->sb_flags;
 
             result = affs_init_bitmap(sb, &bitmap_flags);
