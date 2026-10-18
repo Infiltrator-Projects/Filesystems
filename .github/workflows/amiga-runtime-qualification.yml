@@ -121,7 +121,7 @@ jobs:
           # Use the Filesystems-owned formatter for the device the native
           # OFS driver must mount, with Defragmenter as an independent
           # reference generator. Compare every byte, not merely the header.
-          /tmp/filesystems-ofs-build/filesystems-ofs-image --create /tmp/ofs.img 32 LD_AMIGA
+          /tmp/filesystems-ofs-build/filesystems-ofs-image --create /tmp/ofs.img 32 LD_OFS
           truncate -s 32M /tmp/ofs-reference.img
           /tmp/defrag-build/test-media-mkfs-ofs /tmp/ofs-reference.img
           cmp /tmp/ofs.img /tmp/ofs-reference.img
