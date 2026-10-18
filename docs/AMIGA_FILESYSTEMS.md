@@ -46,6 +46,31 @@ OFS/FFS are continuously checked against the independently maintained Linux
 AFFS behaviour and AmigaDOS disk-format invariants; the project-owned OFS and
 FFS implementations remain separate rather than sharing one semantic engine.
 
+## First format-and-mount milestone: OFS
+
+`filesystems-ofs-image` is a deliberately limited, non-destructive
+developer-preview creation tool. It exclusively creates previously
+nonexistent **regular image files** (not block devices), builds a genuine
+AmigaDOS DOS\0 OFS root and bitmap layout from the project's canonical OFS
+geometry, and verifies the resulting metadata before returning success.
+
+Its regression suite checks geometry spanning root bitmap extensions,
+duplicate creation, symlink rejection, invalid labels/sizes, damaged boot
+and metadata blocks, bitmap corruption and refusal of block devices.
+The release Amiga runtime workflow formats the OFS media with this
+tool, compares it byte-for-byte against an independently maintained,
+pinned Defragmenter OFS test formatter, then boots a QEMU Linux kernel
+with host AFFS disabled and the independent project `ofs.ko` to exercise
+file operations, remount and committed-data recovery.
+
+This is **not yet** a general-purpose `mkfs` utility or qualification
+to format physical storage or serve as a full operating-system root.
+The image-only entry point is intentional until larger-size, failure
+injection, on-media interoperability and power-loss recovery evidence
+justifies a destructive, partition-aware formatter. It also does not
+supply a UEFI OFS reader: Boot's AmigaDOS kernel-loading experiment
+is separately pending.
+
 ## Qualification rule
 
 Compilation is necessary but is not filesystem qualification.

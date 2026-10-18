@@ -297,6 +297,14 @@ if(UNIX)
     target_link_libraries(fsinspect PRIVATE infiltratr-fs-userspace)
     filesystems_configure(fsinspect)
 
+    # Developer-preview, image-only OFS formatter. Cannot overwrite a file
+    # or open a block device; physical partition formatting is NOT qualified.
+    add_executable(filesystems-ofs-image tools/ofs-image/main.c)
+    target_link_libraries(filesystems-ofs-image PRIVATE infiltratr-fs-ofs-core)
+    filesystems_configure(filesystems-ofs-image)
+    install(TARGETS filesystems-ofs-image
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -417,6 +425,14 @@ if(BUILD_TESTING)
     add_test(
         NAME filesystems-ext4-core
         COMMAND filesystems-ext4-core-test)
+
+    if(UNIX)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        add_test(NAME filesystems-ofs-image
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/ofs_image_test.py"
+                "$<TARGET_FILE:filesystems-ofs-image>")
+    endif()
 
     add_executable(filesystems-ofs-core-test
         tests/ofs_core_test.c)

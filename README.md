@@ -52,6 +52,24 @@ The agreed cross-project separation of **kernel stored on a filesystem** from **
 
 The setup surface exposes only filesystems whose complete install path is qualified. It does not infer support merely because a catalogue entry exists or because a Linux package can be installed.
 
+## AmigaDOS OFS test-image creation (developer preview)
+
+The Filesystems package now supplies `filesystems-ofs-image`, an independent
+image-only AmigaDOS OFS creator and verifier. It creates **new regular-file
+images only**, refuses existing paths, symlinks and block devices, and verifies
+its result before reporting success. It does **not** format USB sticks,
+partitions or drives, and it does not itself place a kernel in the filesystem.
+
+```sh
+filesystems-ofs-image --create ofs-test.img 64 TestOFS
+filesystems-ofs-image --verify ofs-test.img
+```
+
+The `64` is MiB (1–1024 supported in this preview). These image files
+are suitable for controlled VM/loopback testing. Root filesystem and Boot EFI
+driver qualification remain separate. See
+[Amiga filesystem architecture](docs/AMIGA_FILESYSTEMS.md).
+
 ## Support discovery
 
 Filesystems treats support as a capability that must be observed rather than assumed.

@@ -16,6 +16,14 @@ ctest --test-dir build --output-on-failure
 
 Source-contract checks use isolated temporary directories and may run concurrently. Build configuration reports platform/tool availability; compilation alone does not qualify mounted runtime behaviour.
 
+The image-only OFS creator is exercised by `filesystems-ofs-image`
+CTest and by the Amiga runtime workflow. The latter compares a newly
+created project-native OFS image byte-for-byte against the pinned
+Defragmenter formatter, then runs the native OFS Linux driver against
+that image in QEMU. The tool refuses block devices and overwrites; its
+success does **not** qualify physical-media formatting or booting
+an EFI kernel from OFS.
+
 ## Qualification boundaries
 
 The main build qualifies core/catalogue/action behaviour, native install membership, desktop APT install/reinstall/purge, the Windows manager and EXT2 driver, and managed module compilation against explicit kernel APIs. Release candidates also require reusable exact-SHA sanitizer/adversarial, EXT runtime and Amiga runtime workflows.
