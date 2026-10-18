@@ -145,7 +145,7 @@ jobs:
           bash tools/validate-source-contract.sh
           wait "$first"
           python3 tests/repository_architecture_test.py .
-          python3 tests/runner_policy_test.py .
+          python3 .github/workflows/runner_policy_test.py .
 
   linux:
     runs-on: ubuntu-24.04
