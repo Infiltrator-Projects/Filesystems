@@ -192,7 +192,7 @@ jobs:
   linux-native-modules-6-12:
     # Untrusted PRs use hosted runners. Only trusted main pushes can use
     # the already-labelled home Linux fleet.
-    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY == 'true' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY != 'false' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -267,7 +267,7 @@ jobs:
   linux-amiga-v7-module-api:
     # Untrusted PRs use hosted runners. Only trusted main pushes can use
     # the already-labelled home Linux fleet.
-    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY == 'true' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY != 'false' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
