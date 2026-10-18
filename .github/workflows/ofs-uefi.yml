@@ -7,7 +7,6 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'scripts/build-ofs-efi.sh'
-      - 'scripts/stage-ofs-boot-payload.sh'
       - '.github/workflows/ofs-uefi.yml'
   pull_request:
     paths:
@@ -15,7 +14,6 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'scripts/build-ofs-efi.sh'
-      - 'scripts/stage-ofs-boot-payload.sh'
       - '.github/workflows/ofs-uefi.yml'
   workflow_dispatch:
 permissions:
@@ -33,7 +31,6 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/build-ofs-efi.sh
-          bash -n scripts/stage-ofs-boot-payload.sh
           bash scripts/build-ofs-efi.sh dist-ofs-efi
           file dist-ofs-efi/OFS_x64.efi
           test -s dist-ofs-efi/OFS_x64.efi

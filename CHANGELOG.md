@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.42 — 2026-10-19
+
+- Remove the local SD-card boot-payload preparation helper, its CI references
+  and the machine-specific setup procedure from the OFS firmware documentation.
+- Retain the OFS implementation and independent UEFI driver build unchanged.
+
 ## 0.5.39 — 2026-10-18
 
 - Replace OFS 0.5.38's per-512-byte `sb_breadahead()` submission with bounded
