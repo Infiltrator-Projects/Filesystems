@@ -29,8 +29,29 @@
 enum {
     BLOCK = 512, LONGS = 128, RESERVED = 2, ROOT_BMAP_START = 79,
     ROOT_BMAP_COUNT = 25, BMAP_BITS = 127 * 32,
-    EXT_POINTERS = 127, ROOT_EXT_POINTER = 104, ROOT_NAME = 432
+    EXT_POINTERS = 127, ROOT_EXT_POINTER = 104, ROOT_NAME = 432,
+    /* Both the Linux OFS adapter and the EFI reader currently support
+     * up to INT32_MAX blocks. Do not introduce a smaller formatter limit. */
+    MAX_BLOCKS = INT32_MAX,
+    BLOCKS_PER_MIB = (1024 * 1024) / BLOCK
 };
+
+/* One allocation bit per disk block, rather than one whole byte. */
+static int marked(const unsigned char *bitmap, uint32_t number)
+{
+    return (bitmap[(size_t)number / 8U] &
+            (unsigned char)(1U << (number % 8U))) != 0U;
+}
+
+static int mark(unsigned char *bitmap, uint32_t number)
+{
+    const size_t index = (size_t)number / 8U;
+    const unsigned char mask = (unsigned char)(1U << (number % 8U));
+    if ((bitmap[index] & mask) != 0U)
+        return -1;
+    bitmap[index] |= mask;
+    return 0;
+}
 
 static uint32_t be32(const unsigned char *p)
 {
@@ -97,7 +118,7 @@ static int volume_geometry(int fd, uint32_t *total, uint32_t *bitmap_count)
         return -1;
     }
     if (bytes < (uint64_t)(1U << 20) ||
-        bytes > (uint64_t)(2048ULL << 20) ||
+        bytes > (uint64_t)MAX_BLOCKS * BLOCK ||
         bytes % BLOCK != 0)
         return -1;
     *total = (uint32_t)(bytes / BLOCK);
@@ -118,11 +139,13 @@ static int verify(int fd)
     if (volume_geometry(fd, &blocks, &bitmaps) != 0)
         return -1;
     root = blocks / 2U;
-    occupied = calloc(blocks, 1U);
+    occupied = calloc(((size_t)blocks + 7U) / 8U, 1U);
     pointers = calloc(bitmaps, sizeof(*pointers));
     if (!occupied || !pointers)
         goto out;
-    occupied[0] = occupied[1] = occupied[root] = 1U;
+    if (mark(occupied, 0U) != 0 || mark(occupied, 1U) != 0 ||
+        mark(occupied, root) != 0)
+        goto out;
 
     if (block_io(fd, 0, boot, 0) != 0 ||
         memcmp(boot, "DOS\0", 4) != 0 ||
@@ -145,10 +168,11 @@ static int verify(int fd)
     extension = word(root_data, ROOT_EXT_POINTER);
     while (seen < bitmaps) {
         if (extension < RESERVED || extension >= blocks ||
-            occupied[extension] || ++extensions > bitmaps ||
+            marked(occupied, extension) || ++extensions > bitmaps ||
             block_io(fd, extension, data, 0) != 0)
             goto out;
-        occupied[extension] = 1U;
+        if (mark(occupied, extension) != 0)
+            goto out;
         for (i = 0; i < EXT_POINTERS && seen < bitmaps; ++i)
             pointers[seen++] = word(data, i);
         extension = word(data, 127);
@@ -157,9 +181,10 @@ static int verify(int fd)
         goto out;
     for (i = 0; i < bitmaps; ++i) {
         if (pointers[i] < RESERVED || pointers[i] >= blocks ||
-            occupied[pointers[i]])
+            marked(occupied, pointers[i]))
             goto out;
-        occupied[pointers[i]] = 1U;
+        if (mark(occupied, pointers[i]) != 0)
+            goto out;
     }
     for (i = 0; i < bitmaps; ++i) {
         if (block_io(fd, pointers[i], data, 0) != 0 ||
@@ -172,7 +197,7 @@ static int verify(int fd)
             const int is_free = (word(data, 1U + b / 32U) &
                                  (UINT32_C(1) << (b % 32U))) != 0U;
             if (is_free != (number < blocks &&
-                            occupied[number] == 0U))
+                            !marked(occupied, (uint32_t)number)))
                 goto out;
         }
     }
@@ -202,10 +227,12 @@ static int create(int fd, const char *label)
         ? (bitmaps - ROOT_BMAP_COUNT + EXT_POINTERS - 1U) / EXT_POINTERS : 0U;
     bmap = calloc(bitmaps, sizeof(*bmap));
     ext = calloc(extras ? extras : 1U, sizeof(*ext));
-    occupied = calloc(blocks, 1U);
+    occupied = calloc(((size_t)blocks + 7U) / 8U, 1U);
     if (!bmap || !ext || !occupied)
         goto out;
-    occupied[0] = occupied[1] = occupied[root] = 1U;
+    if (mark(occupied, 0U) != 0 || mark(occupied, 1U) != 0 ||
+        mark(occupied, root) != 0)
+        goto out;
     for (i = 0; i < bitmaps + extras; ++i) {
         if (cursor == root)
             ++cursor;
@@ -215,7 +242,8 @@ static int create(int fd, const char *label)
             bmap[i] = cursor;
         else
             ext[i - bitmaps] = cursor;
-        occupied[cursor++] = 1U;
+        if (mark(occupied, cursor++) != 0)
+            goto out;
     }
 
     memset(data, 0, sizeof(data));
@@ -231,7 +259,7 @@ static int create(int fd, const char *label)
         for (j = 0; j < BMAP_BITS; ++j) {
             const uint64_t number = (uint64_t)RESERVED +
                                     (uint64_t)i * BMAP_BITS + j;
-            if (number < blocks && occupied[number] == 0U) {
+            if (number < blocks && !marked(occupied, (uint32_t)number)) {
                 const unsigned int b = (unsigned int)j;
                 const uint32_t existing = word(data, 1U + b / 32U);
                 put_word(data, 1U + b / 32U,
@@ -347,11 +375,13 @@ static void usage(const char *name)
             "       %s --verify FILE\n"
             "       %s --format-partition /dev/PART LABEL --confirm /dev/PART\n"
             "       %s --verify-partition /dev/PART\n"
-            "File images: exclusive new regular file, 1..2048 MiB.\n"
+            "File images: exclusive new regular file, 1..%u MiB.\n"
             "Partition mode: Linux only; destructive; requires an unmounted,\n"
-            "exclusive real partition with 512-byte sectors, 1..2048 MiB.\n"
+            "exclusive real partition with 512-byte sectors, 1..%u MiB.\n"
             "The confirmation must repeat the exact partition path.\n",
-            name, name, name, name);
+            name, name, name, name,
+            (unsigned int)(MAX_BLOCKS / BLOCKS_PER_MIB),
+            (unsigned int)(MAX_BLOCKS / BLOCKS_PER_MIB));
 }
 
 int main(int argc, char **argv)
@@ -398,13 +428,13 @@ int main(int argc, char **argv)
     }
     if (argc >= 4 && argc <= 5 && strcmp(argv[1], "--create") == 0) {
         char *end = NULL;
-        unsigned long mib;
+        unsigned long long mib;
         const char *label = argc == 5 ? argv[4] : "InfiltratorOFS";
         struct stat st;
         errno = 0;
-        mib = strtoul(argv[3], &end, 10);
+        mib = strtoull(argv[3], &end, 10);
         if (errno || end == argv[3] || *end != '\0' ||
-            mib < 1UL || mib > 2048UL ||
+            mib < 1ULL || mib > (unsigned long long)(MAX_BLOCKS / BLOCKS_PER_MIB) ||
             ifs_ofs_validate_name((const unsigned char *)label,
                                   (uint32_t)strlen(label), 1) !=
                                   IFS_OFS_NAME_OK || label[0] == '\0') {
@@ -430,7 +460,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "OFS image creation or verification failed.\n");
             return 1;
         }
-        printf("Created and verified AmigaDOS OFS image: %s (%lu MiB)\n",
+        printf("Created and verified AmigaDOS OFS image: %s (%llu MiB)\n",
                argv[2], mib);
         return 0;
     }
