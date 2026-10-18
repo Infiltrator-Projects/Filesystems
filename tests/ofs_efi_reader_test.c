@@ -1,10 +1,19 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 #include "../native/filesystems/ofs/efi/reader.h"
 #include "../native/filesystems/ofs/core/ofs_primitives.h"
-#include <assert.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+/* Assertions must execute even in Release / -DNDEBUG builds. */
+#define REQUIRE(expr) do { \
+    if (!(expr)) { \
+        fprintf(stderr, "REQUIRE failed at %s:%d: %s\\n", \
+                __FILE__, __LINE__, #expr); \
+        abort(); \
+    } \
+} while (0)
 
 enum { COUNT = 1024, BLOCK = 512 };
 static uint8_t media[COUNT][BLOCK];
@@ -30,7 +39,7 @@ static int rd(void *unused, uint32_t block, uint8_t out[512])
 static void label(uint8_t *b, const char *s)
 {
     size_t n = strlen(s);
-    assert(n <= 30U);
+    REQUIRE(n <= 30U);
     b[432] = (uint8_t)n;
     memcpy(b + 433, s, n);
 }
@@ -80,31 +89,31 @@ int main(void)
     IfsOfsEfiFileCursor fcur = {0};
     uint8_t name[31], buf[8] = {0};
     fixture();
-    assert(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == 0);
-    assert(ifs_ofs_efi_lookup(&v, &(IfsOfsEfiEntry){COUNT / 2, 0, IFS_OFS_EFI_DIRECTORY},
+    REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == 0);
+    REQUIRE(ifs_ofs_efi_lookup(&v, &(IfsOfsEfiEntry){COUNT / 2, 0, IFS_OFS_EFI_DIRECTORY},
                               (const uint8_t *)"BOOT", 4, &directory) == 0);
-    assert(ifs_ofs_efi_lookup(&v, &directory,
+    REQUIRE(ifs_ofs_efi_lookup(&v, &directory,
                               (const uint8_t *)"kernel.efi", 10, &file) == 0);
-    assert(file.size == 5 && file.type == IFS_OFS_EFI_FILE);
-    assert(ifs_ofs_efi_read(&v, &file, 0, buf, 5, &fcur) == 0);
-    assert(memcmp(buf, "HELLO", 5) == 0);
-    assert(ifs_ofs_efi_read(&v, &file, 2, buf, 3, &fcur) == 0);
-    assert(memcmp(buf, "LLO", 3) == 0);
-    assert(ifs_ofs_efi_read(&v, &file, 4, buf, 2, &fcur) == -1);
-    assert(ifs_ofs_efi_next(&v, &directory, &dcur, &child, name) == 0);
-    assert(strcmp((const char *)name, "kernel.efi") == 0);
-    assert(ifs_ofs_efi_next(&v, &directory, &dcur, &child, name) == 1);
-    assert(ifs_ofs_efi_lookup(&v, &directory,
+    REQUIRE(file.size == 5 && file.type == IFS_OFS_EFI_FILE);
+    REQUIRE(ifs_ofs_efi_read(&v, &file, 0, buf, 5, &fcur) == 0);
+    REQUIRE(memcmp(buf, "HELLO", 5) == 0);
+    REQUIRE(ifs_ofs_efi_read(&v, &file, 2, buf, 3, &fcur) == 0);
+    REQUIRE(memcmp(buf, "LLO", 3) == 0);
+    REQUIRE(ifs_ofs_efi_read(&v, &file, 4, buf, 2, &fcur) == -1);
+    REQUIRE(ifs_ofs_efi_next(&v, &directory, &dcur, &child, name) == 0);
+    REQUIRE(strcmp((const char *)name, "kernel.efi") == 0);
+    REQUIRE(ifs_ofs_efi_next(&v, &directory, &dcur, &child, name) == 1);
+    REQUIRE(ifs_ofs_efi_lookup(&v, &directory,
                               (const uint8_t *)"missing", 7, &child) == 1);
     media[6][25] ^= 1;
-    assert(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == -1);
+    REQUIRE(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == -1);
     fixture();
     put(media[5], 4, COUNT + 100U);
     checksum(media[5]);
-    assert(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == -1);
+    REQUIRE(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == -1);
     fixture();
     put(media[0], 0, 0x444f5301U); /* FFS must not bind as OFS. */
-    assert(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
+    REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
     puts("OFS freestanding reader tests passed");
     return 0;
 }
