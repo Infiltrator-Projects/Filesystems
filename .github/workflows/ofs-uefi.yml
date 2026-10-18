@@ -1,5 +1,13 @@
 name: OFS UEFI standalone driver
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'native/filesystems/ofs/efi/**'
+      - 'native/filesystems/ofs/core/**'
+      - 'scripts/build-ofs-efi.sh'
+      - 'scripts/stage-ofs-boot-payload.sh'
+      - '.github/workflows/ofs-uefi.yml'
   pull_request:
     paths:
       - 'native/filesystems/ofs/efi/**'
@@ -22,6 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n scripts/build-ofs-efi.sh
+          bash -n scripts/stage-ofs-boot-payload.sh
           bash scripts/build-ofs-efi.sh dist-ofs-efi
           file dist-ofs-efi/OFS_x64.efi
           test -s dist-ofs-efi/OFS_x64.efi
@@ -30,5 +39,5 @@ jobs:
         with:
           name: ofs-uefi-experimental
           path: dist-ofs-efi/OFS_x64.efi
-          retention-days: 7
+          retention-days: 30
           if-no-files-found: error
