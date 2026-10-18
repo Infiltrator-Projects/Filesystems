@@ -195,6 +195,7 @@ jobs:
             -drive file=/tmp/sfs2.img,format=raw,if=virtio \
             -drive file=/tmp/pfs3.img,format=raw,if=virtio \
             2>&1 | tee /tmp/amiga-runtime.log
+          grep -Fq 'AMIGA-OFS-READONLY-STATFS-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-CRASH-ARMED' /tmp/amiga-runtime.log
           for fs in ofs ffs sfs sfs2; do
             grep -Fq "AMIGA-CRASH-RECOVERY-PASS: $fs" /tmp/amiga-runtime.log
