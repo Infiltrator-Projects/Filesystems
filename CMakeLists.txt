@@ -20,6 +20,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(FILESYSTEMS_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
+option(FILESYSTEMS_BUILD_EFI_DRIVERS "Build independent x86-64 EFI filesystem drivers" OFF)
 
 # Native deployment policy owns only filesystem/module membership. Desktop
 # integration has an independent authority in data/desktop-filesystems.tsv and
@@ -286,6 +287,42 @@ if(WIN32)
 endif()
 
 if(UNIX)
+    if(FILESYSTEMS_BUILD_EFI_DRIVERS)
+        if(NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+            message(FATAL_ERROR "EFI filesystem payload is currently qualified for x86-64 build hosts")
+        endif()
+        set(FILESYSTEMS_EFI_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/efi-drivers")
+        file(GLOB_RECURSE FILESYSTEMS_EFI_SOURCES CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/firmware/uefi/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi/*"
+            "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core/*")
+        add_custom_command(
+            OUTPUT
+                "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
+                "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
+            COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-efi-drivers.sh"
+                "${FILESYSTEMS_EFI_OUTPUT}"
+            DEPENDS ${FILESYSTEMS_EFI_SOURCES}
+                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-efi-drivers.sh"
+                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-ofs-efi.sh"
+                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/gnu-efi-toolchain.sh"
+                "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
+            VERBATIM)
+        add_custom_target(filesystems-efi-drivers ALL DEPENDS
+            "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
+            "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi")
+        install(FILES "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
+            DESTINATION "lib/filesystems/efi/drivers_x64")
+        install(FILES "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
+            DESTINATION "lib/filesystems/efi/experimental")
+        install(FILES
+            firmware/uefi/filesystems/LICENSE.txt
+            firmware/uefi/filesystems/LICENSE_GPL.txt
+            firmware/uefi/COPYING.txt
+            firmware/uefi/CREDITS.txt
+            firmware/uefi/README.md
+            DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/filesystems/efi")
+    endif()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GLIB2 REQUIRED IMPORTED_TARGET glib-2.0)
     pkg_check_modules(GIO2 REQUIRED IMPORTED_TARGET gio-2.0)

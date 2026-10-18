@@ -4,12 +4,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 test "$(uname -m)" = x86_64
-tools="$(dpkg -L gnu-efi)"
-crt="$(grep '/crt0-efi-x86_64\.o$' <<< "$tools" | head -n1)"
-ldscript="$(grep '/elf_x86_64_efi\.lds$' <<< "$tools" | head -n1)"
-libefi="$(grep '/libefi\.a$' <<< "$tools" | head -n1)"
-libgnuefi="$(grep '/libgnuefi\.a$' <<< "$tools" | head -n1)"
-for item in "$crt" "$ldscript" "$libefi" "$libgnuefi"; do test -s "$item"; done
+source "$root/scripts/gnu-efi-toolchain.sh"
 out="$(realpath -m -- "$(pwd)/$(basename -- "$root")-ofs-efi")"
 if test "$#" -ge 1; then out="$(realpath -m -- "$1")"; fi
 mkdir -p "$out"
@@ -21,7 +16,7 @@ for filename in uefi_driver reader; do
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
       -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror \
       -DEFIX64 '-DEFIAPI=__attribute__((ms_abi))' -DEFI_FUNCTION_WRAPPER \
-      -I/usr/include/efi -I/usr/include/efi/x86_64 -I/usr/include/efi/protocol \
+      -I"$gnu_efi_include" -I"$gnu_efi_include/x86_64" -I"$gnu_efi_include/protocol" \
       -I"$ofs/efi" -I"$ofs/core" \
       -c "$ofs/efi/$filename.c" -o "$work/$filename.o"
 done
@@ -30,7 +25,7 @@ for filename in ofs_core ofs_primitives; do
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
       -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror \
       -DEFIX64 '-DEFIAPI=__attribute__((ms_abi))' -DEFI_FUNCTION_WRAPPER \
-      -I/usr/include/efi -I/usr/include/efi/x86_64 -I/usr/include/efi/protocol \
+      -I"$gnu_efi_include" -I"$gnu_efi_include/x86_64" -I"$gnu_efi_include/protocol" \
       -I"$ofs/efi" -I"$ofs/core" \
       -c "$ofs/core/$filename.c" -o "$work/$filename.o"
 done

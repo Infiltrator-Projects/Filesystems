@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.43 — 2026-10-19
+
+- Take ownership of the firmware filesystem source formerly held by Boot, preserving its implementations, dormant adapters, licences and pinned InfiltratorFS source.
+- Build ext4 and OFS EFI drivers independently of Boot and include their separate component payload in the Filesystems Debian release. Keep OFS explicitly experimental.
+- Install driver files under `/usr/lib/filesystems/efi/`; selection and deployment to an EFI partition remain separate installer or local-test operations.
+
 ## 0.5.42 — 2026-10-19
 
 - Remove the local SD-card boot-payload preparation helper, its CI references

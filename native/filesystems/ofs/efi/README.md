@@ -13,7 +13,7 @@ Build on Ubuntu with `gnu-efi`, GCC and binutils:
 bash scripts/build-ofs-efi.sh dist-ofs-efi
 ```
 
-The sole firmware payload is `dist-ofs-efi/OFS_x64.efi`, verified as a PE32+ x86-64 EFI boot-service driver (subsystem 11). The script never installs to the ESP or writes firmware variables. Infiltrator Boot loads external filesystem drivers from `drivers_x64/` **beside the currently running Boot executable** (for an `EFI/BOOT/BOOTX64.EFI` layout, that is `EFI/BOOT/drivers_x64/`). Use the actual existing installation path, not a new or duplicate Boot tree. This driver remains experimental and is not included in Boot's auto-enabled release manifest.
+The sole firmware payload is `dist-ofs-efi/OFS_x64.efi`, verified as a PE32+ x86-64 EFI boot-service driver (subsystem 11). The script never installs to the ESP or writes firmware variables. Infiltrator Boot loads external filesystem drivers from `drivers_x64/` **beside the currently running Boot executable** (for an `EFI/BOOT/BOOTX64.EFI` layout, that is `EFI/BOOT/drivers_x64/`). Use the actual existing installation path, not a new or duplicate Boot tree. The Filesystems Debian release stages this driver under `/usr/lib/filesystems/efi/experimental/`. It remains experimental and is never automatically installed into Boot's active driver directory.
 
 **Qualification:** experimental. CI compilation and native portable-reader tests do **not** prove OVMF firmware binding, full kernel-file loading, media read integrity on the physical Dell Latitude 5550, or Secure Boot compatibility. A live EFI read test is mandatory before a production rollout. The UEFI adapter rejects unsupported/malformed volumes and writes nothing.
 

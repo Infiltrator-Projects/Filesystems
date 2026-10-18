@@ -192,3 +192,13 @@ Key contracts are documented under `docs/`, including:
 The implementation deliberately keeps filesystem semantics, support policy, privileged mutation, desktop presentation and setup capability as separate responsibilities so that adding or repairing one filesystem does not create hidden coupling to unrelated formats.
 
 [Validation](docs/VALIDATION.md) defines local tests, mounted-runtime evidence and immutable artifact publication. [PHILOSOPHY.md](docs/PHILOSOPHY.md) owns the engineering standard.
+
+## EFI filesystem components
+
+Firmware filesystem implementations are maintained by Filesystems, independently
+of Boot. The migrated adapters and provenance are documented in
+[`firmware/uefi/README.md`](firmware/uefi/README.md). The Debian release carries
+the ext4 reader and the separately marked experimental OFS reader under
+`/usr/lib/filesystems/efi/`. Installing Filesystems does not copy modules into an
+EFI partition or alter a boot-manager installation. Setup, or an explicit local
+test, selects the required drivers for its chosen target directory.
