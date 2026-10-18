@@ -554,7 +554,7 @@ static EFI_STATUS EFIAPI ofs_stop(EFI_DRIVER_BINDING_PROTOCOL *self,
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
 {
     EFI_STATUS status;
-    InitLib(image, table);
+    InitializeLib(image, table);
     g_binding.ImageHandle = image;
     g_binding.DriverBindingHandle = image;
     status = BS->InstallProtocolInterface(&image, &g_binding_guid,
