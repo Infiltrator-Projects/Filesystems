@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.38 — 2026-10-18
+
+- Improve large AmigaDOS OFS mount performance by resolving bitmap keys once
+  and issuing a bounded 128-block asynchronous read-ahead window. Continue
+  verifying each bitmap checksum and counting every allocation bit before
+  exposing the filesystem; reject bitmap pointers outside the partition.
+- Emit phase timings for mounts with at least 4096 bitmap blocks: key traversal,
+  read-ahead submission, synchronous reads, checksum validation, free-bit
+  counting and overall bitmap initialization. No new on-disk metadata.
+- Qualify a sparse 120 GiB OFS image in QEMU with the native driver and
+  read-only mount, verifying capacity and accounting before running the
+  existing small-volume read/write and crash-recovery tests.
+- Keep the physical SD card read-only until performance and integrity are
+  independently rechecked on the Latitude.
+
 ## 0.5.37 — 2026-10-18
 
 - Fix the native Linux kernel-module installer incorrectly hashing relative source
