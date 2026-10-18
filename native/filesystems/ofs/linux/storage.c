@@ -13,6 +13,8 @@
 
 #include <linux/slab.h>
 #include <linux/bitops.h>
+#include <linux/ktime.h>
+#include <linux/math64.h>
 
 static void ifs_ofs_bitmap_drop_cache(struct affs_sb_info *sbi)
 {
@@ -364,7 +366,23 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     u32 index;
     u32 data_blocks;
     u32 last_valid_bits;
+    u32 prefetch_next = 0U;
+    u64 began_ns;
+    u64 keys_ns;
+    u64 readahead_ns = 0U;
+    u64 reads_ns = 0U;
+    u64 checksums_ns = 0U;
+    u64 counts_ns = 0U;
+    u64 measured_ns;
     int result = 0;
+
+    /* A real 120 GiB OFS partition holds ~61k 512-byte bitmaps. Serial
+     * sb_bread() calls turn mount into a high-latency, tiny-I/O workload.
+     * Preserve full checksumming and fail-closed semantics while queueing
+     * only a bounded number of read-ahead requests. */
+    enum { IFS_OFS_BITMAP_READAHEAD_WINDOW = 128 };
+
+    began_ns = ktime_get_ns();
 
     /* Read-only mounts still need validated bitmap metadata for statfs.
      * Loading and counting it is safe; normalisation is write-gated below. */
@@ -401,14 +419,22 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     key_index = words_per_block - 49U;
     key_end = key_index + AFFS_ROOT_BMAPS;
 
+    /* Phase 1: resolve the full bitmap key chain before issuing read-ahead.
+     * This uses the existing extension format and validates partition bounds,
+     * so malformed metadata cannot queue I/O to arbitrary device sectors.
+     * The resulting keys remain authoritative for the normal allocation path. */
     for (index = 0U; index < sbi->s_bmap_count; ++index) {
         u32 key;
 
-        affs_brelse(bitmap_bh);
-        bitmap_bh = NULL;
-
         if (key_index >= key_end) {
             const u32 extension_key = be32_to_cpu(key_words[key_index]);
+
+            if (!ifs_ofs_data_block_valid(
+                    extension_key, (u32)sbi->s_reserved,
+                    (u32)sbi->s_partition_size)) {
+                result = -EUCLEAN;
+                goto fail;
+            }
 
             affs_brelse(extension_bh);
             extension_bh = affs_bread(sb, extension_key);
@@ -423,13 +449,47 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
         }
 
         key = be32_to_cpu(key_words[key_index++]);
+        if (!ifs_ofs_data_block_valid(
+                key, (u32)sbi->s_reserved,
+                (u32)sbi->s_partition_size)) {
+            result = -EUCLEAN;
+            goto fail;
+        }
         bitmap[index].bm_key = key;
+    }
+
+    affs_brelse(extension_bh);
+    extension_bh = NULL;
+    keys_ns = ktime_get_ns() - began_ns;
+
+    /* Phase 2: queue a modest sliding window of asynchronous bitmap reads.
+     * sb_breadahead is an advisory cache fill: synchronous reads below remain
+     * the final authority, and every bitmap must still pass its checksum.
+     * This never scans file data or writes to the mounted block device. */
+    for (index = 0U; index < sbi->s_bmap_count; ++index) {
+        u32 key = bitmap[index].bm_key;
+        u64 step_ns;
+
+        step_ns = ktime_get_ns();
+        while (prefetch_next < sbi->s_bmap_count &&
+               prefetch_next - index < IFS_OFS_BITMAP_READAHEAD_WINDOW) {
+            sb_breadahead(sb, bitmap[prefetch_next].bm_key);
+            ++prefetch_next;
+        }
+        readahead_ns += ktime_get_ns() - step_ns;
+
+        affs_brelse(bitmap_bh);
+        bitmap_bh = NULL;
+
+        step_ns = ktime_get_ns();
         bitmap_bh = affs_bread(sb, key);
+        reads_ns += ktime_get_ns() - step_ns;
         if (!bitmap_bh) {
             result = -EIO;
             goto fail;
         }
 
+        step_ns = ktime_get_ns();
         if (affs_checksum_block(sb, bitmap_bh) != 0U) {
             pr_warn("Bitmap %u invalid - mounting %s read only\n",
                     key, sb->s_id);
@@ -437,10 +497,13 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
             result = 0;
             goto readonly;
         }
+        checksums_ns += ktime_get_ns() - step_ns;
 
+        step_ns = ktime_get_ns();
         bitmap[index].bm_free =
             memweight(bitmap_bh->b_data + sizeof(__be32),
                       sb->s_blocksize - sizeof(__be32));
+        counts_ns += ktime_get_ns() - step_ns;
     }
 
     data_blocks = (u32)sbi->s_partition_size - (u32)sbi->s_reserved;
@@ -455,6 +518,22 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     result = ifs_ofs_bitmap_normalize_tail(
         sb, bitmap_bh, &bitmap[sbi->s_bmap_count - 1U],
         last_valid_bits, (*flags & SB_RDONLY) != 0);
+
+    /* One line per large mount gives actionable kernel-level timings without
+     * flooding logs for small filesystem images or individual bitmap blocks.
+     * Counters include only their named phase; total covers all phases. */
+    if (sbi->s_bmap_count >= 4096U) {
+        measured_ns = ktime_get_ns() - began_ns;
+        pr_info("OFS bitmap mount: blocks=%u keys=%llu ms readahead=%llu ms "
+                "reads=%llu ms checksum=%llu ms count=%llu ms total=%llu ms\n",
+                sbi->s_bmap_count,
+                (unsigned long long)div_u64(keys_ns, 1000000U),
+                (unsigned long long)div_u64(readahead_ns, 1000000U),
+                (unsigned long long)div_u64(reads_ns, 1000000U),
+                (unsigned long long)div_u64(checksums_ns, 1000000U),
+                (unsigned long long)div_u64(counts_ns, 1000000U),
+                (unsigned long long)div_u64(measured_ns, 1000000U));
+    }
     goto out;
 
 readonly:
