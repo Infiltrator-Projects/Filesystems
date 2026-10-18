@@ -66,26 +66,32 @@ Those commands are **destructive** and require prior device identity
 verification. The formatter refuses a whole disk, mounted/busy partitions,
 non-512-byte logical sectors, unsupported sizes, and paths without matching
 confirmation. It does not create a partition table, mount media, install a
-kernel or provide an OFS UEFI reader. The intended first test is a dedicated
-2 GiB OFS partition on a disposable SD card, not an image stored on exFAT.
+kernel or provide an OFS UEFI reader. For SD-card-class devices, the experimental formatter uses the whole
+confirmed partition when requested; it does not impose a 2 GiB volume limit.
+Its supported range is 1 MiB to the shared 31-bit block-count boundary
+(just under 1 TiB with 512-byte blocks). A sparse 120 GiB regression image
+exercises extended bitmaps without allocating 120 GiB of host storage.
+Actual SD-card formatting remains destructive and unqualified until
+independent physical-media validation.
 This is developer-preview functionality, not a general-purpose supported
 physical-drive formatter. The block-partition path must be independently
 qualified on expendable physical media before it can be promoted.
 
 ## AmigaDOS OFS test-image creation (developer preview)
 
-The Filesystems package now supplies `filesystems-ofs-image`, an independent
-image-only AmigaDOS OFS creator and verifier. It creates **new regular-file
-images only**, refuses existing paths, symlinks and block devices, and verifies
-its result before reporting success. It does **not** format USB sticks,
-partitions or drives, and it does not itself place a kernel in the filesystem.
+The Filesystems package supplies `filesystems-ofs-image`, an independent
+AmigaDOS OFS creator and verifier. In image mode it creates **new regular-file
+images only**, refusing existing paths, symlinks and block devices, then
+verifying its result before reporting success. Its separate, confirmed
+partition mode is documented above. Neither mode partitions an entire drive
+nor places a kernel into the filesystem.
 
 ```sh
 filesystems-ofs-image --create ofs-test.img 64 TestOFS
 filesystems-ofs-image --verify ofs-test.img
 ```
 
-The `64` is MiB (1–1024 supported in this preview). These image files
+The `64` is MiB (1–1048575 supported by the current block-count architecture). These image files
 are suitable for controlled VM/loopback testing. Root filesystem and Boot EFI
 driver qualification remain separate. See
 [Amiga filesystem architecture](docs/AMIGA_FILESYSTEMS.md).

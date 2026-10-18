@@ -73,10 +73,18 @@ is separately pending.
 
 ## Guarded physical OFS partition experiment
 
-The same formatter core now supports a separately confirmed Linux partition
+The same formatter core supports a separately confirmed Linux partition
 mode: `filesystems-ofs-image --format-partition /dev/PART LABEL --confirm /dev/PART`,
-plus `--verify-partition`. This is intentionally low-level, unmounted-only
-and limited to 1–2048 MiB on devices with 512-byte logical sectors.
+plus `--verify-partition`. This is intentionally low-level and unmounted-only.
+The formatter supports 512-byte logical sectors and partition sizes from
+1 MiB up to the shared 31-bit block-count boundary used by the Linux OFS
+adapter and the experimental OFS EFI reader (just under 1 TiB). There is
+no arbitrary 2 GiB filesystem-capacity limit. It uses a packed metadata
+allocation map rather than one byte per filesystem block. The regression
+suite creates and verifies a sparse 120 GiB OFS image, exercising root
+bitmaps and their extension chain; sparse creation does not prove SD-card
+physical write durability.
+
 An exclusive block-device claim is required; a sysfs partition identity is
 mandatory, and whole-disk targets are rejected. It never partitions a disk,
 unmounts filesystems or chooses a target automatically. Errors are fail-closed;
