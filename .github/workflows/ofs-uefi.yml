@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'VERSION'
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'scripts/build-ofs-efi.sh'
@@ -10,9 +11,11 @@ on:
       - '.github/workflows/ofs-uefi.yml'
   pull_request:
     paths:
+      - 'VERSION'
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'scripts/build-ofs-efi.sh'
+      - 'scripts/stage-ofs-boot-payload.sh'
       - '.github/workflows/ofs-uefi.yml'
   workflow_dispatch:
 permissions:
