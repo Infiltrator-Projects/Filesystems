@@ -46,6 +46,9 @@ test "$large_total" -gt 200000000 &&
     test "$large_free" -le "$large_total" ||
     fail "large OFS free-space accounting ($large_free/$large_total)"
 umount /mnt/ofs-large || fail "large OFS read-only unmount"
+dmesg | grep -Eq 'OFS bitmap mount:.*batches=[1-9][0-9]* batched_blocks=[1-9][0-9]*' ||
+    fail "large OFS did not exercise contiguous BIO fast path"
+echo "AMIGA-OFS-LARGE-BATCHED-IO-PASS" > /dev/ttyS0
 echo "AMIGA-OFS-LARGE-READONLY-PASS mount_seconds=$((large_end - large_start)) free_blocks=$large_free total_blocks=$large_total" > /dev/ttyS0
 
 crash_phase_armed()
