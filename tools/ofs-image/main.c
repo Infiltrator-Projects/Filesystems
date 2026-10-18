@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Deliberately image-only AmigaDOS OFS creator and structural verifier.
-// Never opens a block device or overwrites an existing file.
+// AmigaDOS OFS creator and structural verifier.
+// File creation never overwrites existing images.
+// Linux partition formatting requires exclusive access and explicit confirmation.
 #define _POSIX_C_SOURCE 200809L
 #include "ofs_primitives.h"
 
@@ -14,6 +15,12 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#ifdef __linux__
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+#include <sys/sysmacros.h>
+#endif
 
 #ifndef O_NOFOLLOW
 #error "O_NOFOLLOW is required for image safety"
@@ -68,12 +75,32 @@ static int volume_geometry(int fd, uint32_t *total, uint32_t *bitmap_count)
 {
     struct stat st;
     uint32_t bits;
-    if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) ||
-        st.st_size < (off_t)(1U << 20) ||
-        st.st_size > (off_t)(1024ULL << 20) ||
-        st.st_size % BLOCK != 0)
+
+    uint64_t bytes;
+    if (fstat(fd, &st) != 0)
         return -1;
-    *total = (uint32_t)((uint64_t)st.st_size / BLOCK);
+    if (S_ISREG(st.st_mode)) {
+        if (st.st_size < 0)
+            return -1;
+        bytes = (uint64_t)st.st_size;
+    }
+#ifdef __linux__
+    else if (S_ISBLK(st.st_mode)) {
+        int sector_size;
+        if (ioctl(fd, BLKGETSIZE64, &bytes) != 0 ||
+            ioctl(fd, BLKSSZGET, &sector_size) != 0 ||
+            sector_size != BLOCK)
+            return -1;
+    }
+#endif
+    else {
+        return -1;
+    }
+    if (bytes < (uint64_t)(1U << 20) ||
+        bytes > (uint64_t)(2048ULL << 20) ||
+        bytes % BLOCK != 0)
+        return -1;
+    *total = (uint32_t)(bytes / BLOCK);
     return ifs_ofs_bitmap_geometry(
         BLOCK, RESERVED, *total, &bits, bitmap_count) == 0 &&
         bits == BMAP_BITS ? 0 : -1;
@@ -246,19 +273,112 @@ out:
     return result;
 }
 
+
+#ifdef __linux__
+/* Block-inode checks alone are insufficient: only a kernel-reported
+ * partition (not the parent whole disk) is a valid destructive target.
+ * Validate the identity on the already opened descriptor, not by filename.
+ */
+static int is_real_partition(int fd)
+{
+    struct stat st;
+    char path[128], marker[32], *end;
+    int handle, n;
+    ssize_t len;
+    unsigned long number;
+
+    if (fstat(fd, &st) != 0 || !S_ISBLK(st.st_mode))
+        return 0;
+    n = snprintf(path, sizeof(path), "/sys/dev/block/%u:%u/partition",
+                 major(st.st_rdev), minor(st.st_rdev));
+    if (n < 1 || (size_t)n >= sizeof(path))
+        return 0;
+    handle = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (handle < 0)
+        return 0;
+    len = read(handle, marker, sizeof(marker) - 1U);
+    (void)close(handle);
+    if (len < 1)
+        return 0;
+    marker[len] = '\0';
+    errno = 0;
+    number = strtoul(marker, &end, 10);
+    return errno == 0 && end != marker &&
+           (*end == '\n' || *end == '\0') &&
+           number >= 1UL && number <= UINT_MAX;
+}
+
+/* O_EXCL obtains the kernel's exclusive block-device claim and normally
+ * fails with EBUSY if the volume is mounted or held by another writer.
+ * No helper is allowed to auto-unmount or auto-repartition anything.
+ */
+static int operate_partition(const char *path, const char *label, int formatting)
+{
+    int fd, result;
+    fd = open(path, (formatting ? O_RDWR : O_RDONLY) |
+                    O_EXCL | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0) {
+        perror("Cannot claim block partition exclusively; unmount it first");
+        return 1;
+    }
+    if (!is_real_partition(fd)) {
+        fprintf(stderr, "Refusing a whole disk or a non-partition device.\n");
+        close(fd);
+        return 1;
+    }
+    result = formatting ? create(fd, label) : verify(fd);
+    if (close(fd) != 0)
+        result = -1;
+    if (result != 0) {
+        fprintf(stderr, "OFS partition operation failed. "
+                        "Do not mount an incompletely formatted volume.\n");
+        return 1;
+    }
+    printf("%s AmigaDOS OFS partition: %s\n",
+           formatting ? "Created and verified" : "Verified", path);
+    return 0;
+}
+#endif
+
 static void usage(const char *name)
 {
     fprintf(stderr,
             "Usage: %s --create FILE SIZE_MIB [LABEL]\n"
             "       %s --verify FILE\n"
-            "Creates a new regular-file AmigaDOS OFS image (1..1024 MiB).\n"
-            "Never overwrites an existing file or formats a block device.\n",
-            name, name);
+            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART\n"
+            "       %s --verify-partition /dev/PART\n"
+            "File images: exclusive new regular file, 1..2048 MiB.\n"
+            "Partition mode: Linux only; destructive; requires an unmounted,\n"
+            "exclusive real partition with 512-byte sectors, 1..2048 MiB.\n"
+            "The confirmation must repeat the exact partition path.\n",
+            name, name, name, name);
 }
 
 int main(int argc, char **argv)
 {
     int fd, result;
+#ifdef __linux__
+    if (argc == 6 && strcmp(argv[1], "--format-partition") == 0) {
+        const char *label = argv[3];
+        if (strcmp(argv[4], "--confirm") != 0 ||
+            strcmp(argv[2], argv[5]) != 0 ||
+            strncmp(argv[2], "/dev/", 5) != 0 ||
+            label[0] == '\0' ||
+            ifs_ofs_validate_name((const unsigned char *)label,
+                                  (uint32_t)strlen(label), 1) !=
+                                  IFS_OFS_NAME_OK) {
+            fprintf(stderr, "Refusing: exact device confirmation or valid "
+                            "volume label missing.\n");
+            return 2;
+        }
+        return operate_partition(argv[2], label, 1);
+    }
+    if (argc == 3 && strcmp(argv[1], "--verify-partition") == 0) {
+        if (strncmp(argv[2], "/dev/", 5) != 0)
+            return 2;
+        return operate_partition(argv[2], NULL, 0);
+    }
+#endif
     if (argc == 3 && strcmp(argv[1], "--verify") == 0) {
         struct stat st;
         fd = open(argv[2], O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
@@ -284,7 +404,7 @@ int main(int argc, char **argv)
         errno = 0;
         mib = strtoul(argv[3], &end, 10);
         if (errno || end == argv[3] || *end != '\0' ||
-            mib < 1UL || mib > 1024UL ||
+            mib < 1UL || mib > 2048UL ||
             ifs_ofs_validate_name((const unsigned char *)label,
                                   (uint32_t)strlen(label), 1) !=
                                   IFS_OFS_NAME_OK || label[0] == '\0') {

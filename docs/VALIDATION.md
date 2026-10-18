@@ -24,6 +24,15 @@ that image in QEMU. The tool refuses block devices and overwrites; its
 success does **not** qualify physical-media formatting or booting
 an EFI kernel from OFS.
 
+A separate developer-preview partition mode requires an exact device-path
+confirmation, Linux kernel partition identification, exclusive open,
+512-byte logical blocks and a 1–2048 MiB size. Unit tests verify refusal
+of non-partition character devices and incorrect confirmation, while
+regular-file stress tests cover 2048 MiB geometry. These guards do not
+replace real-device testing: do not claim physical SD-card qualification
+until controlled formatting, native driver mount, copy, remount, independent
+validation and recovery have been demonstrated on expendable hardware.
+
 ## Qualification boundaries
 
 The main build qualifies core/catalogue/action behaviour, native install membership, desktop APT install/reinstall/purge, the Windows manager and EXT2 driver, and managed module compilation against explicit kernel APIs. Release candidates also require reusable exact-SHA sanitizer/adversarial, EXT runtime and Amiga runtime workflows.

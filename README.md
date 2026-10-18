@@ -52,6 +52,26 @@ The agreed cross-project separation of **kernel stored on a filesystem** from **
 
 The setup surface exposes only filesystems whose complete install path is qualified. It does not infer support merely because a catalogue entry exists or because a Linux package can be installed.
 
+## AmigaDOS OFS partition formatting (experimental)
+
+A deliberately explicit Linux-only mode can now format an already-created
+**unmounted block partition**, not a complete disk:
+
+```sh
+sudo filesystems-ofs-image --format-partition /dev/mmcblk0p1 TestOFS --confirm /dev/mmcblk0p1
+sudo filesystems-ofs-image --verify-partition /dev/mmcblk0p1
+```
+
+Those commands are **destructive** and require prior device identity
+verification. The formatter refuses a whole disk, mounted/busy partitions,
+non-512-byte logical sectors, unsupported sizes, and paths without matching
+confirmation. It does not create a partition table, mount media, install a
+kernel or provide an OFS UEFI reader. The intended first test is a dedicated
+2 GiB OFS partition on a disposable SD card, not an image stored on exFAT.
+This is developer-preview functionality, not a general-purpose supported
+physical-drive formatter. The block-partition path must be independently
+qualified on expendable physical media before it can be promoted.
+
 ## AmigaDOS OFS test-image creation (developer preview)
 
 The Filesystems package now supplies `filesystems-ofs-image`, an independent

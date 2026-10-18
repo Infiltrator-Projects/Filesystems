@@ -71,6 +71,24 @@ justifies a destructive, partition-aware formatter. It also does not
 supply a UEFI OFS reader: Boot's AmigaDOS kernel-loading experiment
 is separately pending.
 
+## Guarded physical OFS partition experiment
+
+The same formatter core now supports a separately confirmed Linux partition
+mode: `filesystems-ofs-image --format-partition /dev/PART LABEL --confirm /dev/PART`,
+plus `--verify-partition`. This is intentionally low-level, unmounted-only
+and limited to 1–2048 MiB on devices with 512-byte logical sectors.
+An exclusive block-device claim is required; a sysfs partition identity is
+mandatory, and whole-disk targets are rejected. It never partitions a disk,
+unmounts filesystems or chooses a target automatically. Errors are fail-closed;
+a partially formatted partition must not be mounted.
+
+These guards reduce avoidable destructive mistakes but are **not** evidence
+that real SD-card write durability, power-loss recovery and independent
+AmigaDOS interoperability are fully qualified. That qualification remains
+required before general-purpose release. A GPT partition containing OFS can
+be used to test Linux's native OFS driver, while Boot still requires its own
+read-only OFS EFI module for direct kernel loading.
+
 ## Qualification rule
 
 Compilation is necessary but is not filesystem qualification.

@@ -27,7 +27,7 @@ def damage(image, offset):
 
 
 def test(tool, root):
-    for size in (1, 32, 64):  # 64 MiB forces bitmap-extension traversal
+    for size in (1, 32, 64, 2048):  # 64 MiB+ exercises bitmap-extension traversal
         path = root / f"ofs-{size}.img"
         command(tool, "--create", path, size, "LD_AMIGA")
         assert path.stat().st_size == size * (1 << 20)
@@ -46,7 +46,7 @@ def test(tool, root):
     assert existing.read_bytes() == b"USER DATA MUST NOT CHANGE"
 
     for args in [
-        ("0",), ("1025",), ("1.5",), ("-1",),
+        ("0",), ("2049",), ("1.5",), ("-1",),
     ]:
         command(tool, "--create", root / ("bad-" + args[0]), *args,
                 success=False)
@@ -79,6 +79,13 @@ def test(tool, root):
     if os.path.exists("/dev/null"):
         command(tool, "--verify", "/dev/null", success=False)
         command(tool, "--create", "/dev/null", 4, success=False)
+        command(tool, "--verify-partition", "/dev/null", success=False)
+        command(tool, "--format-partition", "/dev/null",
+                "TestOFS", "--confirm", "/dev/null", success=False)
+        command(tool, "--format-partition", "/dev/null",
+                "TestOFS", "--confirm", "/dev/zero", success=False)
+        command(tool, "--format-partition", "/dev/null",
+                "bad:name", "--confirm", "/dev/null", success=False)
 
 
 if __name__ == "__main__":

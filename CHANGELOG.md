@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.34 — 2026-10-18
+
+- Add an explicitly confirmed Linux **block-partition** OFS formatter/validator
+  mode alongside the non-overwriting image creator. Whole disks, mounted/busy
+  partitions, non-512-byte logical sectors and unsupported geometries fail closed.
+- Extend OFS geometry test coverage to 2 GiB and add non-partition and
+  incorrect-confirmation rejection tests.
+- Keep direct SD-card runtime qualification, OFS EFI reading and Linux
+  kernel loading separately gated; physical partition formatting remains
+  an experimental, opt-in operation rather than a desktop default.
+
 ## 0.5.33 — 2026-10-18
 
 - Add the native, image-only AmigaDOS OFS creation and verification tool. It refuses block devices, symlinks and existing files, verifies block metadata and deletes an incomplete newly created image on failure.
