@@ -1,0 +1,50 @@
+name: One-time retired branch archive and cleanup
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-time-retired-branch-cleanup.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    if: github.repository == 'Infiltrator-Projects/Filesystems'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Preserve premerge heads and remove superseded branches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          while IFS='|' read -r branch pinned; do
+            test -n "$branch" && test -n "$pinned"
+            test "$branch" != main
+            actual="$(gh api "repos/$repo/git/ref/heads/$branch" --jq '.object.sha')"
+            test "$actual" = "$pinned"
+            archive="archive/2026-10-18/filesystems-${branch//\//-}"
+            existing="$(gh api "repos/$repo/git/ref/tags/$archive" --jq '.object.sha' 2>/dev/null || true)"
+            if test -z "$existing"; then
+              gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$archive" -f "sha=$pinned" >/dev/null
+            else
+              test "$existing" = "$pinned"
+            fi
+            test "$(gh api "repos/$repo/git/ref/tags/$archive" --jq '.object.sha')" = "$pinned"
+            gh api -X DELETE "repos/$repo/git/refs/heads/$branch"
+            echo "Archived and deleted branch $branch"
+          done <<'RETIRED_BRANCHES'
+          fix/bigbedroom-dependency-gate|4f2fe890a9570b89821db07ac73e75fd74576649
+          fix/coexist-infiltratorfs-desktop-0.5.36|d8a91f002d47609bc8572d34ca861bd585bbdaef
+          fix/enable-bigbedroom-verified-deps|af6ece93b95330889994773e5cd75740408ca7b8
+          fix/native-source-digest-cwd-0.5.37|584f93723577daa91f77afdfa1dff2c924cd89ec
+          fix/ofs-large-volume-geometry|27711239c1755620feca884aeef83598ade3a659
+          perf/ofs-batched-bio-bitmap-0.5.39|8b166cb0d146041d4544ad77d5b182cb7ddc107b
+          perf/ofs-bitmap-mount-readahead-0.5.38|5ab13f57365713f4742b4e7b15820137fd7ada14
+          work/hybrid-runners-filesystems|92ed4c04083b73ffc242df69ad9ec4c3d1a03c2d
+          work/ofs-uefi-reader|7181147247212bc117f78165e30d166b579173f6
+          RETIRED_BRANCHES
+          actual="$(gh api "repos/$repo/branches?per_page=100" --jq '.[].name')"
+          test "$actual" = main
+          echo "Filesystems now has only main; all retired branch histories are archived as Git tags."
