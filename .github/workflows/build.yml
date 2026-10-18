@@ -192,7 +192,7 @@ jobs:
   linux-native-modules-6-12:
     # Untrusted PRs use hosted runners. Only trusted main pushes can use
     # the already-labelled home Linux fleet.
-    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY == 'true' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -213,10 +213,17 @@ jobs:
                 exit 1
               }
             done
-            pkg-config --exists libelf openssl || {
-              echo "Self-hosted runner requires libelf and openssl development files." >&2
+            missing=0
+            for library in libelf openssl; do
+              if ! pkg-config --exists "$library"; then
+                echo "Self-hosted runner is missing the $library development package." >&2
+                missing=1
+              fi
+            done
+            if ((missing)); then
+              echo "Provision dependencies on the dedicated host with owner approval; CI will not install them." >&2
               exit 1
-            }
+            fi
           fi
           kernel_tree="$RUNNER_TEMP/filesystems-kernel-6.12.107-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"
@@ -260,7 +267,7 @@ jobs:
   linux-amiga-v7-module-api:
     # Untrusted PRs use hosted runners. Only trusted main pushes can use
     # the already-labelled home Linux fleet.
-    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.FILESYSTEMS_BIGBEDROOM_READY == 'true' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -281,10 +288,17 @@ jobs:
                 exit 1
               }
             done
-            pkg-config --exists libelf openssl || {
-              echo "Self-hosted runner requires libelf and openssl development files." >&2
+            missing=0
+            for library in libelf openssl; do
+              if ! pkg-config --exists "$library"; then
+                echo "Self-hosted runner is missing the $library development package." >&2
+                missing=1
+              fi
+            done
+            if ((missing)); then
+              echo "Provision dependencies on the dedicated host with owner approval; CI will not install them." >&2
               exit 1
-            }
+            fi
           fi
           kernel_tree="$RUNNER_TEMP/filesystems-kernel-7.0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"

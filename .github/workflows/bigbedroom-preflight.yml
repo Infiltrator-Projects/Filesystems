@@ -1,0 +1,47 @@
+name: BigBedroom runner preflight
+
+# Intentionally manual. This verifies private host readiness without making
+# package changes, building filesystems, or executing untrusted PR code.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: [self-hosted, Linux, X64, linux-native, bigbedroom]
+    timeout-minutes: 5
+    steps:
+      - name: Check native kernel build prerequisites (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Runner: $RUNNER_NAME"
+          echo "Architecture: $RUNNER_ARCH"
+          echo "OS: $RUNNER_OS"
+
+          failed=0
+          for command_name in git make gcc bc bison flex pkg-config; do
+            if ! command -v "$command_name" >/dev/null 2>&1; then
+              echo "::error::Missing executable: $command_name"
+              failed=1
+            fi
+          done
+
+          if command -v pkg-config >/dev/null 2>&1; then
+            for library in libelf openssl; do
+              if pkg-config --exists "$library"; then
+                echo "$library: found ($(pkg-config --modversion "$library"))"
+              else
+                echo "::error::Missing development metadata: $library"
+                failed=1
+              fi
+            done
+          fi
+
+          if ((failed)); then
+            echo "Home runner needs provisioning outside CI with owner approval."
+            exit 1
+          fi
+          echo "BigBedroom native build prerequisite check: PASS"
