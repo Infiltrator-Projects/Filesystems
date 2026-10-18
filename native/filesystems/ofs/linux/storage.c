@@ -12,6 +12,7 @@
 #include "linux_adapter.h"
 
 #include <linux/slab.h>
+#include <linux/bitops.h>
 
 static void ifs_ofs_bitmap_drop_cache(struct affs_sb_info *sbi)
 {
@@ -59,7 +60,9 @@ u32 affs_count_free_blocks(struct super_block *sb)
     u32 total = 0U;
     u32 index;
 
-    if (sb_rdonly(sb) || !sbi->s_bitmap)
+    /* A read-only filesystem still has free blocks. The cached bitmap
+     * accounting is observational and must remain available to statfs. */
+    if (!sbi->s_bitmap)
         return 0U;
 
     mutex_lock(&sbi->s_bmlock);
@@ -303,7 +306,8 @@ static int ifs_ofs_bitmap_normalize_tail(
     struct super_block *sb,
     struct buffer_head *bh,
     struct affs_bm_info *last_bitmap,
-    const u32 valid_bits)
+    const u32 valid_bits,
+    const bool readonly)
 {
     __be32 *words = (__be32 *)bh->b_data;
     const u32 data_word_count =
@@ -311,6 +315,7 @@ static int ifs_ofs_bitmap_normalize_tail(
     const u32 full_words = valid_bits / 32U;
     const u32 partial_bits = valid_bits % 32U;
     u32 index;
+    u32 valid_free = 0U;
     bool changed = false;
 
     for (index = 0U; index < data_word_count; ++index) {
@@ -326,7 +331,11 @@ static int ifs_ofs_bitmap_normalize_tail(
             valid_mask = 0U;
 
         new_value = old_value & valid_mask;
-        if (new_value != old_value) {
+        valid_free += hweight32(new_value);
+
+        /* Read-only mount must never rewrite invalid tail bits, modify the
+         * bitmap checksum, or mark a buffer dirty just to count space. */
+        if (!readonly && new_value != old_value) {
             words[index + 1U] = cpu_to_be32(new_value);
             changed = true;
         }
@@ -338,9 +347,7 @@ static int ifs_ofs_bitmap_normalize_tail(
         mark_buffer_dirty(bh);
     }
 
-    last_bitmap->bm_free =
-        memweight(bh->b_data + sizeof(__be32),
-                  sb->s_blocksize - sizeof(__be32));
+    last_bitmap->bm_free = valid_free;
     return 0;
 }
 
@@ -359,16 +366,17 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
     u32 last_valid_bits;
     int result = 0;
 
-    if ((*flags & SB_RDONLY) != 0)
-        return 0;
-
+    /* Read-only mounts still need validated bitmap metadata for statfs.
+     * Loading and counting it is safe; normalisation is write-gated below. */
     if (be32_to_cpu(AFFS_ROOT_TAIL(sb, sbi->s_root_bh)->bm_flag) == 0U) {
         pr_notice("Bitmap invalid - mounting %s read only\n", sb->s_id);
         *flags |= SB_RDONLY;
         return 0;
     }
 
-    ifs_ofs_bitmap_drop_cache(sbi);
+    /* Reconfiguration from ro to rw must replace the previous cached bitmap
+     * rather than losing the allocation pointer and its accounting. */
+    ifs_ofs_bitmap_discard(sbi);
 
     if (ifs_ofs_bitmap_geometry(
             (u32)sb->s_blocksize, (u32)sbi->s_reserved,
@@ -446,7 +454,7 @@ int affs_init_bitmap(struct super_block *sb, int *flags)
 
     result = ifs_ofs_bitmap_normalize_tail(
         sb, bitmap_bh, &bitmap[sbi->s_bmap_count - 1U],
-        last_valid_bits);
+        last_valid_bits, (*flags & SB_RDONLY) != 0);
     goto out;
 
 readonly:
