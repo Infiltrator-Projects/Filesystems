@@ -1,0 +1,34 @@
+name: OFS UEFI standalone driver
+on:
+  pull_request:
+    paths:
+      - 'native/filesystems/ofs/efi/**'
+      - 'native/filesystems/ofs/core/**'
+      - 'scripts/build-ofs-efi.sh'
+      - '.github/workflows/ofs-uefi.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install EFI compiler and binutils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gnu-efi gcc binutils file
+      - name: Compile independent OFS firmware driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/build-ofs-efi.sh
+          bash scripts/build-ofs-efi.sh dist-ofs-efi
+          file dist-ofs-efi/OFS_x64.efi
+          test -s dist-ofs-efi/OFS_x64.efi
+      - name: Store OFS firmware artifact for controlled qualification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ofs-uefi-experimental
+          path: dist-ofs-efi/OFS_x64.efi
+          retention-days: 7
+          if-no-files-found: error
