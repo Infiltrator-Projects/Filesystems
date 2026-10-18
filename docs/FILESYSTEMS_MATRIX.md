@@ -11,7 +11,7 @@ The catalogue is intentionally **format-centric** and contains **41 persistent l
 
 The **Current Linux path** column describes today's access provider. It is not the filesystem identity. A provider may change without creating a new catalogue row.
 
-The desktop manager may expose formats whose current provider is read-only or tools-only. The InfiltratorOS setup shell must enable a format only after formatter, root-filesystem semantics, early-boot Linux support and the matching rEFInd/EFI reader are all qualified.
+The desktop manager may expose formats whose current provider is read-only or tools-only. The InfiltratorOS setup shell must enable a format only after formatter, root-filesystem semantics, early-boot Linux support and the matching Boot/EFI reader are all qualified.
 
 | # | ID | Name | Family | Current capability | Current Linux path | Kernel module(s) | Debian/Infiltrator package(s) | Purpose / limitation |
 |---:|---|---|---|---|---|---|---|---|

@@ -81,6 +81,8 @@ boot and root-mount qualification
 
 The installer does not substitute EXT4, InfiltratorFS or another format when the requested filesystem is not ready. Instead the requested format remains visibly unavailable until its complete installation contract is qualified.
 
+For precise cross-project ownership, the test of a Linux EFI-stub kernel **stored on Amiga OFS while Linux's root remains elsewhere**, modular `.efi` and `.ko` packaging, and missing-feature policy, see [Bootable Filesystem Integration Contract](BOOTABLE_FILESYSTEM_CONTRACT.md). This document remains authoritative for the wider format-identity and root-qualification vision.
+
 ## The boot contract
 
 A bootable installation has two distinct filesystem adapters.
@@ -112,7 +114,7 @@ Catalogue membership is not root qualification. A format becomes selectable in s
 2. normal read/write filesystem operation is sufficient for an operating-system root;
 3. namespace, ownership, permissions, links, special files and other required Linux semantics are native or safely represented;
 4. early-boot driver/module availability is deterministic, including initramfs packaging where required;
-5. the EFI/rEFInd reader can locate and read the boot payload from the format;
+5. the EFI/Boot reader can locate and read the boot payload from the format;
 6. installation, reboot, root mount, update and recovery tests pass on a real or equivalent qualified target;
 7. failure is fail-closed: no silent format substitution or unqualified write path.
 
@@ -134,7 +136,7 @@ The Windows lifecycle remains: build, warnings/static analysis, driver/package v
 
 Linux and Windows may reach qualification at different times while still sharing one canonical filesystem definition.
 
-## EFI/rEFInd integration
+## EFI/Boot integration
 
 The EFI reader has a deliberately smaller job than a full operating-system filesystem driver. Its required surface is the read-only subset needed by the boot manager: identify the volume, traverse the boot path, open files, read file data and expose the required metadata safely.
 

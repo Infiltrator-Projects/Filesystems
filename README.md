@@ -48,6 +48,8 @@ install/copy InfiltratorOS
 boot the installed system
 ```
 
+The agreed cross-project separation of **kernel stored on a filesystem** from **operating system rooted on a filesystem**, together with modular `.efi` / `.ko` handling, capability adaptation and phased tests, is recorded in [the Bootable Filesystem Integration Contract](docs/BOOTABLE_FILESYSTEM_CONTRACT.md).
+
 The setup surface exposes only filesystems whose complete install path is qualified. It does not infer support merely because a catalogue entry exists or because a Linux package can be installed.
 
 ## Support discovery

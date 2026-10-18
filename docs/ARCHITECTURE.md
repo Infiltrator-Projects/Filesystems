@@ -96,7 +96,7 @@ populate InfiltratorOS tree
         +--> install Linux VFS support
         |    +--> place early-boot support in initramfs when required
         |
-        +--> install matching rEFInd/UEFI filesystem reader
+        +--> install matching Boot/UEFI filesystem reader
         |
         +--> create/configure boot entry
         v
@@ -107,12 +107,14 @@ Catalogue membership and root-install qualification are deliberately separate. A
 
 The installer must never silently fall back to a different filesystem. If the user chooses OFS, the target is OFS. If OFS cannot satisfy the complete installation contract, OFS is disabled as a setup choice until it can.
 
+The cross-repository implementation and test agreement, including the earlier **boot-payload-only Amiga OFS** test milestone, is maintained in [Bootable Filesystem Integration Contract](BOOTABLE_FILESYSTEM_CONTRACT.md).
+
 ## Boot/runtime division
 
 The boot-time and runtime adapters solve different platform problems but must interpret the same filesystem format.
 
 ```text
-UEFI/rEFInd -> EFI filesystem reader -> kernel + initramfs
+UEFI/Boot -> EFI filesystem reader -> kernel + initramfs
                                       |
                                       v
 Linux kernel -> Linux VFS -> filesystem adapter/module -> root volume
