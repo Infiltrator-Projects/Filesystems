@@ -145,6 +145,7 @@ jobs:
           bash tools/validate-source-contract.sh
           wait "$first"
           python3 tests/repository_architecture_test.py .
+          python3 .github/workflows/runner_policy_test.py .
 
   linux:
     runs-on: ubuntu-24.04
@@ -189,7 +190,9 @@ jobs:
           test ! -e /tmp/filesystems-stage/usr/lib/filesystems/native/filesystems/affs
 
   linux-native-modules-6-12:
-    runs-on: ubuntu-24.04
+    # Untrusted PRs use hosted runners. Only trusted main pushes can use
+    # the already-labelled home Linux fleet.
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -199,11 +202,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y bc bison flex libelf-dev libssl-dev
-          git clone --depth 1 --branch v6.12.107 https://github.com/gregkh/linux.git /tmp/linux-6.12.107
-          make -C /tmp/linux-6.12.107 defconfig
-          /tmp/linux-6.12.107/scripts/config --file /tmp/linux-6.12.107/.config \
+          if [[ "${{ runner.environment }}" == "github-hosted" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y bc bison flex libelf-dev libssl-dev
+          else
+            # Never install software automatically on a private runner.
+            for command_name in git make gcc bc bison flex pkg-config; do
+              command -v "$command_name" >/dev/null 2>&1 || {
+                echo "Self-hosted runner is missing $command_name." >&2
+                exit 1
+              }
+            done
+            pkg-config --exists libelf openssl || {
+              echo "Self-hosted runner requires libelf and openssl development files." >&2
+              exit 1
+            }
+          fi
+          kernel_tree="$RUNNER_TEMP/filesystems-kernel-6.12.107-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch v6.12.107 https://github.com/gregkh/linux.git "$kernel_tree"
+          make -C "$kernel_tree" defconfig
+          "$kernel_tree"/scripts/config --file "$kernel_tree"/.config \
             --enable EXT2_FS \
             --enable EXT2_FS_XATTR \
             --enable EXT2_FS_POSIX_ACL \
@@ -215,8 +234,8 @@ jobs:
             --enable FS_ENCRYPTION \
             --enable FS_VERITY \
             --enable QUOTA
-          make -C /tmp/linux-6.12.107 olddefconfig
-          make -C /tmp/linux-6.12.107 modules_prepare
+          make -C "$kernel_tree" olddefconfig
+          make -C "$kernel_tree" modules_prepare
 
       - name: Build every managed native module from the deployment manifest
         shell: bash
@@ -225,8 +244,8 @@ jobs:
 
           while IFS=$'\t' read -r fs module; do
             [[ -n "$fs" && "${fs:0:1}" != "#" ]] || continue
-            log="/tmp/${fs}-6.12-build.log"
-            make -C /tmp/linux-6.12.107 \
+            log="$RUNNER_TEMP/filesystems-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${fs}-6.12-build.log"
+            make -C "$KERNEL_TREE" \
               M="$PWD/native/filesystems/$fs/linux" \
               KBUILD_MODPOST_WARN=1 modules 2>&1 | tee "$log"
             test -s "native/filesystems/$fs/linux/$module.ko"
@@ -239,7 +258,9 @@ jobs:
           done < data/native-filesystems.tsv
 
   linux-amiga-v7-module-api:
-    runs-on: ubuntu-24.04
+    # Untrusted PRs use hosted runners. Only trusted main pushes can use
+    # the already-labelled home Linux fleet.
+    runs-on: ${{ fromJSON(github.event_name == 'push' && github.ref == 'refs/heads/main' && '["self-hosted","Linux","X64","linux-native","bigbedroom"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -249,11 +270,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y bc bison flex libelf-dev libssl-dev
-          git clone --depth 1 --branch v7.0 https://github.com/torvalds/linux.git /tmp/linux-7.0
-          make -C /tmp/linux-7.0 defconfig
-          make -C /tmp/linux-7.0 modules_prepare
+          if [[ "${{ runner.environment }}" == "github-hosted" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y bc bison flex libelf-dev libssl-dev
+          else
+            # Never install software automatically on a private runner.
+            for command_name in git make gcc bc bison flex pkg-config; do
+              command -v "$command_name" >/dev/null 2>&1 || {
+                echo "Self-hosted runner is missing $command_name." >&2
+                exit 1
+              }
+            done
+            pkg-config --exists libelf openssl || {
+              echo "Self-hosted runner requires libelf and openssl development files." >&2
+              exit 1
+            }
+          fi
+          kernel_tree="$RUNNER_TEMP/filesystems-kernel-7.0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"
+          git clone --depth 1 --branch v7.0 https://github.com/torvalds/linux.git "$kernel_tree"
+          make -C "$kernel_tree" defconfig
+          make -C "$kernel_tree" modules_prepare
 
       - name: Build every desktop-integrated Amiga native module
         shell: bash
@@ -267,8 +304,8 @@ jobs:
               END { if (!found) exit 1 }
             ' data/native-filesystems.tsv)
             [[ -n "$module" ]]
-            log="/tmp/${fs}-v7-build.log"
-            make -C /tmp/linux-7.0 \
+            log="$RUNNER_TEMP/filesystems-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${fs}-v7-build.log"
+            make -C "$KERNEL_TREE" \
               M="$PWD/native/filesystems/$fs/linux" \
               KBUILD_MODPOST_WARN=1 modules 2>&1 | tee "$log"
             test -s "native/filesystems/$fs/linux/$module.ko"
