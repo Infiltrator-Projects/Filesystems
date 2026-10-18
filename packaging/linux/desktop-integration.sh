@@ -136,10 +136,6 @@ preflight_launchers() {
             return 1
         }
     else
-        [[ -z "$owner" || "$owner" == "$package" ]] || {
-            echo "Disks already has a diversion owned by $owner; refusing to replace it" >&2
-            return 1
-        }
         [[ -f "$templates/gnome-disks" ]] || {
             echo 'GNOME Disks launcher template is missing' >&2
             return 1
@@ -167,10 +163,6 @@ preflight_launchers() {
             return 1
         }
     else
-        [[ -z "$owner" || "$owner" == "$package" ]] || {
-            echo "Nemo already has a diversion owned by $owner; refusing to replace it" >&2
-            return 1
-        }
         [[ -f "$templates/nemo" ]] || {
             echo 'Nemo launcher template is missing' >&2
             return 1
