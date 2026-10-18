@@ -182,7 +182,7 @@ int main(void)
         efi_reader.volume.io.write_at != NULL)
         return fail("firmware reader failed read-only mount");
     memset(output, 0, sizeof(output));
-    if (ifs_ext2_efi_open_file(&efi_reader, "\\\\hello", &efi_file,
+    if (ifs_ext2_efi_open_file(&efi_reader, "\\hello", &efi_file,
                                scratch, sizeof(scratch)) != IFS_EXT2_OK)
         return fail("EFI backslash path failed");
     if (ifs_ext2_efi_read(&efi_reader, &efi_file, output, 5U,
