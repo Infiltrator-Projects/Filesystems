@@ -27,10 +27,11 @@ for name in ("linux-native-modules-6-12", "linux-amiga-v7-module-api"):
     source = job(build, name)
     assert "github.event_name == 'push'" in source, name
     assert "github.ref == 'refs/heads/main'" in source, name
+    assert "vars.FILESYSTEMS_BIGBEDROOM_READY == 'true'" in source, name
     assert selfhost in source and hosted in source, name
     assert "runner.environment" in source, name
     assert 'if [[ "${{ runner.environment }}" == "github-hosted" ]]' in source, name
-    assert "pkg-config --exists libelf openssl" in source, name
+    assert 'for library in libelf openssl; do' in source, name
     assert 'kernel_tree="$RUNNER_TEMP/' in source, name
     assert 'make -C "$KERNEL_TREE"' in source, name
     assert "/tmp/linux" not in source, name
