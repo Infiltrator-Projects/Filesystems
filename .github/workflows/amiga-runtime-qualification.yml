@@ -126,6 +126,10 @@ jobs:
           /tmp/defrag-build/test-media-mkfs-ofs /tmp/ofs-reference.img
           cmp /tmp/ofs.img /tmp/ofs-reference.img
           /tmp/filesystems-ofs-build/filesystems-ofs-image --verify /tmp/ofs.img
+          # A sparse 120 GiB volume exercises 61k+ allocation bitmap blocks
+          # and the full extension chain under a real kernel at mount time.
+          /tmp/filesystems-ofs-build/filesystems-ofs-image --create \
+            /tmp/ofs-large.img 122880 LD_OFS_LARGE
           truncate -s 32M /tmp/ffs.img
           /tmp/defrag-build/test-media-mkfs-ffs /tmp/ffs.img
           python3 tools/generate-sfs-runtime-images.py \
@@ -135,6 +139,7 @@ jobs:
           /tmp/defrag-build/defragmenter-pfs3-native-test \
             --write-fixture /tmp/pfs3.img fragmented
           test -s /tmp/ofs.img
+          test -s /tmp/ofs-large.img
           test -s /tmp/ffs.img
           test -s /tmp/sfs.img
           test -s /tmp/sfs2.img
@@ -146,7 +151,7 @@ jobs:
           set -euo pipefail
           root=/tmp/amiga-root
           rm -rf "$root"
-          mkdir -p "$root"/{bin,etc,proc,sys,dev,mnt/ofs,mnt/ffs,mnt/sfs,mnt/sfs2,mnt/pfs3}
+          mkdir -p "$root"/{bin,etc,proc,sys,dev,mnt/ofs,mnt/ofs-large,mnt/ffs,mnt/sfs,mnt/sfs2,mnt/pfs3}
           cp /usr/bin/busybox "$root/bin/busybox"
           for app in sh mount umount mkdir rmdir cat echo dd ln mv rm readlink sync poweroff reboot stat wc insmod su id test; do
             ln -s busybox "$root/bin/$app"
@@ -194,8 +199,10 @@ jobs:
             -drive file=/tmp/sfs.img,format=raw,if=virtio \
             -drive file=/tmp/sfs2.img,format=raw,if=virtio \
             -drive file=/tmp/pfs3.img,format=raw,if=virtio \
+            -drive file=/tmp/ofs-large.img,format=raw,if=virtio \
             2>&1 | tee /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-READONLY-STATFS-PASS' /tmp/amiga-runtime.log
+          grep -Fq 'AMIGA-OFS-LARGE-READONLY-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-CRASH-ARMED' /tmp/amiga-runtime.log
           for fs in ofs ffs sfs sfs2; do
             grep -Fq "AMIGA-CRASH-RECOVERY-PASS: $fs" /tmp/amiga-runtime.log
