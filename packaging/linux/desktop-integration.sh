@@ -75,10 +75,14 @@ has_active() {
 enable_disks_launcher() {
     local owner stage
     owner=$(dpkg-divert --root="$system_root" --listpackage /usr/bin/gnome-disks)
-    [[ -z "$owner" || "$owner" == "$package" ]] || {
-        echo "Disks already has a diversion owned by $owner; refusing to replace it" >&2
-        return 1
-    }
+    if [[ -n "$owner" && "$owner" != "$package" ]]; then
+        # Preserve a launcher and diversion owned by another package.
+        [[ -x "$disks_launcher" ]] || {
+            echo "Disks is owned by $owner but its launcher is missing" >&2
+            return 1
+        }
+        return 0
+    fi
     [[ -f "$templates/gnome-disks" ]] || return 1
     stage=$(mktemp "$base/usr/bin/.infiltrator-disks-XXXXXX")
     trap 'rm -f -- "$stage"' RETURN
@@ -100,10 +104,14 @@ enable_nemo_launcher() {
     if [[ -z "$owner" && ! -e "$nemo_launcher" ]]; then
         return 0
     fi
-    [[ -z "$owner" || "$owner" == "$package" ]] || {
-        echo "Nemo already has a diversion owned by $owner; refusing to replace it" >&2
-        return 1
-    }
+    if [[ -n "$owner" && "$owner" != "$package" ]]; then
+        # Preserve a launcher and diversion owned by another package.
+        [[ -x "$nemo_launcher" ]] || {
+            echo "Nemo is owned by $owner but its launcher is missing" >&2
+            return 1
+        }
+        return 0
+    fi
     [[ -f "$templates/nemo" ]] || return 1
     stage=$(mktemp "$base/usr/bin/.infiltrator-nemo-XXXXXX")
     trap 'rm -f -- "$stage"' RETURN
@@ -122,48 +130,54 @@ preflight_launchers() {
     local owner
 
     owner=$(dpkg-divert --root="$system_root" --listpackage /usr/bin/gnome-disks)
-    [[ -z "$owner" || "$owner" == "$package" ]] || {
-        echo "Disks already has a diversion owned by $owner; refusing to replace it" >&2
-        return 1
-    }
-    [[ -f "$templates/gnome-disks" ]] || {
-        echo 'GNOME Disks launcher template is missing' >&2
-        return 1
-    }
-    if [[ -z "$owner" ]]; then
-        [[ -f "$disks_launcher" ]] || {
-            echo 'GNOME Disks is missing' >&2
+    if [[ -n "$owner" && "$owner" != "$package" ]]; then
+        [[ -x "$disks_launcher" ]] || {
+            echo "Disks is owned by $owner but its launcher is missing" >&2
             return 1
         }
     else
-        [[ -f "$disks_original" && -f "$disks_launcher" ]] || {
-            echo 'Filesystems GNOME Disks diversion state is incomplete' >&2
+        [[ -f "$templates/gnome-disks" ]] || {
+            echo 'GNOME Disks launcher template is missing' >&2
             return 1
         }
+        if [[ -z "$owner" ]]; then
+            [[ -f "$disks_launcher" ]] || {
+                echo 'GNOME Disks is missing' >&2
+                return 1
+            }
+        else
+            [[ -f "$disks_original" && -f "$disks_launcher" ]] || {
+                echo 'Filesystems GNOME Disks diversion state is incomplete' >&2
+                return 1
+            }
+        fi
     fi
 
     owner=$(dpkg-divert --root="$system_root" --listpackage /usr/bin/nemo)
     if [[ -z "$owner" && ! -e "$nemo_launcher" && ! -e "$nemo_original" ]]; then
         return 0
     fi
-    [[ -z "$owner" || "$owner" == "$package" ]] || {
-        echo "Nemo already has a diversion owned by $owner; refusing to replace it" >&2
-        return 1
-    }
-    [[ -f "$templates/nemo" ]] || {
-        echo 'Nemo launcher template is missing' >&2
-        return 1
-    }
-    if [[ -z "$owner" ]]; then
-        [[ -f "$nemo_launcher" && ! -e "$nemo_original" ]] || {
-            echo 'Nemo launcher state is inconsistent before diversion' >&2
+    if [[ -n "$owner" && "$owner" != "$package" ]]; then
+        [[ -x "$nemo_launcher" ]] || {
+            echo "Nemo is owned by $owner but its launcher is missing" >&2
             return 1
         }
     else
-        [[ -f "$nemo_original" && -f "$nemo_launcher" ]] || {
-            echo 'Filesystems Nemo diversion state is incomplete' >&2
+        [[ -f "$templates/nemo" ]] || {
+            echo 'Nemo launcher template is missing' >&2
             return 1
         }
+        if [[ -z "$owner" ]]; then
+            [[ -f "$nemo_launcher" && ! -e "$nemo_original" ]] || {
+                echo 'Nemo launcher state is inconsistent before diversion' >&2
+                return 1
+            }
+        else
+            [[ -f "$nemo_original" && -f "$nemo_launcher" ]] || {
+                echo 'Filesystems Nemo diversion state is incomplete' >&2
+                return 1
+            }
+        fi
     fi
 }
 
@@ -254,17 +268,27 @@ disable_launchers() {
 shared_launchers_ready() {
     local owner
     owner=$(dpkg-divert --root="$system_root" --listpackage /usr/bin/gnome-disks)
-    [[ "$owner" == "$package" && -x "$disks_launcher" && -f "$disks_original" ]] || {
-        echo 'Filesystems package desktop launcher state is not prepared; reinstall or reconfigure the package' >&2
+    if [[ "$owner" == "$package" ]]; then
+        [[ -x "$disks_launcher" && -f "$disks_original" ]] || {
+            echo 'Filesystems GNOME Disks launcher state is incomplete' >&2
+            return 1
+        }
+    elif [[ -z "$owner" || ! -x "$disks_launcher" ]]; then
+        echo 'GNOME Disks launcher state is not prepared by any package' >&2
         return 1
-    }
+    fi
 
     owner=$(dpkg-divert --root="$system_root" --listpackage /usr/bin/nemo)
     if [[ -e "$nemo_launcher" || -e "$nemo_original" || -n "$owner" ]]; then
-        [[ "$owner" == "$package" && -x "$nemo_launcher" && -f "$nemo_original" ]] || {
-            echo 'Filesystems Nemo launcher state is inconsistent; reinstall or reconfigure the package' >&2
+        if [[ "$owner" == "$package" ]]; then
+            [[ -x "$nemo_launcher" && -f "$nemo_original" ]] || {
+                echo 'Filesystems Nemo launcher state is inconsistent' >&2
+                return 1
+            }
+        elif [[ -z "$owner" || ! -x "$nemo_launcher" ]]; then
+            echo 'Nemo launcher state is not prepared by any package' >&2
             return 1
-        }
+        fi
     fi
 }
 

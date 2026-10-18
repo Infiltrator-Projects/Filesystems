@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.36 — 2026-10-18
+
+- Fix package configuration on systems where InfiltratorFS already owns the
+  GNOME Disks diversion. Filesystems leaves the foreign launcher and diversion
+  untouched while retaining its own formatter, native modules, udev rules and
+  independently managed Nemo integration.
+- Make shared launcher setup, per-filesystem activation and package removal
+  respect independent diversion ownership. An incomplete foreign launcher
+  remains a clear, non-destructive error.
+- Regression-test both foreign GNOME Disks and foreign Nemo ownership,
+  per-filesystem activation and safe removal without taking over their binaries.
+- Filesystems-specific preload presentation in GNOME Disks is unavailable
+  while another package owns that launcher; formatting and native support are
+  independent of that presentation layer.
+
+## 0.5.35 — 2026-10-18
+
+- Remove the arbitrary 2 GiB OFS capacity limit for block-partition formatting;
+  support legal 512-byte, 31-bit geometries including full 120 GiB volumes.
+- Use bitsets for OFS bitmap occupancy verification and image creation, and
+  qualify a sparse 120 GiB OFS image in CI.
+
 ## 0.5.34 — 2026-10-18
 
 - Add an explicitly confirmed Linux **block-partition** OFS formatter/validator

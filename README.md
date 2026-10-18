@@ -22,6 +22,23 @@ Provider choice is subordinate to filesystem identity. NTFS is one filesystem wh
 
 The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`](docs/FILESYSTEMS_MATRIX.md). CI verifies that every compiled catalogue ID appears there exactly once.
 
+## Desktop integration ownership
+
+GNOME Disks, Nemo and the native filesystem manager are distinct integration
+surfaces. Filesystems only owns a `dpkg-divert` launcher when no other package
+already owns that launcher. In particular, systems with InfiltratorFS's GNOME
+Disks diversion retain its existing binary, formatting support and ownership
+unchanged. Filesystems remains installable and its independent CLI formatter,
+kernel module support and device-identification rules still work.
+
+If another package owns a launcher, Filesystems does **not** chain or inject its
+desktop preload into that application: Filesystems-specific visual presentation
+inside that application is unavailable until an independently designed shared
+integration interface exists. It does not compromise the other package to
+provide cosmetic support. Missing or inconsistent foreign launcher state is
+reported instead of overwritten. The ownership contract is regression-tested
+using independent private `dpkg-divert` databases.
+
 ## Two product surfaces, one identity contract
 
 Filesystems has different presentation contexts that consume the same stable filesystem identities while keeping platform-specific support policy separate.
