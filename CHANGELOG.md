@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.32 — 2026-10-18
+
+- Record the shared filesystem-neutral Boot/Setup installation contract and its staged Amiga OFS boot-payload acceptance test.
+- Clarify the difference between Boot's EFI readers and kernel-side filesystem modules, and between a readable kernel source and a qualified operating-system root.
+- Link the long-term native filesystem design to cross-project integration ownership; use the current Boot product name rather than inherited rEFInd naming.
+- No on-disk format, filesystem algorithm, formatter or installed driver behaviour changes.
+
 ## 0.5.30 — 2026-10-17
 
 - Pin Libraries 1.19.46 and use canonical shared settings identities.
