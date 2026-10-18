@@ -176,6 +176,15 @@ target_include_directories(infiltratr-fs-ext2-core
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/core")
 filesystems_configure(infiltratr-fs-ext2-core)
 
+# Portable read-only firmware-facing EXT2 reader, not a UEFI driver binary.
+add_library(infiltratr-fs-ext2-efi-reader STATIC
+    native/filesystems/ext2/efi/reader.c)
+target_link_libraries(infiltratr-fs-ext2-efi-reader
+    PUBLIC infiltratr-fs-ext2-core)
+target_include_directories(infiltratr-fs-ext2-efi-reader
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/efi")
+filesystems_configure(infiltratr-fs-ext2-efi-reader)
+
 # Canonical EXT3 feature/format policy. Linux and future Windows adapters
 # consume this exact implementation rather than maintaining independent rules.
 add_library(infiltratr-fs-ext3-core STATIC
@@ -385,7 +394,7 @@ if(BUILD_TESTING)
     add_executable(filesystems-ext2-engine-test
         tests/ext2_engine_test.c)
     target_link_libraries(filesystems-ext2-engine-test
-        PRIVATE infiltratr-fs-ext2-core)
+        PRIVATE infiltratr-fs-ext2-efi-reader)
     filesystems_configure(filesystems-ext2-engine-test)
     add_test(
         NAME filesystems-ext2-engine

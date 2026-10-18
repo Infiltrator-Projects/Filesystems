@@ -58,6 +58,12 @@ The Linux adapter owns Linux-specific VFS registration, mount lifecycle, inode/f
 
 The Windows adapter owns DriverEntry/filesystem registration, IRP dispatch, VCB/FCB/CCB lifetime, Cache/Memory Manager integration, volume lifecycle, NTSTATUS translation and WDK packaging/signing.
 
+A portable firmware-facing EXT2 file reader now exists in
+`native/filesystems/ext2/efi/` and reuses the canonical EXT2 inode engine.
+This is a read-only source component, not a loadable .efi firmware driver.
+Other formats do not yet have complete firmware-facing file readers, and
+none become qualified installation roots merely by adding this source.
+
 The EFI adapter owns the small UEFI filesystem-reader surface required by the boot manager: volume recognition, safe path traversal, file open/read, metadata required by rEFInd and UEFI Block I/O integration. It is normally read-only and must not grow into a second full filesystem implementation.
 
 A Linux `.ko` is not an EFI driver and a Windows `.sys` is not a Linux driver. The adapters are different binaries with different host contracts; the filesystem semantics beneath them remain one authority.

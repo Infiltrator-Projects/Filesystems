@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "../native/filesystems/ext2/core/ext2_engine.h"
+#include "../native/filesystems/ext2/efi/reader.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -73,6 +74,8 @@ int main(void)
     MemoryDisk disk;
     IfsExt2Io io;
     IfsExt2Volume volume;
+    IfsExt2EfiReader efi_reader;
+    IfsExt2EfiFile efi_file;
     IfsExt2Inode root;
     IfsExt2Inode file;
     unsigned char scratch[BLOCK_SIZE];
@@ -174,5 +177,34 @@ int main(void)
         memcmp(output, "hAllo", 5U) != 0)
         return fail("written file did not read back");
 
+    /* EFI reads must reuse canonical EXT2 rules and never write. */
+    if (ifs_ext2_efi_open(&efi_reader, &io, sizeof(disk.bytes)) != IFS_EXT2_OK ||
+        efi_reader.volume.io.write_at != NULL)
+        return fail("firmware reader failed read-only mount");
+    memset(output, 0, sizeof(output));
+    if (ifs_ext2_efi_open_file(&efi_reader, "\\\\hello", &efi_file,
+                               scratch, sizeof(scratch)) != IFS_EXT2_OK)
+        return fail("EFI backslash path failed");
+    if (ifs_ext2_efi_read(&efi_reader, &efi_file, output, 5U,
+                          scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
+        read_count != 5U || memcmp(output, "hAllo", 5U) != 0)
+        return fail("EFI read did not return canonical file bytes");
+    if (ifs_ext2_efi_read(&efi_reader, &efi_file, output, 5U,
+                          scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
+        read_count != 0U || disk.writes != 1U)
+        return fail("EFI EOF or read-only contract failed");
+    if (ifs_ext2_efi_seek(&efi_file, 6U) != IFS_EXT2_ERROR_RANGE)
+        return fail("EFI accepted invalid seek");
+    if (ifs_ext2_efi_open_file(&efi_reader, "/../hello", &efi_file,
+                               scratch, sizeof(scratch)) != IFS_EXT2_ERROR_ARGUMENT)
+        return fail("EFI allowed parent traversal");
+    if (ifs_ext2_efi_open_file(&efi_reader, "/missing", &efi_file,
+                               scratch, sizeof(scratch)) != IFS_EXT2_ERROR_NOT_FOUND)
+        return fail("EFI missing file not rejected");
+    if (ifs_ext2_efi_open(&efi_reader, &io, 4096U) != IFS_EXT2_ERROR_RANGE)
+        return fail("EFI accepted filesystem past device end");
+    store_le16(sb + 0x3AU, 0U);
+    if (ifs_ext2_efi_open(&efi_reader, &io, sizeof(disk.bytes)) == IFS_EXT2_OK)
+        return fail("EFI mounted an unclean filesystem");
     return 0;
 }
