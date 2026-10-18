@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed regression tests for the image-only AmigaDOS OFS formatter."""
+"""Fail-closed regression tests for image and guarded partition OFS formatting."""
 import os
 import pathlib
 import shutil
@@ -35,6 +35,23 @@ def test(tool, root):
         command(tool, "--create", path, size, "LD_AMIGA", success=False)
         command(tool, "--verify", path)
 
+    # Full SD-card-class volume: sparse 120-GiB image with every bitmap
+    # extension populated. The formatter allocates only metadata, not 120 GiB
+    # of backing storage, and performs its own full-volume verification.
+    large_mib = 120 * 1024
+    large = root / "ofs-120g.img"
+    command(tool, "--create", large, large_mib, "FULL_SD_OFS")
+    assert large.stat().st_size == large_mib * (1 << 20)
+    with large.open("rb") as fh:
+        fh.seek((large.stat().st_size // 512 // 2) * 512)
+        large_root = fh.read(512)
+        assert struct.unpack_from(">I", large_root, 3 * 4)[0] == 72
+        assert struct.unpack_from(">I", large_root, 104 * 4)[0] != 0, (
+            "large filesystem must use bitmap extensions"
+        )
+    # A second, independent verifier pass must accept the complete volume.
+    command(tool, "--verify", large)
+
     existing = root / "existing.bin"
     existing.write_bytes(b"USER DATA MUST NOT CHANGE")
     command(tool, "--create", existing, 4, success=False)
@@ -46,7 +63,8 @@ def test(tool, root):
     assert existing.read_bytes() == b"USER DATA MUST NOT CHANGE"
 
     for args in [
-        ("0",), ("2049",), ("1.5",), ("-1",),
+        ("0",), ("1048576",), ("18446744073709551616",),
+        ("1.5",), ("-1",),
     ]:
         command(tool, "--create", root / ("bad-" + args[0]), *args,
                 success=False)
