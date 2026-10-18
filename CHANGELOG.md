@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.39 — 2026-10-18
+
+- Replace OFS 0.5.38's per-512-byte `sb_breadahead()` submission with bounded
+  block-layer BIO reads for **contiguous** bitmap extents. A real 119.1 GiB SD
+  card showed that 61,451 individual read-ahead submissions took 14.6s,
+  leaving mount time unchanged at ~15s; the earlier 2.3s QEMU result was
+  not representative of the physical card.
+- Each batched extent contains at most 128 OFS bitmap blocks (64 KiB). The
+  driver verifies every AmigaDOS bitmap checksum and counts all free bits
+  before completing the mount, preserving read-only and fail-safe behavior.
+  Noncontiguous/unsupported extents retain the existing buffer-head reader.
+- Add per-mount observability for batch count, validated batched blocks,
+  fallback blocks, block-I/O latency, read latency, validation and total time.
+- Exercise the batched fast path explicitly with a sparse 120 GiB AmigaDOS
+  OFS disk under pinned-kernel QEMU; retain normal Amiga RW and crash tests.
+- No change to the on-disk OFS format. Physical SD benchmarks still required.
+
 ## 0.5.38 — 2026-10-18
 
 - Improve large AmigaDOS OFS mount performance by resolving bitmap keys once
