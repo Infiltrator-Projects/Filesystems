@@ -44,7 +44,8 @@ static void finish(const char *message, unsigned char code)
         __asm__ volatile("pause");
 }
 
-EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
+/* GNU-EFI crt0 enters efi_main through its C ABI; protocol callbacks are EFIAPI. */
+EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
 {
     EFI_STATUS status;
     EFI_LOADED_IMAGE *loaded = NULL;
