@@ -45,7 +45,7 @@ for mode in supported unsupported; do
 
     echo "OFS OVMF: testing $mode partition and driver binding"
     set +e
-    timeout -k 5s 90s qemu-system-x86_64 \
+    timeout -k 5s 35s qemu-system-x86_64 \
       -machine q35,accel=tcg -m 256 \
       -display none -monitor none -serial "file:$serial" \
       -nic none -device isa-debug-exit,iobase=0xf4,iosize=0x04 \

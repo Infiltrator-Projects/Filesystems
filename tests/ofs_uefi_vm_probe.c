@@ -64,11 +64,15 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
     InitializeLib(image, table);
     uart("OFS_VM begin\r\n");
 
+    uart("OFS_VM loaded HandleProtocol begin\r\n");
     status = BS->HandleProtocol(image, &g_loaded_image, (VOID **)&loaded);
+    uart("OFS_VM loaded HandleProtocol returned\r\n");
     if (EFI_ERROR(status) || !loaded)
         finish("OFS_VM_FAIL loaded image\r\n", 0x11U);
 
+    uart("OFS_VM FileDevicePath begin\r\n");
     path = FileDevicePath(loaded->DeviceHandle, L"\\OFS_x64.efi");
+    uart("OFS_VM FileDevicePath returned\r\n");
     if (!path)
         finish("OFS_VM_FAIL driver path\r\n", 0x11U);
     uart("OFS_VM LoadImage begin\r\n");
