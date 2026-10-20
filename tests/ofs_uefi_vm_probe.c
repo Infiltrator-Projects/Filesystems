@@ -55,9 +55,11 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
     UINTN count = 0U, i;
     EFI_BLOCK_IO *block;
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs = NULL;
+#ifndef OFS_VM_EXPECT_UNSUPPORTED
     EFI_FILE_PROTOCOL *root = NULL, *file = NULL;
     CHAR8 content[6] = {0};
     UINTN length = 5U;
+#endif
 
     InitializeLib(image, table);
     uart("OFS_VM begin\r\n");
