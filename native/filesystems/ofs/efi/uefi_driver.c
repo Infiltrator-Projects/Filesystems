@@ -588,7 +588,10 @@ static EFI_STATUS EFIAPI ofs_stop(EFI_DRIVER_BINDING_PROTOCOL *self,
     return status;
 }
 
-EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
+/* GNU-EFI crt0 calls efi_main using the C ABI. Only exported UEFI
+ * protocol callbacks use EFIAPI (Microsoft x64); combining both ABIs at
+ * this entry point corrupts the image/table arguments on real firmware. */
+EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
 {
     EFI_STATUS status;
     InitializeLib(image, table);

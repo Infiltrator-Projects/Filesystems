@@ -2,6 +2,7 @@
 
 ## 0.5.45 — 2026-10-20
 
+- Correct the GNU-EFI entry point calling convention for the standalone OFS EFI driver. An OVMF test reproduced a stall at the driver's first Boot Services call; GNU-EFI's crt0 invokes efi_main via the native C ABI, while the driver previously declared EFIAPI (Microsoft x64). Protocol callbacks retain EFIAPI.
 - Add opt-in COM1 stage diagnostics around the OFS UEFI Driver Binding, firmware disk reads and filesystem installation; normal firmware drivers are unchanged by the diagnostic instrumentation.
 - Build an isolated QEMU/OVMF acceptance test with a disposable GPT disk, real EFI `LoadImage`/`ConnectController`, OFS Simple File System nested-file reads and non-OFS rejection. Archive serial logs so failures show the last reached stage.
 - Preserve OFS as experimental. Virtual firmware acceptance does not prove Dell SD-controller latency, power-cycle behaviour or Boot integration. No EFI System Partition or NVRAM is modified.
