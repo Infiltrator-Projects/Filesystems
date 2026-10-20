@@ -6,6 +6,8 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "$0")/.." && pwd)"
 driver="$(realpath "${1:?diagnostic OFS EFI driver required}")"
 work="$(realpath -m "${2:?test work directory required}")"
+profile="${3:-diagnostic}"
+[[ $profile == diagnostic || $profile == production ]]
 mkdir -p "$work"
 test -s "$driver"
 
@@ -43,7 +45,7 @@ for mode in supported unsupported; do
     dd if="$ofs" of="$disk" bs=512 seek=67584 conv=notrunc status=none
     cp "$vars" "$case_dir/OVMF_VARS.fd"
 
-    echo "OFS OVMF: testing $mode partition and driver binding"
+    echo "OFS OVMF: testing $profile driver on $mode partition"
     set +e
     timeout -k 5s 35s qemu-system-x86_64 \
       -machine q35,accel=tcg -m 256 \
@@ -61,14 +63,16 @@ for mode in supported unsupported; do
         exit 1
     fi
     if [[ $mode == supported ]]; then
-        grep -Fq "OFS_VM_PASS nested file read" "$serial"
-        grep -Fq "OFS ReadDisk complete" "$serial"
+        grep -Fq "OFS_VM_PASS nested read and Stop/rebind" "$serial"
+        if [[ $profile == diagnostic ]]; then
+            grep -Fq "OFS ReadDisk complete" "$serial"
+        fi
     else
         grep -Fq "OFS_VM_PASS unsupported media rejected" "$serial"
-        if grep -Fq "OFS Supported accepted" "$serial"; then
+        if [[ $profile == diagnostic ]] && grep -Fq "OFS Supported accepted" "$serial"; then
             echo "OFS OVMF: unsupported medium falsely accepted" >&2
             exit 1
         fi
     fi
 done
-echo "OFS OVMF acceptance: valid partition read and alien-media rejection passed"
+echo "OFS OVMF acceptance: $profile driver read, Stop/rebind and alien-media rejection passed"

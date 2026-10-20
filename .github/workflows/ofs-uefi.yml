@@ -64,7 +64,10 @@ jobs:
           OFS_EFI_TRACE=1 bash scripts/build-ofs-efi.sh dist-ofs-efi-diagnostic
           bash scripts/test-ofs-uefi-ovmf.sh \
             dist-ofs-efi-diagnostic/OFS_x64.efi \
-            "$RUNNER_TEMP/ofs-qemu"
+            "$RUNNER_TEMP/ofs-qemu/diagnostic" diagnostic
+          bash scripts/test-ofs-uefi-ovmf.sh \
+            dist-ofs-efi/OFS_x64.efi \
+            "$RUNNER_TEMP/ofs-qemu/production" production
       - name: Store OVMF stage logs, including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

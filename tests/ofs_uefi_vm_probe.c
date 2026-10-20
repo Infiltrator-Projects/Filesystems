@@ -138,7 +138,25 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
         finish("OFS_VM_FAIL file read contents\r\n", 0x11U);
     file->Close(file);
     root->Close(root);
-    finish("OFS_VM_PASS nested file read\r\n", 0x10U);
+
+    /* A read-only filesystem still owns protocol lifetime. Disconnect must
+     * revoke Simple File System and close DiskIo; reconnection must work. */
+    uart("OFS_VM DisconnectController begin\r\n");
+    status = BS->DisconnectController(target, driver, NULL);
+    if (EFI_ERROR(status))
+        finish("OFS_VM_FAIL DisconnectController\r\n", 0x11U);
+    fs = NULL;
+    status = BS->HandleProtocol(target, &g_simple_fs, (VOID **)&fs);
+    if (!EFI_ERROR(status))
+        finish("OFS_VM_FAIL filesystem survived Stop\r\n", 0x11U);
+    uart("OFS_VM ConnectController again begin\r\n");
+    status = BS->ConnectController(target, NULL, NULL, FALSE);
+    fs = NULL;
+    if (EFI_ERROR(status) ||
+        EFI_ERROR(BS->HandleProtocol(target, &g_simple_fs, (VOID **)&fs)) ||
+        !fs)
+        finish("OFS_VM_FAIL rebind after Stop\r\n", 0x11U);
+    finish("OFS_VM_PASS nested read and Stop/rebind\r\n", 0x10U);
 #endif
     return EFI_SUCCESS;
 }

@@ -4,6 +4,7 @@
 
 - Fix EFI driver binding ownership: use DiskIo with EFI_OPEN_PROTOCOL_BY_DRIVER and observe BlockIo non-exclusively, as the UEFI filesystem-driver model requires. OVMF reproduced EFI_ACCESS_DENIED when the previous adapter attempted to claim BlockIo already owned by firmware. Balance the DiskIo claim in failure cleanup and Stop().
 - Correct the GNU-EFI entry point calling convention for the standalone OFS EFI driver. An OVMF test reproduced a stall at the driver's first Boot Services call; GNU-EFI's crt0 invokes efi_main via the native C ABI, while the driver previously declared EFIAPI (Microsoft x64). Protocol callbacks retain EFIAPI.
+- Extend OVMF validation to assert that Stop() releases the protocol and that a subsequent ConnectController() succeeds; exercise both the opt-in diagnostic binary and the exact uninstrumented production-style binary.
 - Add opt-in COM1 stage diagnostics around the OFS UEFI Driver Binding, firmware disk reads and filesystem installation; normal firmware drivers are unchanged by the diagnostic instrumentation.
 - Build an isolated QEMU/OVMF acceptance test with a disposable GPT disk, real EFI `LoadImage`/`ConnectController`, OFS Simple File System nested-file reads and non-OFS rejection. Archive serial logs so failures show the last reached stage.
 - Preserve OFS as experimental. Virtual firmware acceptance does not prove Dell SD-controller latency, power-cycle behaviour or Boot integration. No EFI System Partition or NVRAM is modified.
