@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — read-only OFS EFI field diagnostics
+
+- Add a native read-only media probe that exercises the *existing canonical* OFS EFI directory reader against an authentic partition or image without reformatting, repairing or changing boot state. It records directory entries and hash-cursor context on failure.
+- Cover the utility with supported and unsupported OFS firmware fixture cases. This supplements but does not replace the real Dell Latitude 5550 qualification of large OFS directories, firmware I/O and Linux kernel handoff.
+- Document the real `EFI_VOLUME_CORRUPTED` directory-enumeration observation without assuming the filesystem on disk is damaged or releasing an unproven driver change.
+
+
 ## 0.5.46 — 2026-10-20
 
 - Correct the GNU-EFI `efi_main` C calling convention for the OFS EFI boot-service driver. OVMF reproduced a stall during its first firmware Boot Services call; only exported EFI protocol callbacks retain the Microsoft x64 ABI.

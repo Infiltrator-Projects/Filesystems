@@ -7,6 +7,7 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
+      - 'tests/ofs_efi_media_probe.c'
       - 'tests/ofs_uefi_vm_probe.c'
       - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
@@ -20,6 +21,7 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
+      - 'tests/ofs_efi_media_probe.c'
       - 'tests/ofs_uefi_vm_probe.c'
       - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
@@ -57,6 +59,23 @@ jobs:
             native/filesystems/ofs/core/ofs_primitives.c \
             -o "$RUNNER_TEMP/ofs-efi-reader-test"
           "$RUNNER_TEMP/ofs-efi-reader-test"
+      - name: Qualify read-only physical-media probe against canonical reader
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror \
+            tests/ofs_efi_media_probe.c \
+            native/filesystems/ofs/efi/reader.c \
+            native/filesystems/ofs/core/ofs_core.c \
+            native/filesystems/ofs/core/ofs_primitives.c \
+            -o "$RUNNER_TEMP/ofs-efi-media-probe"
+          python3 tests/ofs_uefi_vm_fixture.py "$RUNNER_TEMP/ofs-probe-good.img"
+          "$RUNNER_TEMP/ofs-efi-media-probe" "$RUNNER_TEMP/ofs-probe-good.img"
+          python3 tests/ofs_uefi_vm_fixture.py "$RUNNER_TEMP/ofs-probe-bad.img" --alien
+          if "$RUNNER_TEMP/ofs-efi-media-probe" "$RUNNER_TEMP/ofs-probe-bad.img"; then
+            echo "Non-OFS media was wrongly accepted" >&2
+            exit 1
+          fi
       - name: Test actual EFI binding, file access and non-OFS rejection under OVMF
         shell: bash
         run: |

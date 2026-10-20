@@ -22,3 +22,36 @@ The sole firmware payload is `dist-ofs-efi/OFS_x64.efi`, verified as a PE32+ x86
 **Firmware probe boundary:** only UEFI logical-partition BlockIo handles are eligible. Whole-disk handles and incompatible logical blocks are rejected before firmware disk reads. Each format probe reads at most two 512-byte sectors (boot block and root block); the start path repeats validation and may also read the volume label. A synchronous firmware `ReadDisk()` cannot be interrupted by this driver, so the I/O count is bounded but firmware latency is not. Directory lookup and enumeration stop after 512 entries, rejecting cyclic or overlong chains instead of walking a volume-sized chain. This is a boot-reader limit, not a filesystem format limit.
 
 **Initial scope:** partition-relative DOS\\0, 512-byte logical sectors, names up to 30 Latin-1 bytes, case-insensitive OFS directory lookup, linked 488-byte OFS data blocks, files at most 4 GiB. No Amiga RDB whole-disk partition extraction, links, writable EFI operations or general Linux root qualification. EFI-stage readers and Linux `ofs.ko` have different ABIs; Linux requires its own kernel module (often inside the initramfs) to mount OFS after EFI handoff.
+
+## Physical-media, read-only firmware-reader reproduction
+
+Boot 0.1.25 on a Dell Latitude 5550 discovered OFSBOOT and Linux images on a
+119 GiB OFS SD card, but UEFI enumeration subsequently returned
+`EFI_VOLUME_CORRUPTED` while scanning `\\boot`. That status is a firmware
+adapter's general conversion of the canonical reader's error and **does not
+prove actual media corruption**. Existing CI exercises a single nested small
+file, not a populated full-size physical volume.
+
+Use this diagnostic on Linux with the OFS partition mounted or unmounted. It
+opens the partition **O_RDONLY** and traverses the *same canonical OFS EFI
+reader* used by the firmware adapter; it does not write, format, repair, or
+change any EFI or boot configuration. It reports the directory, hash bucket,
+entry count and sector reads. A passing result does not prove UEFI DiskIo
+reliability, and a failing result distinguishes a host-reproducible reader
+rejection from a firmware-only failure, without claiming why an individual
+sector was rejected.
+
+From the Filesystems repository root:
+
+```bash
+cc -std=c11 -O2 -Wall -Wextra -Werror \
+  tests/ofs_efi_media_probe.c \
+  native/filesystems/ofs/efi/reader.c \
+  native/filesystems/ofs/core/ofs_core.c \
+  native/filesystems/ofs/core/ofs_primitives.c \
+  -o /tmp/ofs-efi-media-probe
+sudo /tmp/ofs-efi-media-probe /dev/mmcblk0p1
+```
+
+The probe performs metadata enumeration only; it is not a full filesystem
+checker and cannot establish the integrity of every kernel or initramfs block.
