@@ -506,7 +506,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
 {
     EFI_STATUS status;
     OfsController *ctx = NULL;
-    EFI_BLOCK_IO *claimed_block = NULL;
+    EFI_DISK_IO *claimed_disk = NULL;
     uint8_t root[512];
     UINTN i, count;
     (void)self; (void)remaining;
@@ -519,20 +519,21 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
         BS->FreePool(ctx);
         return status;
     }
-    /* Claim the supported controller as a UEFI driver, so ConnectController
-     * tracks this binding and firmware can disconnect it correctly. The
-     * probe above is deliberately read-only and does not claim a handle. */
-    ofs_trace("OFS OpenProtocol BlockIo begin\r\n");
-    status = BS->OpenProtocol(controller, &g_block_guid,
-                              (VOID **)&claimed_block,
+    /* PartitionDxe or other bus drivers may own BlockIo already. A
+     * filesystem driver instead claims DiskIo BY_DRIVER, matching the UEFI
+     * FAT driver model. BlockIo is observed without exclusive ownership.
+     * Stop must release exactly this DiskIo claim. */
+    ofs_trace("OFS OpenProtocol DiskIo begin\r\n");
+    status = BS->OpenProtocol(controller, &g_disk_guid,
+                              (VOID **)&claimed_disk,
                               self->DriverBindingHandle, controller,
                               EFI_OPEN_PROTOCOL_BY_DRIVER);
-    ofs_trace_status("OFS OpenProtocol BlockIo status 0x", status);
+    ofs_trace_status("OFS OpenProtocol DiskIo status 0x", status);
     if (EFI_ERROR(status)) {
         BS->FreePool(ctx);
         return status;
     }
-    ctx->block = claimed_block;
+    ctx->disk = claimed_disk;
     ctx->signature = OFS_SIGNATURE;
     ctx->filesystem.Revision = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_REVISION;
     ctx->filesystem.OpenVolume = ofs_open_volume;
@@ -553,7 +554,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
                                           EFI_NATIVE_INTERFACE, &ctx->filesystem);
     if (EFI_ERROR(status)) {
         ctx->signature = 0U;
-        BS->CloseProtocol(controller, &g_block_guid,
+        BS->CloseProtocol(controller, &g_disk_guid,
                           self->DriverBindingHandle, controller);
         BS->FreePool(ctx);
     }
@@ -580,7 +581,7 @@ static EFI_STATUS EFIAPI ofs_stop(EFI_DRIVER_BINDING_PROTOCOL *self,
     ofs_trace("OFS Stop begin\r\n");
     status = BS->UninstallProtocolInterface(controller, &g_fs_guid, fs);
     if (!EFI_ERROR(status)) {
-        EFI_STATUS close_status = BS->CloseProtocol(controller, &g_block_guid,
+        EFI_STATUS close_status = BS->CloseProtocol(controller, &g_disk_guid,
                                    self->DriverBindingHandle, controller);
         ctx->signature = 0U;
         BS->FreePool(ctx);
