@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — read-only OFS EFI field diagnostics
+## 0.5.47 — 2026-10-20
+
+- Correct EFI directory/open/file-read error attribution: firmware DiskIo read failures and media removal now propagate as I/O/media statuses rather than being unconditionally reported as OFS volume corruption. A physical out-of-range metadata pointer or failed canonical OFS validation still reports EFI_VOLUME_CORRUPTED. No implicit retries or relaxed validation.
+- Preserve the original firmware read-error status per synchronous OFS protocol operation, retaining read-only access and existing separate filesystem-driver ownership.
+- Real Dell Latitude 5550 OFSBOOT (249,733,120 sectors) passed a read-only root and /boot canonical reader traversal under Linux, but firmware had returned EFI_VOLUME_CORRUPTED for both directory enumeration and kernel load. This adjustment improves failure attribution; it is **not** evidence of a successful Linux kernel boot from OFS, and a firmware-specific I/O root cause has not been established.
+- Expand CI to verify explicit transport/metadata error distinctions and retain independent EFI driver build and UEFI protocol tests.
+
+### Field diagnostic utility included
 
 - Add a native read-only media probe that exercises the *existing canonical* OFS EFI directory reader against an authentic partition or image without reformatting, repairing or changing boot state. It records directory entries and hash-cursor context on failure.
 - Cover the utility with supported and unsupported OFS firmware fixture cases. This supplements but does not replace the real Dell Latitude 5550 qualification of large OFS directories, firmware I/O and Linux kernel handoff.

@@ -8,6 +8,7 @@ on:
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
       - 'tests/ofs_efi_media_probe.c'
+      - 'tests/ofs_efi_error_contract.py'
       - 'tests/ofs_uefi_vm_probe.c'
       - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
@@ -22,6 +23,7 @@ on:
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
       - 'tests/ofs_efi_media_probe.c'
+      - 'tests/ofs_efi_error_contract.py'
       - 'tests/ofs_uefi_vm_probe.c'
       - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
@@ -59,6 +61,9 @@ jobs:
             native/filesystems/ofs/core/ofs_primitives.c \
             -o "$RUNNER_TEMP/ofs-efi-reader-test"
           "$RUNNER_TEMP/ofs-efi-reader-test"
+      - name: Confirm EFI transport and metadata errors remain distinct
+        shell: bash
+        run: python3 tests/ofs_efi_error_contract.py
       - name: Qualify read-only physical-media probe against canonical reader
         shell: bash
         run: |

@@ -55,3 +55,28 @@ sudo /tmp/ofs-efi-media-probe /dev/mmcblk0p1
 
 The probe performs metadata enumeration only; it is not a full filesystem
 checker and cannot establish the integrity of every kernel or initramfs block.
+
+## 0.5.47: EFI I/O versus metadata failures
+
+The Dell Latitude 5550 reported `Volume Corrupt` both while scanning
+`/boot` and while loading `vmlinuz` through Boot 0.1.25 with the 0.5.46
+OFS EFI driver. The real 249,733,120-sector OFSBOOT partition passed
+read-only Linux-hosted enumeration using this repository's own canonical
+EFI reader (three entries at root, four under `/boot`). That evidence
+isolates no firmware defect by itself.
+
+Previously, the adapter translated **all** canonical reader failures into
+`EFI_VOLUME_CORRUPTED`, even when `EFI_DISK_IO.ReadDisk` returned a transport
+error or a removable device disappeared. The adapter now preserves an EFI
+transport error within each synchronous filesystem operation and only
+reports `EFI_VOLUME_CORRUPTED` when the on-disk format checks themselves
+reject the metadata. If DiskIo labels a low-level read failure
+`EFI_VOLUME_CORRUPTED`, the adapter exposes it as `EFI_DEVICE_ERROR` to
+avoid falsely asserting a corrupt filesystem. Neither Boot nor OFS writes
+to the SD card, performs repair or retries a failing read.
+
+This is **diagnostic correctness**, not a qualified OFS boot fix. CI
+builds and exercises the EFI driver but cannot prove the Dell's physical
+firmware DiskIo implementation or kernel handoff succeeds. The 0.5.46
+executable already installed on a physical machine is not automatically
+replaced by changes to this repository.

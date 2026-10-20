@@ -29,6 +29,7 @@ struct OfsController {
     IfsOfsEfiVolume volume;
     CHAR16 volume_label[OFS_MAX_NAME + 1U];
     UINTN open_files;
+    EFI_STATUS last_read_error; /* Status from the active EFI disk read. */
 };
 
 struct OfsFile {
@@ -85,21 +86,48 @@ static EFI_STATUS allocate_zero(UINTN bytes, VOID **out)
     return EFI_SUCCESS;
 }
 
+/* The freestanding OFS reader returns only format-neutral -1/0/1 results.
+ * Preserve a firmware I/O failure separately: an unreadable disk sector is
+ * not evidence of invalid OFS metadata. Caller resets the status per parser
+ * operation; no automatic retry or write is permitted. */
+static EFI_STATUS reader_error(const OfsController *ctx)
+{
+    return ctx && EFI_ERROR(ctx->last_read_error)
+        ? ctx->last_read_error : EFI_VOLUME_CORRUPTED;
+}
+
 static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
 {
     OfsController *ctx = (OfsController *)opaque;
     EFI_STATUS result;
-    if (!ctx || !ctx->disk || !ctx->block || !ctx->block->Media ||
-        !ctx->block->Media->MediaPresent || !data ||
-        (UINT64)number > ctx->block->Media->LastBlock)
+    if (!ctx)
         return -1;
+    if (!ctx->disk || !data || !ctx->block || !ctx->block->Media) {
+        ctx->last_read_error = EFI_DEVICE_ERROR;
+        return -1;
+    }
+    if (!ctx->block->Media->MediaPresent) {
+        ctx->last_read_error = EFI_NO_MEDIA;
+        return -1;
+    }
+    if ((UINT64)number > ctx->block->Media->LastBlock) {
+        ctx->last_read_error = EFI_VOLUME_CORRUPTED;
+        return -1;
+    }
     ofs_trace(number == 0U ? "OFS ReadDisk boot begin\r\n" :
                               "OFS ReadDisk metadata begin\r\n");
     result = ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId,
                                  (UINT64)number * 512ULL, 512U, data);
     ofs_trace(EFI_ERROR(result) ? "OFS ReadDisk error\r\n" :
                                   "OFS ReadDisk complete\r\n");
-    return EFI_ERROR(result) ? -1 : 0;
+    if (EFI_ERROR(result)) {
+        /* A DiskIo transport error must not be presented as corrupt OFS
+         * metadata even if the lower-level driver used that status name. */
+        ctx->last_read_error = result == EFI_VOLUME_CORRUPTED
+            ? EFI_DEVICE_ERROR : result;
+        return -1;
+    }
+    return 0;
 }
 
 /* Probe at most the boot block and midpoint root; reject alien media quickly. */
@@ -266,10 +294,11 @@ static EFI_STATUS EFIAPI ofs_open(EFI_FILE_PROTOCOL *file,
             continue;
         if (n == 2U && segment[0] == L'.' && segment[1] == L'.')
             return EFI_UNSUPPORTED; /* Never fabricate parent semantics. */
+        parent->owner->last_read_error = EFI_SUCCESS;
         found = ifs_ofs_efi_lookup(&parent->owner->volume, &current,
                                     name, n, &candidate);
         if (found != 0)
-            return found == 1 ? EFI_NOT_FOUND : EFI_VOLUME_CORRUPTED;
+            return found == 1 ? EFI_NOT_FOUND : reader_error(parent->owner);
         current = candidate;
     }
     /* Extract the final name only for EFI_FILE_INFO; empty means root. */
@@ -362,6 +391,7 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
         uint8_t bytes[31];
         CHAR16 name[OFS_MAX_NAME + 1U];
         UINTN i;
+        node->owner->last_read_error = EFI_SUCCESS;
         result = ifs_ofs_efi_next(&node->owner->volume, &node->entry,
                                   &next, &entry, bytes);
         if (result == 1) {
@@ -369,7 +399,7 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
             return EFI_SUCCESS;
         }
         if (result != 0)
-            return EFI_VOLUME_CORRUPTED;
+            return reader_error(node->owner);
         for (i = 0U; i < OFS_MAX_NAME && bytes[i]; ++i)
             name[i] = (CHAR16)bytes[i];
         name[i] = 0U;
@@ -391,11 +421,12 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
         *length = 0U;
         return EFI_SUCCESS;
     }
+    node->owner->last_read_error = EFI_SUCCESS;
     result = ifs_ofs_efi_read(&node->owner->volume, &node->entry,
               (uint32_t)node->position, buffer, count, &node->cursor);
     if (result != 0) {
         *length = 0U;
-        return EFI_VOLUME_CORRUPTED;
+        return reader_error(node->owner);
     }
     node->position += count;
     *length = count;
