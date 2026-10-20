@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.44 — 2026-10-20
+
+- Restrict experimental OFS EFI probing to logical partitions, preventing whole-disk controller handles from being treated as partition-relative DOS/0.
+- Bound OFS EFI directory lookup and enumeration to 512 hash-chain entries; reject cycles and overlong chains without changing the disk format or Linux module.
+- Exercise checksum-valid cyclic chains in the reader regressions and execute them in the standalone OFS EFI workflow.
+- Keep the UEFI driver experimental and disabled by default. Synchronous firmware disk I/O has no driver-enforceable wall-clock timeout; compilation and host tests do not qualify real Dell firmware.
+
+
 ## 0.5.43 — 2026-10-19
 
 - Take ownership of the firmware filesystem source formerly held by Boot, preserving its implementations, dormant adapters, licences and pinned InfiltratorFS source.

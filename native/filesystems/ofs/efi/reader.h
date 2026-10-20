@@ -14,6 +14,11 @@ typedef int (*ifs_ofs_efi_read_block)(void *opaque, uint32_t block,
 
 enum { IFS_OFS_EFI_FILE = 1, IFS_OFS_EFI_DIRECTORY = 2 };
 
+/* Boot-stage directory traversal is independent of volume size: a corrupt
+ * hash-chain cycle must not demand billions of firmware reads. An overlong
+ * directory fails closed in the EFI reader without changing the disk format. */
+#define IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES 512U
+
 typedef struct {
     ifs_ofs_efi_read_block read_block;
     void *opaque;

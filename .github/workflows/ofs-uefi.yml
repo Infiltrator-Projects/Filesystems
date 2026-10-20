@@ -6,6 +6,7 @@ on:
       - 'VERSION'
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
+      - 'tests/ofs_efi_reader_test.c'
       - 'scripts/build-ofs-efi.sh'
       - 'scripts/gnu-efi-toolchain.sh'
       - '.github/workflows/ofs-uefi.yml'
@@ -14,6 +15,7 @@ on:
       - 'VERSION'
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
+      - 'tests/ofs_efi_reader_test.c'
       - 'scripts/build-ofs-efi.sh'
       - 'scripts/gnu-efi-toolchain.sh'
       - '.github/workflows/ofs-uefi.yml'
@@ -36,6 +38,17 @@ jobs:
           bash scripts/build-ofs-efi.sh dist-ofs-efi
           file dist-ofs-efi/OFS_x64.efi
           test -s dist-ofs-efi/OFS_x64.efi
+      - name: Test bounded OFS firmware reader with corrupt hash chains
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Werror \
+            tests/ofs_efi_reader_test.c \
+            native/filesystems/ofs/efi/reader.c \
+            native/filesystems/ofs/core/ofs_core.c \
+            native/filesystems/ofs/core/ofs_primitives.c \
+            -o "$RUNNER_TEMP/ofs-efi-reader-test"
+          "$RUNNER_TEMP/ofs-efi-reader-test"
       - name: Store OFS firmware artifact for controlled qualification
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

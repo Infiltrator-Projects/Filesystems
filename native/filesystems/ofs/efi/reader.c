@@ -121,7 +121,9 @@ int ifs_ofs_efi_lookup(const IfsOfsEfiVolume *v,
     block = word(b, 6U + bucket);
     while (block != 0U) {
         uint32_t next;
-        if (++visited > v->blocks || entry(v, block, dir->block, b, out) != 0 ||
+        if (++visited > v->blocks ||
+            visited > IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES ||
+            entry(v, block, dir->block, b, out) != 0 ||
             ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH, 0) != bucket)
             return -1;
         next = word(b, 124U);
@@ -139,7 +141,9 @@ int ifs_ofs_efi_next(const IfsOfsEfiVolume *v,
     uint8_t b[OFS_BLOCK], dirb[OFS_BLOCK];
     uint32_t block, i;
     if (!v || !cursor || !out || !name || cursor->bucket > OFS_HASH ||
-        cursor->visited > v->blocks || directory(v, dir, dirb) != 0)
+        cursor->visited > v->blocks ||
+        cursor->visited > IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES ||
+        directory(v, dir, dirb) != 0)
         return -1;
     while (cursor->bucket < OFS_HASH) {
         block = cursor->next_block;
@@ -150,6 +154,7 @@ int ifs_ofs_efi_next(const IfsOfsEfiVolume *v,
             continue;
         }
         if (++cursor->visited > v->blocks ||
+            cursor->visited > IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES ||
             entry(v, block, dir->block, b, out) != 0 ||
             ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH, 0) !=
                 cursor->bucket)

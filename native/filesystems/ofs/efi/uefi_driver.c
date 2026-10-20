@@ -113,7 +113,10 @@ static EFI_STATUS ofs_probe(OfsController *ctx, EFI_HANDLE controller)
     status = BS->HandleProtocol(controller, &g_block_guid, (VOID **)&block);
     if (EFI_ERROR(status) || !block || !block->Media)
         return EFI_UNSUPPORTED;
-    if (!block->Media->MediaPresent || block->Media->BlockSize != 512U ||
+    /* Only partition-relative DOS/0 is supported; a whole-disk handle must
+     * first be interpreted by a partition-map adapter (e.g. Amiga RDB). */
+    if (!block->Media->MediaPresent || !block->Media->LogicalPartition ||
+        block->Media->BlockSize != 512U ||
         block->Media->LastBlock < 15ULL ||
         block->Media->LastBlock >= 0x7fffffffULL)
         return EFI_UNSUPPORTED;

@@ -16,6 +16,7 @@
 } while (0)
 
 enum { COUNT = 1024, BLOCK = 512 };
+static uint32_t read_calls;
 static uint8_t media[COUNT][BLOCK];
 static void put(uint8_t *b, unsigned word, uint32_t n)
 {
@@ -33,6 +34,7 @@ static int rd(void *unused, uint32_t block, uint8_t out[512])
     (void)unused;
     if (block >= COUNT)
         return -1;
+    ++read_calls;
     memcpy(out, media[block], BLOCK);
     return 0;
 }
@@ -84,7 +86,9 @@ static void fixture(void)
 int main(void)
 {
     IfsOfsEfiVolume v = {0};
-    IfsOfsEfiEntry directory, file, child;
+    IfsOfsEfiEntry directory, file, child, root;
+    int result;
+    uint32_t entries;
     IfsOfsEfiDirCursor dcur = {0};
     IfsOfsEfiFileCursor fcur = {0};
     uint8_t name[31], buf[8] = {0};
@@ -111,6 +115,24 @@ int main(void)
     put(media[5], 4, COUNT + 100U);
     checksum(media[5]);
     REQUIRE(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == -1);
+    /* A checksum-valid hash-chain cycle must fail within the EFI read
+     * budget, regardless of the size of its containing partition. */
+    fixture();
+    put(media[4], 124, 4U);
+    checksum(media[4]);
+    root = ifs_ofs_efi_root(&v);
+    read_calls = 0U;
+    REQUIRE(ifs_ofs_efi_lookup(&v, &root,
+                              (const uint8_t *)"boot100", 7, &child) == -1);
+    REQUIRE(read_calls <= IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES + 2U);
+    dcur = (IfsOfsEfiDirCursor){0};
+    entries = 0U;
+    read_calls = 0U;
+    while ((result = ifs_ofs_efi_next(&v, &root, &dcur, &child, name)) == 0)
+        ++entries;
+    REQUIRE(result == -1);
+    REQUIRE(entries == IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES);
+    REQUIRE(read_calls <= 2U * (IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES + 1U));
     fixture();
     put(media[0], 0, 0x444f5301U); /* FFS must not bind as OFS. */
     REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
