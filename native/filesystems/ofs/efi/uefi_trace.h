@@ -29,7 +29,21 @@ static void ofs_trace(const char *message)
         ofs_io_out(0x3f8U, (unsigned char)*s++);
     }
 }
+static void ofs_trace_status(const char *stage, UINTN code)
+{
+    static const char hex[] = "0123456789abcdef";
+    char bytes[20];
+    unsigned int i;
+    ofs_trace(stage);
+    for (i = 0U; i < 16U; ++i)
+        bytes[i] = hex[(code >> (60U - 4U * i)) & 15U];
+    bytes[16] = '\r';
+    bytes[17] = '\n';
+    bytes[18] = 0;
+    ofs_trace(bytes);
+}
 #else
 #define ofs_trace(message) ((void)0)
+#define ofs_trace_status(stage, code) ((void)0)
 #endif
 #endif

@@ -522,10 +522,12 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
     /* Claim the supported controller as a UEFI driver, so ConnectController
      * tracks this binding and firmware can disconnect it correctly. The
      * probe above is deliberately read-only and does not claim a handle. */
+    ofs_trace("OFS OpenProtocol BlockIo begin\r\n");
     status = BS->OpenProtocol(controller, &g_block_guid,
                               (VOID **)&claimed_block,
                               self->DriverBindingHandle, controller,
                               EFI_OPEN_PROTOCOL_BY_DRIVER);
+    ofs_trace_status("OFS OpenProtocol BlockIo status 0x", status);
     if (EFI_ERROR(status)) {
         BS->FreePool(ctx);
         return status;
