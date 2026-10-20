@@ -7,7 +7,11 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
+      - 'tests/ofs_uefi_vm_probe.c'
+      - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
+      - 'scripts/build-ofs-uefi-vm-probe.sh'
+      - 'scripts/test-ofs-uefi-ovmf.sh'
       - 'scripts/gnu-efi-toolchain.sh'
       - '.github/workflows/ofs-uefi.yml'
   pull_request:
@@ -16,7 +20,11 @@ on:
       - 'native/filesystems/ofs/efi/**'
       - 'native/filesystems/ofs/core/**'
       - 'tests/ofs_efi_reader_test.c'
+      - 'tests/ofs_uefi_vm_probe.c'
+      - 'tests/ofs_uefi_vm_fixture.py'
       - 'scripts/build-ofs-efi.sh'
+      - 'scripts/build-ofs-uefi-vm-probe.sh'
+      - 'scripts/test-ofs-uefi-ovmf.sh'
       - 'scripts/gnu-efi-toolchain.sh'
       - '.github/workflows/ofs-uefi.yml'
   workflow_dispatch:
@@ -29,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Install EFI compiler and binutils
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gnu-efi gcc binutils file
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends gnu-efi gcc binutils file qemu-system-x86 ovmf dosfstools mtools gdisk
       - name: Compile independent OFS firmware driver
         shell: bash
         run: |
@@ -49,6 +57,22 @@ jobs:
             native/filesystems/ofs/core/ofs_primitives.c \
             -o "$RUNNER_TEMP/ofs-efi-reader-test"
           "$RUNNER_TEMP/ofs-efi-reader-test"
+      - name: Test actual EFI binding, file access and non-OFS rejection under OVMF
+        shell: bash
+        run: |
+          set -euo pipefail
+          OFS_EFI_TRACE=1 bash scripts/build-ofs-efi.sh dist-ofs-efi-diagnostic
+          bash scripts/test-ofs-uefi-ovmf.sh \
+            dist-ofs-efi-diagnostic/OFS_x64.efi \
+            "$RUNNER_TEMP/ofs-qemu"
+      - name: Store OVMF stage logs, including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ofs-ovmf-serial
+          path: ${{ runner.temp }}/ofs-qemu/**/serial.log
+          retention-days: 30
+          if-no-files-found: warn
       - name: Store OFS firmware artifact for controlled qualification
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

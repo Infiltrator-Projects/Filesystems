@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.45 — 2026-10-20
+
+- Add opt-in COM1 stage diagnostics around the OFS UEFI Driver Binding, firmware disk reads and filesystem installation; normal firmware drivers are unchanged by the diagnostic instrumentation.
+- Build an isolated QEMU/OVMF acceptance test with a disposable GPT disk, real EFI `LoadImage`/`ConnectController`, OFS Simple File System nested-file reads and non-OFS rejection. Archive serial logs so failures show the last reached stage.
+- Preserve OFS as experimental. Virtual firmware acceptance does not prove Dell SD-controller latency, power-cycle behaviour or Boot integration. No EFI System Partition or NVRAM is modified.
+
+
 ## 0.5.44 — 2026-10-20
 
 - Restrict experimental OFS EFI probing to logical partitions, preventing whole-disk controller handles from being treated as partition-relative DOS/0.

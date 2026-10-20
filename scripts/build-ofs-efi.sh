@@ -11,6 +11,10 @@ mkdir -p "$out"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 ofs="$root/native/filesystems/ofs"
+extra_cflags=()
+if [[ ${OFS_EFI_TRACE:-0} == 1 ]]; then
+    extra_cflags+=(-DIFS_OFS_UEFI_TRACE=1)
+fi
 for filename in uefi_driver reader; do
     gcc -Os -std=gnu11 -fpic -ffreestanding -fno-builtin -fshort-wchar \
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
@@ -18,6 +22,7 @@ for filename in uefi_driver reader; do
       -DEFIX64 '-DEFIAPI=__attribute__((ms_abi))' -DEFI_FUNCTION_WRAPPER \
       -I"$gnu_efi_include" -I"$gnu_efi_include/x86_64" -I"$gnu_efi_include/protocol" \
       -I"$ofs/efi" -I"$ofs/core" \
+      "${extra_cflags[@]}" \
       -c "$ofs/efi/$filename.c" -o "$work/$filename.o"
 done
 for filename in ofs_core ofs_primitives; do

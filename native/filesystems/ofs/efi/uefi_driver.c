@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "reader.h"
+#include "uefi_trace.h"
 
 #define OFS_MAX_NAME 30U
 #define OFS_SIGNATURE 0x4f465333U
@@ -92,8 +93,12 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         !ctx->block->Media->MediaPresent || !data ||
         (UINT64)number > ctx->block->Media->LastBlock)
         return -1;
+    ofs_trace(number == 0U ? "OFS ReadDisk boot begin\r\n" :
+                              "OFS ReadDisk metadata begin\r\n");
     result = ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId,
                                  (UINT64)number * 512ULL, 512U, data);
+    ofs_trace(EFI_ERROR(result) ? "OFS ReadDisk error\r\n" :
+                                  "OFS ReadDisk complete\r\n");
     return EFI_ERROR(result) ? -1 : 0;
 }
 
@@ -138,8 +143,13 @@ static EFI_STATUS EFIAPI ofs_supported(EFI_DRIVER_BINDING_PROTOCOL *self,
 {
     OfsController probe;
     (void)self; (void)remaining;
+    EFI_STATUS status;
+    ofs_trace("OFS Supported begin\r\n");
     BS->SetMem(&probe, sizeof(probe), 0U);
-    return ofs_probe(&probe, controller);
+    status = ofs_probe(&probe, controller);
+    ofs_trace(EFI_ERROR(status) ? "OFS Supported rejected\r\n" :
+                                  "OFS Supported accepted\r\n");
+    return status;
 }
 
 /* Operations below expose EFI read-only file handles. */
@@ -500,6 +510,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
     uint8_t root[512];
     UINTN i, count;
     (void)self; (void)remaining;
+    ofs_trace("OFS Start begin\r\n");
     status = allocate_zero(sizeof(*ctx), (VOID **)&ctx);
     if (EFI_ERROR(status))
         return status;
@@ -535,6 +546,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
             ctx->volume_label[count] = 0U;
         }
     }
+    ofs_trace("OFS filesystem protocol install begin\r\n");
     status = BS->InstallProtocolInterface(&controller, &g_fs_guid,
                                           EFI_NATIVE_INTERFACE, &ctx->filesystem);
     if (EFI_ERROR(status)) {
@@ -543,6 +555,8 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
                           self->DriverBindingHandle, controller);
         BS->FreePool(ctx);
     }
+    ofs_trace(EFI_ERROR(status) ? "OFS Start error\r\n" :
+                                  "OFS Start complete\r\n");
     return status;
 }
 
@@ -561,6 +575,7 @@ static EFI_STATUS EFIAPI ofs_stop(EFI_DRIVER_BINDING_PROTOCOL *self,
         return EFI_UNSUPPORTED;
     if (ctx->open_files != 0U)
         return EFI_ACCESS_DENIED;
+    ofs_trace("OFS Stop begin\r\n");
     status = BS->UninstallProtocolInterface(controller, &g_fs_guid, fs);
     if (!EFI_ERROR(status)) {
         EFI_STATUS close_status = BS->CloseProtocol(controller, &g_block_guid,
@@ -579,6 +594,7 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
     InitializeLib(image, table);
     g_binding.ImageHandle = image;
     g_binding.DriverBindingHandle = image;
+    ofs_trace("OFS DriverBinding install begin\r\n");
     status = BS->InstallProtocolInterface(&image, &g_binding_guid,
                                           EFI_NATIVE_INTERFACE, &g_binding);
     return status;
