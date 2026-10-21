@@ -47,6 +47,11 @@ assert "reader_error(parent->owner)" in opens
 reads = source[source.index("static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *buffer)\n{"):]
 reads = reads[:reads.index("static EFI_STATUS EFIAPI ofs_write(")]
 assert reads.count("node->owner->last_read_error = EFI_SUCCESS;") == 2
-assert reads.count("return reader_error(node->owner);") == 2
+assert reads.count("return reader_error(node->owner);") == 1
+assert "status = reader_error(node->owner);" in reads
+assert "return status;" in reads
+assert "EFI_ERROR(node->owner->last_block_status)" in reads
+assert "node->owner->last_failed_sector" in reads
+assert "node->owner->last_block_status = EFI_SUCCESS;" in reads
 assert "return EFI_VOLUME_CORRUPTED;" not in reads
 print("OFS EFI I/O-status attribution contract passed")
