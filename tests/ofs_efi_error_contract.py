@@ -10,7 +10,18 @@ source = Path("native/filesystems/ofs/efi/uefi_driver.c").read_text()
 
 read_sector = source[source.index("static int read_sector("):
                      source.index("/* Probe at most the boot block")]
-assert "result = ctx->disk->ReadDisk(" in read_sector
+assert "result = ctx->block->ReadBlocks(" in read_sector
+assert "ctx->block->Media->MediaId" in read_sector
+assert "ctx->sector_buffer" in read_sector
+assert "result = ctx->disk->ReadDisk(" not in read_sector
+assert "ctx->last_failed_sector = number;" in read_sector
+assert "ctx->last_block_status = result;" in read_sector
+assert "OFS_MAX_IO_ALIGNMENT" in source
+assert "alignment & (alignment - 1U)" in source
+assert "ctx->sector_buffer = (VOID *)" in source
+assert "release_sector_buffer(&probe);" in source
+assert source.count("release_sector_buffer(ctx);") >= 4
+assert "EFI_OPEN_PROTOCOL_BY_DRIVER" in source
 assert "if (EFI_ERROR(result))" in read_sector
 assert "ctx->last_read_error = result == EFI_VOLUME_CORRUPTED" in read_sector
 assert "? EFI_DEVICE_ERROR : result;" in read_sector

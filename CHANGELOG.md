@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.49 — 2026-10-21
+
+- Respond to physical Dell Latitude 5550 OFS evidence: Boot 0.1.28 read the first 524,288 bytes of vmlinuz but the following 64 KiB EFI file transfer failed with EFI_DEVICE_ERROR.
+- Use aligned partition-relative BlockIo.ReadBlocks instead of unnecessary DiskIo.ReadDisk for canonical 512-byte OFS sectors, with bounded reusable alignment buffer and explicit probe/start/stop cleanup. Preserve DiskIo BY_DRIVER driver-binding ownership from prior OVMF validation.
+- Print the failing firmware sector and raw BlockIo status on file-read transport errors; retain strict on-disk validation and format-versus-I/O error attribution.
+- Update and run the EFI error contract and OVMF driver regression workflow. Full physical Dell reads and Linux boot remain unverified pending retest.
+
+
 ## 0.5.48 — 2026-10-21
 
 - Guard OFS superblock commits against invalid root buffers following storage-device loss.

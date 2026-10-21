@@ -16,6 +16,7 @@
 #define OFS_MAX_NAME 30U
 #define OFS_SIGNATURE 0x4f465333U
 #define OFS_FILE_SIGNATURE 0x4f464633U
+#define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
 
 typedef struct OfsController OfsController;
 typedef struct OfsFile OfsFile;
@@ -29,7 +30,11 @@ struct OfsController {
     IfsOfsEfiVolume volume;
     CHAR16 volume_label[OFS_MAX_NAME + 1U];
     UINTN open_files;
-    EFI_STATUS last_read_error; /* Status from the active EFI disk read. */
+    EFI_STATUS last_read_error; /* Error of the current canonical reader operation. */
+    EFI_STATUS last_block_status; /* Unmodified BlockIo error for diagnosis. */
+    UINT32 last_failed_sector; /* Partition-relative 512-byte block number. */
+    VOID *sector_allocation; /* Owned pool allocation, possibly unaligned. */
+    VOID *sector_buffer; /* Aligned pointer into sector_allocation. */
 };
 
 struct OfsFile {
@@ -96,13 +101,46 @@ static EFI_STATUS reader_error(const OfsController *ctx)
         ? ctx->last_read_error : EFI_VOLUME_CORRUPTED;
 }
 
+/* The portable OFS reader uses 512-byte stack arrays, which do not meet
+ * arbitrary firmware DMA alignment requirements. Keep exactly one bounded,
+ * aligned sector buffer per controller. Supported() releases its probe buffer. */
+static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
+{
+    EFI_STATUS status;
+    UINTN alignment, address;
+    if (ctx->sector_buffer)
+        return EFI_SUCCESS;
+    alignment = (UINTN)ctx->block->Media->IoAlign;
+    if (alignment == 0U)
+        alignment = 1U;
+    if ((alignment & (alignment - 1U)) != 0U ||
+        alignment > OFS_MAX_IO_ALIGNMENT)
+        return EFI_UNSUPPORTED;
+    status = allocate_zero(512U + alignment - 1U, &ctx->sector_allocation);
+    if (EFI_ERROR(status))
+        return status;
+    address = (UINTN)ctx->sector_allocation;
+    ctx->sector_buffer = (VOID *)((address + alignment - 1U) &
+                                  ~(alignment - 1U));
+    return EFI_SUCCESS;
+}
+
+static VOID release_sector_buffer(OfsController *ctx)
+{
+    if (ctx && ctx->sector_allocation) {
+        BS->FreePool(ctx->sector_allocation);
+        ctx->sector_allocation = NULL;
+        ctx->sector_buffer = NULL;
+    }
+}
+
 static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
 {
     OfsController *ctx = (OfsController *)opaque;
     EFI_STATUS result;
     if (!ctx)
         return -1;
-    if (!ctx->disk || !data || !ctx->block || !ctx->block->Media) {
+    if (!ctx->block || !ctx->block->Media || !data) {
         ctx->last_read_error = EFI_DEVICE_ERROR;
         return -1;
     }
@@ -114,19 +152,29 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         ctx->last_read_error = EFI_VOLUME_CORRUPTED;
         return -1;
     }
-    ofs_trace(number == 0U ? "OFS ReadDisk boot begin\r\n" :
-                              "OFS ReadDisk metadata begin\r\n");
-    result = ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId,
-                                 (UINT64)number * 512ULL, 512U, data);
-    ofs_trace(EFI_ERROR(result) ? "OFS ReadDisk error\r\n" :
-                                  "OFS ReadDisk complete\r\n");
+    result = ensure_sector_buffer(ctx);
     if (EFI_ERROR(result)) {
-        /* A DiskIo transport error must not be presented as corrupt OFS
-         * metadata even if the lower-level driver used that status name. */
+        ctx->last_read_error = result;
+        return -1;
+    }
+    ofs_trace(number == 0U ? "OFS ReadBlocks boot begin\r\n" :
+                              "OFS ReadBlocks metadata begin\r\n");
+    /* For aligned full-sector accesses BlockIo is the authoritative firmware
+     * transport. Retain DiskIo BY_DRIVER ownership; PartitionDxe may have
+     * already claimed BlockIo, as demonstrated by the OVMF binding test. */
+    result = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
+                                    (EFI_LBA)number, 512U, ctx->sector_buffer);
+    ofs_trace(EFI_ERROR(result) ? "OFS ReadBlocks error\r\n" :
+                                  "OFS ReadBlocks complete\r\n");
+    if (EFI_ERROR(result)) {
+        ctx->last_failed_sector = number;
+        ctx->last_block_status = result;
+        /* A transport failure is not proof that OFS metadata is corrupt. */
         ctx->last_read_error = result == EFI_VOLUME_CORRUPTED
             ? EFI_DEVICE_ERROR : result;
         return -1;
     }
+    BS->CopyMem(data, ctx->sector_buffer, 512U);
     return 0;
 }
 
@@ -175,6 +223,7 @@ static EFI_STATUS EFIAPI ofs_supported(EFI_DRIVER_BINDING_PROTOCOL *self,
     ofs_trace("OFS Supported begin\r\n");
     BS->SetMem(&probe, sizeof(probe), 0U);
     status = ofs_probe(&probe, controller);
+    release_sector_buffer(&probe);
     ofs_trace(EFI_ERROR(status) ? "OFS Supported rejected\r\n" :
                                   "OFS Supported accepted\r\n");
     return status;
@@ -422,11 +471,17 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
         return EFI_SUCCESS;
     }
     node->owner->last_read_error = EFI_SUCCESS;
+    node->owner->last_block_status = EFI_SUCCESS;
     result = ifs_ofs_efi_read(&node->owner->volume, &node->entry,
               (uint32_t)node->position, buffer, count, &node->cursor);
     if (result != 0) {
         *length = 0U;
-        return reader_error(node->owner);
+        status = reader_error(node->owner);
+        if (EFI_ERROR(node->owner->last_block_status))
+            Print(L"OFS EFI: firmware block read failed at sector %u: %r\n",
+                  node->owner->last_failed_sector,
+                  node->owner->last_block_status);
+        return status;
     }
     node->position += count;
     *length = count;
@@ -547,6 +602,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
         return status;
     status = ofs_probe(ctx, controller);
     if (EFI_ERROR(status)) {
+        release_sector_buffer(ctx);
         BS->FreePool(ctx);
         return status;
     }
@@ -561,6 +617,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
                               EFI_OPEN_PROTOCOL_BY_DRIVER);
     ofs_trace_status("OFS OpenProtocol DiskIo status 0x", status);
     if (EFI_ERROR(status)) {
+        release_sector_buffer(ctx);
         BS->FreePool(ctx);
         return status;
     }
@@ -587,6 +644,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
         ctx->signature = 0U;
         BS->CloseProtocol(controller, &g_disk_guid,
                           self->DriverBindingHandle, controller);
+        release_sector_buffer(ctx);
         BS->FreePool(ctx);
     }
     ofs_trace(EFI_ERROR(status) ? "OFS Start error\r\n" :
@@ -615,6 +673,7 @@ static EFI_STATUS EFIAPI ofs_stop(EFI_DRIVER_BINDING_PROTOCOL *self,
         EFI_STATUS close_status = BS->CloseProtocol(controller, &g_disk_guid,
                                    self->DriverBindingHandle, controller);
         ctx->signature = 0U;
+        release_sector_buffer(ctx);
         BS->FreePool(ctx);
         if (EFI_ERROR(close_status))
             return close_status;

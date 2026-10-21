@@ -80,3 +80,27 @@ builds and exercises the EFI driver but cannot prove the Dell's physical
 firmware DiskIo implementation or kernel handoff succeeds. The 0.5.46
 executable already installed on a physical machine is not automatically
 replaced by changes to this repository.
+
+
+## Physical Dell BlockIo transport change — 0.5.49
+
+On 21 October 2026, Dell Latitude 5550 firmware bound OFSBOOT and
+successfully read eight consecutive 64 KiB chunks of a 17,029,512-byte
+kernel. The next EFI file-protocol Read (starting at offset 524,288) returned
+EFI_DEVICE_ERROR. This is a **failing transfer start offset**, not proof
+that the exact disk sector is corrupt. The same source passed a complete
+Linux-hosted canonical-reader comparison.
+
+The driver formerly used DiskIo.ReadDisk for each aligned 512-byte sector.
+It now uses partition-relative BlockIo.ReadBlocks with a single reusable,
+Media.IoAlign-compliant sector buffer, avoiding the arbitrary-byte DiskIo
+transport layer. Supported() releases its probe buffer, and Start failure,
+successful Stop and protocol-install errors release the controller buffer.
+DiskIo remains claimed BY_DRIVER: the partition driver may already own
+BlockIo, and claiming it is known to fail under OVMF. Filesystem parsing,
+error attribution and read-only semantics are unchanged.
+
+On an actual file-read failure from BlockIo, the driver prints the raw
+firmware status and partition-relative failing sector. The transport change
+and diagnostic require physical Dell qualification; neither virtual tests
+nor host data comparison proves complete Linux boot.

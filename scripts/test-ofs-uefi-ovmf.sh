@@ -65,7 +65,7 @@ for mode in supported unsupported; do
     if [[ $mode == supported ]]; then
         grep -Fq "OFS_VM_PASS nested read and Stop/rebind" "$serial"
         if [[ $profile == diagnostic ]]; then
-            grep -Fq "OFS ReadDisk complete" "$serial"
+            grep -Fq "OFS ReadBlocks complete" "$serial"
         fi
     else
         grep -Fq "OFS_VM_PASS unsupported media rejected" "$serial"
