@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.48 — 2026-10-21
+
+- Guard OFS superblock commits against invalid root buffers following storage-device loss.
+- Improve synchronous superblock error propagation and delayed-work failure reporting.
+- Build-validated the Linux OFS module against kernel 7.0.0-38-generic.
+- Physical unexpected-removal recovery and full CI qualification remain pending.
+
 ## 0.5.47 — 2026-10-20
 
 - Correct EFI directory/open/file-read error attribution: firmware DiskIo read failures and media removal now propagate as I/O/media statuses rather than being unconditionally reported as OFS volume corruption. A physical out-of-range metadata pointer or failed canonical OFS validation still reports EFI_VOLUME_CORRUPTED. No implicit retries or relaxed validation.
