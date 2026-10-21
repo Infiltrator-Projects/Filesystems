@@ -57,26 +57,35 @@ static int affs_show_options(struct seq_file *output, struct dentry *root);
 static int affs_remount(struct super_block *sb, int *flags, char *data);
 #endif
 
-static void affs_commit_super(struct super_block *sb, bool wait)
+/* Device removal can invalidate the cached root block while ->sync_fs
+ * is called by fs_bdev_mark_dead(). Never modify or dirty an invalidated
+ * buffer: mark_buffer_dirty() requires BH_Uptodate. Hold BH_Lock across
+ * validation, checksum update and dirtying to exclude an I/O completion
+ * clearing BH_Uptodate between the check and mark_buffer_dirty(). */
+static int affs_commit_super(struct super_block *sb, bool wait)
 {
     struct affs_sb_info *sbi = AFFS_SB(sb);
     struct buffer_head *bh;
     struct affs_root_tail *tail;
 
     if (!sbi || !sbi->s_root_bh || sb_rdonly(sb))
-        return;
+        return 0;
 
     bh = sbi->s_root_bh;
-    tail = AFFS_ROOT_TAIL(sb, bh);
-
     lock_buffer(bh);
+    if (!buffer_uptodate(bh)) {
+        unlock_buffer(bh);
+        return -EIO;
+    }
+
+    tail = AFFS_ROOT_TAIL(sb, bh);
     affs_secs_to_datestamp(ktime_get_real_seconds(), &tail->disk_change);
     affs_fix_checksum(sb, bh);
+    mark_buffer_dirty(bh);
     unlock_buffer(bh);
 
-    mark_buffer_dirty(bh);
-    if (wait)
-        sync_dirty_buffer(bh);
+    /* A completed write's failure must reach synchronous filesystem users. */
+    return wait ? sync_dirty_buffer(bh) : 0;
 }
 
 static void affs_put_super(struct super_block *sb)
@@ -89,20 +98,22 @@ static void affs_put_super(struct super_block *sb)
 
 static int affs_sync_fs(struct super_block *sb, int wait)
 {
-    affs_commit_super(sb, wait != 0);
-    return 0;
+    return affs_commit_super(sb, wait != 0);
 }
 
 static void ifs_ofs_flush_super_work(struct work_struct *work)
 {
     struct affs_sb_info *sbi =
         container_of(work, struct affs_sb_info, sb_work.work);
+    int status;
 
     spin_lock(&sbi->work_lock);
     sbi->work_queued = 0;
     spin_unlock(&sbi->work_lock);
 
-    affs_commit_super(sbi->sb, true);
+    status = affs_commit_super(sbi->sb, true);
+    if (status)
+        pr_warn_ratelimited("ofs: superblock commit failed: %d\n", status);
 }
 
 void affs_mark_sb_dirty(struct super_block *sb)
