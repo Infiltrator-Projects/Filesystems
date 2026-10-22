@@ -17,6 +17,7 @@
 #define OFS_SIGNATURE 0x4f465333U
 #define OFS_FILE_SIGNATURE 0x4f464633U
 #define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
+#define OFS_READAHEAD_SECTORS 8U
 
 typedef struct OfsController OfsController;
 typedef struct OfsFile OfsFile;
@@ -35,6 +36,11 @@ struct OfsController {
     UINT32 last_failed_sector; /* Partition-relative 512-byte block number. */
     VOID *sector_allocation; /* Owned pool allocation, possibly unaligned. */
     VOID *sector_buffer; /* Aligned pointer into sector_allocation. */
+    UINT32 cached_first_sector;
+    UINT32 cached_sector_count;
+    UINT32 cached_media_id;
+    BOOLEAN prefetch_in_file_read;
+    BOOLEAN prefetch_rejected; /* Firmware declined a multi-sector request. */
 };
 
 struct OfsFile {
@@ -116,7 +122,8 @@ static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
     if ((alignment & (alignment - 1U)) != 0U ||
         alignment > OFS_MAX_IO_ALIGNMENT)
         return EFI_UNSUPPORTED;
-    status = allocate_zero(512U + alignment - 1U, &ctx->sector_allocation);
+    status = allocate_zero(OFS_READAHEAD_SECTORS * 512U + alignment - 1U,
+                           &ctx->sector_allocation);
     if (EFI_ERROR(status))
         return status;
     address = (UINTN)ctx->sector_allocation;
@@ -131,6 +138,7 @@ static VOID release_sector_buffer(OfsController *ctx)
         BS->FreePool(ctx->sector_allocation);
         ctx->sector_allocation = NULL;
         ctx->sector_buffer = NULL;
+        ctx->cached_sector_count = 0U;
     }
 }
 
@@ -157,6 +165,51 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
     if (EFI_ERROR(result)) {
         ctx->last_read_error = result;
         return -1;
+    }
+    /* OFS block chains are not assumed contiguous. During a file read,
+     * opportunistically fetch eight neighbouring physical sectors. Each
+     * consumed block still passes the canonical OFS checksums and links.
+     * A rejected bulk read falls back to the exact requested sector. */
+    if (ctx->prefetch_in_file_read && ctx->cached_sector_count != 0U &&
+        ctx->cached_media_id == ctx->block->Media->MediaId &&
+        number >= ctx->cached_first_sector &&
+        number - ctx->cached_first_sector < ctx->cached_sector_count) {
+        BS->CopyMem(data, (UINT8 *)ctx->sector_buffer +
+                    (number - ctx->cached_first_sector) * 512U, 512U);
+        return 0;
+    }
+    ctx->cached_sector_count = 0U;
+    if (ctx->prefetch_in_file_read && !ctx->prefetch_rejected) {
+        UINT64 available = ctx->block->Media->LastBlock - (UINT64)number + 1ULL;
+        UINTN sectors = available < OFS_READAHEAD_SECTORS
+            ? (UINTN)available : OFS_READAHEAD_SECTORS;
+        if (sectors > 1U) {
+            result = ctx->block->ReadBlocks(ctx->block,
+                    ctx->block->Media->MediaId, (EFI_LBA)number,
+                    sectors * 512U, ctx->sector_buffer);
+            if (!EFI_ERROR(result)) {
+                ctx->cached_first_sector = number;
+                ctx->cached_sector_count = (UINT32)sectors;
+                ctx->cached_media_id = ctx->block->Media->MediaId;
+                BS->CopyMem(data, ctx->sector_buffer, 512U);
+                return 0;
+            }
+            /* Do not mask media changes, access denial or other fatal
+             * errors by attempting a different read size. */
+            if (result != EFI_DEVICE_ERROR &&
+                result != EFI_BAD_BUFFER_SIZE &&
+                result != EFI_INVALID_PARAMETER &&
+                result != EFI_UNSUPPORTED) {
+                ctx->last_failed_sector = number;
+                ctx->last_block_status = result;
+                ctx->last_read_error = result == EFI_VOLUME_CORRUPTED
+                    ? EFI_DEVICE_ERROR : result;
+                return -1;
+            }
+            /* The error may concern a prefetched sector, so retry only
+             * the requested one; permanently disable speculative I/O. */
+            ctx->prefetch_rejected = TRUE;
+        }
     }
     ofs_trace(number == 0U ? "OFS ReadBlocks boot begin\r\n" :
                               "OFS ReadBlocks metadata begin\r\n");
@@ -485,8 +538,10 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
     }
     node->owner->last_read_error = EFI_SUCCESS;
     node->owner->last_block_status = EFI_SUCCESS;
+    node->owner->prefetch_in_file_read = TRUE;
     result = ifs_ofs_efi_read(&node->owner->volume, &node->entry,
               (uint32_t)node->position, buffer, count, &node->cursor);
+    node->owner->prefetch_in_file_read = FALSE;
     if (result != 0) {
         *length = 0U;
         status = reader_error(node->owner);

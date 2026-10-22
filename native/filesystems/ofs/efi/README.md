@@ -125,3 +125,28 @@ and final raw firmware status. Canonical OFS checks are unchanged,
 the controller is never reset, and no disk writes are performed.
 This is a targeted mitigation, not proof of Dell firmware reliability
 or successful kernel/initramfs loading.
+
+
+## Dell OFS EFI read-ahead experiment — 0.5.51
+
+The Dell's Boot 0.1.30 memory-first test remained at 0% on a progress
+indicator updated only every five percent. This did not establish that the
+initial file read transferred zero bytes; physical qualification is incomplete.
+
+For EFI file reads only, the adapter can fetch up to eight adjacent 512-byte
+physical sectors into one aligned, reusable controller buffer. Each OFS block
+is still individually checked by the canonical linked-block reader. No
+assumption of contiguity is made; a cache miss follows its actual next-block
+pointer. Probing and directory reads remain single-sector operations.
+
+Firmware may reject a larger speculative request. For device/size-rejection
+errors, readahead is then disabled for that controller and the driver reads
+only the needed 512-byte sector using the existing one-retry-on-device-error
+policy. Non-retryable media change, media loss and access failures propagate
+without fallback. No on-disk writes, alternate OFS parser or Boot-side
+filesystem handling is added.
+
+A passed source contract or OVMF virtual boot does not establish improved
+throughput or reliable large-file reads on the Dell's SD controller. Nor can
+any driver-side progress display interrupt a blocked synchronous firmware
+BlockIo operation. Physical testing remains necessary.

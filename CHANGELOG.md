@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.51 — 2026-10-22
+
+- Opportunistically fetch up to eight adjacent 512-byte EFI BlockIo sectors during OFS file reads, caching by sector and MediaId while preserving canonical OFS checksums and linked-block traversal.
+- On firmware device/size rejection of speculative I/O, disable read-ahead for the controller and use the existing precise single-sector read and bounded retry. Preserve hard failure on media changes, access errors and real data-validation faults.
+- Extend EFI source-contract checks. Dell Latitude 5550 physical kernel-read throughput and Linux handoff remain unverified.
+
+
 ## 0.5.50 — 2026-10-22
 
 - Record physical Dell Latitude 5550 EFI `BlockIo` `EFI_DEVICE_ERROR` failures on distinct partition-relative sectors 125092067 and 125093772; Boot 0.1.28 reached 1,310,720 bytes before its fallback transfer failed. The status is a transport error, not proof of invalid OFS blocks.

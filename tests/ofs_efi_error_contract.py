@@ -16,7 +16,16 @@ assert "for (attempt = 0U; attempt < 2U; ++attempt)" in read_sector
 assert "result != EFI_DEVICE_ERROR" in read_sector
 assert "!ctx->block->Media->MediaPresent || attempt != 0U" in read_sector
 assert "BS->Stall(1000U);" in read_sector
-assert read_sector.count("ctx->block->ReadBlocks(") == 1
+assert read_sector.count("ctx->block->ReadBlocks(") == 2
+assert "#define OFS_READAHEAD_SECTORS 8U" in source
+assert "ctx->prefetch_in_file_read && !ctx->prefetch_rejected" in read_sector
+assert "ctx->cached_media_id == ctx->block->Media->MediaId" in read_sector
+assert "ctx->cached_sector_count = 0U;" in read_sector
+assert "sectors * 512U, ctx->sector_buffer" in read_sector
+assert "ctx->prefetch_rejected = TRUE;" in read_sector
+assert "result != EFI_BAD_BUFFER_SIZE" in read_sector
+assert "result != EFI_INVALID_PARAMETER" in read_sector
+assert "result != EFI_UNSUPPORTED" in read_sector
 assert "ctx->sector_buffer" in read_sector
 assert "result = ctx->disk->ReadDisk(" not in read_sector
 assert "ctx->last_failed_sector = number;" in read_sector
@@ -58,5 +67,7 @@ assert "return status;" in reads
 assert "EFI_ERROR(node->owner->last_block_status)" in reads
 assert "node->owner->last_failed_sector" in reads
 assert "node->owner->last_block_status = EFI_SUCCESS;" in reads
+assert "node->owner->prefetch_in_file_read = TRUE;" in reads
+assert "node->owner->prefetch_in_file_read = FALSE;" in reads
 assert "return EFI_VOLUME_CORRUPTED;" not in reads
 print("OFS EFI I/O-status attribution contract passed")
