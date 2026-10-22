@@ -17,7 +17,7 @@
 #define OFS_SIGNATURE 0x4f465333U
 #define OFS_FILE_SIGNATURE 0x4f464633U
 #define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
-#define OFS_READAHEAD_SECTORS 8U
+#define OFS_SLOW_READ_REPORT_LIMIT 12U
 
 typedef struct OfsController OfsController;
 typedef struct OfsFile OfsFile;
@@ -36,11 +36,7 @@ struct OfsController {
     UINT32 last_failed_sector; /* Partition-relative 512-byte block number. */
     VOID *sector_allocation; /* Owned pool allocation, possibly unaligned. */
     VOID *sector_buffer; /* Aligned pointer into sector_allocation. */
-    UINT32 cached_first_sector;
-    UINT32 cached_sector_count;
-    UINT32 cached_media_id;
-    BOOLEAN prefetch_in_file_read;
-    UINTN prefetch_sectors; /* Maximum bulk window; 1 disables prefetch. */
+    UINTN slow_read_reports; /* Bounded, per-controller firmware diagnostics. */
 };
 
 struct OfsFile {
@@ -122,7 +118,7 @@ static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
     if ((alignment & (alignment - 1U)) != 0U ||
         alignment > OFS_MAX_IO_ALIGNMENT)
         return EFI_UNSUPPORTED;
-    status = allocate_zero(OFS_READAHEAD_SECTORS * 512U + alignment - 1U,
+    status = allocate_zero(512U + alignment - 1U,
                            &ctx->sector_allocation);
     if (EFI_ERROR(status))
         return status;
@@ -138,8 +134,41 @@ static VOID release_sector_buffer(OfsController *ctx)
         BS->FreePool(ctx->sector_allocation);
         ctx->sector_allocation = NULL;
         ctx->sector_buffer = NULL;
-        ctx->cached_sector_count = 0U;
     }
+}
+
+/* Only an actual OFS block is requested. Physical Dell tests showed
+ * speculative 8-, 4- and 2-sector requests fail with EFI_DEVICE_ERROR,
+ * adding repeated 30-second delays before their single-sector fallbacks.
+ * Observations are bounded to the first twelve slow firmware calls so an
+ * unusable controller cannot flood the pre-boot console indefinitely.
+ * RTC timing is diagnostic, not a deadline: ReadBlocks is synchronous. */
+static EFI_STATUS read_one_block(OfsController *ctx, UINT32 number, UINTN attempt)
+{
+    EFI_TIME before, after;
+    EFI_STATUS status;
+    BOOLEAN timed = FALSE;
+    UINTN start, end, elapsed;
+
+    if (ctx->slow_read_reports < OFS_SLOW_READ_REPORT_LIMIT)
+        timed = !EFI_ERROR(RT->GetTime(&before, NULL));
+    status = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
+                                    (EFI_LBA)number, 512U, ctx->sector_buffer);
+    if (!timed || EFI_ERROR(RT->GetTime(&after, NULL)))
+        return status;
+    start = (UINTN)before.Hour * 3600U + (UINTN)before.Minute * 60U +
+            (UINTN)before.Second;
+    end = (UINTN)after.Hour * 3600U + (UINTN)after.Minute * 60U +
+          (UINTN)after.Second;
+    if (end < start)
+        end += 86400U;
+    elapsed = end - start;
+    if (elapsed >= 2U && elapsed <= 3600U) {
+        ++ctx->slow_read_reports;
+        Print(L"OFS EFI: sector %u, attempt %u: %u sec, %r\n",
+              number, attempt + 1U, elapsed, status);
+    }
+    return status;
 }
 
 static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
@@ -166,84 +195,19 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         ctx->last_read_error = result;
         return -1;
     }
-    /* OFS block chains are not assumed contiguous. During a file read,
-     * opportunistically fetch eight neighbouring physical sectors. Each
-     * consumed block still passes the canonical OFS checksums and links.
-     * A rejected bulk read falls back to the exact requested sector. */
-    if (ctx->prefetch_in_file_read && ctx->cached_sector_count != 0U &&
-        ctx->cached_media_id == ctx->block->Media->MediaId &&
-        number >= ctx->cached_first_sector &&
-        number - ctx->cached_first_sector < ctx->cached_sector_count) {
-        BS->CopyMem(data, (UINT8 *)ctx->sector_buffer +
-                    (number - ctx->cached_first_sector) * 512U, 512U);
-        return 0;
-    }
-    ctx->cached_sector_count = 0U;
-    if (ctx->prefetch_in_file_read && ctx->prefetch_sectors > 1U) {
-        UINT64 available = ctx->block->Media->LastBlock - (UINT64)number + 1ULL;
-        UINTN sectors = available < ctx->prefetch_sectors
-            ? (UINTN)available : ctx->prefetch_sectors;
-        if (sectors > 1U) {
-            result = ctx->block->ReadBlocks(ctx->block,
-                    ctx->block->Media->MediaId, (EFI_LBA)number,
-                    sectors * 512U, ctx->sector_buffer);
-            if (!EFI_ERROR(result)) {
-                ctx->cached_first_sector = number;
-                ctx->cached_sector_count = (UINT32)sectors;
-                ctx->cached_media_id = ctx->block->Media->MediaId;
-                BS->CopyMem(data, ctx->sector_buffer, 512U);
-                return 0;
-            }
-            /* Do not mask media changes, access denial or other fatal
-             * errors by attempting a different read size. */
-            if (result != EFI_DEVICE_ERROR &&
-                result != EFI_BAD_BUFFER_SIZE &&
-                result != EFI_INVALID_PARAMETER &&
-                result != EFI_UNSUPPORTED) {
-                ctx->last_failed_sector = number;
-                ctx->last_block_status = result;
-                ctx->last_read_error = result == EFI_VOLUME_CORRUPTED
-                    ? EFI_DEVICE_ERROR : result;
-                return -1;
-            }
-            /* A speculative failure may concern an unneeded neighbour,
-             * not the requested sector. Size and protocol rejections forbid
-             * further batching. Transient DEVICE_ERROR progressively shrinks
-             * the controller's window (8 -> 4 -> 2 -> 1) rather than forcing
-             * an immediate permanent drop to single-sector I/O. */
-            if (result == EFI_DEVICE_ERROR)
-                ctx->prefetch_sectors /= 2U;
-            else
-                ctx->prefetch_sectors = 1U;
-            Print(L"OFS EFI: %u-sector prefetch returned %r; next batch %u sectors\n",
-                  sectors, result, ctx->prefetch_sectors);
-        }
-    }
-    ofs_trace(number == 0U ? "OFS ReadBlocks boot begin\r\n" :
-                              "OFS ReadBlocks metadata begin\r\n");
-    /* For aligned full-sector accesses BlockIo is the authoritative firmware
-     * transport. Retain DiskIo BY_DRIVER ownership; PartitionDxe may have
-     * already claimed BlockIo, as demonstrated by the OVMF binding test.
-     *
-     * Different failing sectors on successive Dell SD reads suggest a
-     * transient controller error, not demonstrated OFS corruption. Retry
-     * EFI_DEVICE_ERROR once, and only while media is present. Do not retry
-     * media changes, unsupported operations or metadata-validation errors. */
+    /* Keep retries limited to one actual 512-byte block request.
+     * No speculative neighbouring sectors, controller resets or writes. */
     for (attempt = 0U; attempt < 2U; ++attempt) {
-        result = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
-                                        (EFI_LBA)number, 512U, ctx->sector_buffer);
+        result = read_one_block(ctx, number, attempt);
         if (result != EFI_DEVICE_ERROR ||
             !ctx->block->Media->MediaPresent || attempt != 0U)
             break;
         ofs_trace("OFS ReadBlocks device error; retrying once\r\n");
         BS->Stall(1000U);
     }
-    ofs_trace(EFI_ERROR(result) ? "OFS ReadBlocks error\r\n" :
-                                  "OFS ReadBlocks complete\r\n");
     if (EFI_ERROR(result)) {
         ctx->last_failed_sector = number;
         ctx->last_block_status = result;
-        /* A transport failure is not proof that OFS metadata is corrupt. */
         ctx->last_read_error = result == EFI_VOLUME_CORRUPTED
             ? EFI_DEVICE_ERROR : result;
         return -1;
@@ -546,10 +510,8 @@ static EFI_STATUS EFIAPI ofs_read(EFI_FILE_PROTOCOL *file, UINTN *length, VOID *
     }
     node->owner->last_read_error = EFI_SUCCESS;
     node->owner->last_block_status = EFI_SUCCESS;
-    node->owner->prefetch_in_file_read = TRUE;
     result = ifs_ofs_efi_read(&node->owner->volume, &node->entry,
               (uint32_t)node->position, buffer, count, &node->cursor);
-    node->owner->prefetch_in_file_read = FALSE;
     if (result != 0) {
         *length = 0U;
         status = reader_error(node->owner);
@@ -676,7 +638,6 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
     status = allocate_zero(sizeof(*ctx), (VOID **)&ctx);
     if (EFI_ERROR(status))
         return status;
-    ctx->prefetch_sectors = OFS_READAHEAD_SECTORS;
     status = ofs_probe(ctx, controller);
     if (EFI_ERROR(status)) {
         release_sector_buffer(ctx);

@@ -174,3 +174,31 @@ No media modifications, allocation policy changes, filesystem parser
 replacement or unbounded retries are introduced. Virtual build/OVMF checks
 cannot establish real Dell throughput or whether a firmware synchronous
 read can still take 30-90 seconds. Physical qualification is outstanding.
+
+
+## Physical Dell failure of speculative reads and single-block timing — 0.5.53
+
+In the 0.5.52 physical Dell Latitude 5550 test, EFI BlockIo returned
+DEVICE_ERROR for attempted 8-, 4-, and 2-sector read-ahead. The 55% kernel
+transfer point took 959 seconds versus 573 seconds for 0.5.51, and the
+30-60-second pauses continued after the driver had fallen back to the
+single-sector path. The 0.5.52 speculative policy demonstrably worsened
+startup on this device; no speculative I/O size is currently qualified.
+
+Version 0.5.53 therefore removes the speculative read-ahead and its cache
+state entirely. Each canonical OFS block is fetched exactly as requested
+through the existing aligned, partition-relative, 512-byte BlockIo transport.
+It preserves the bounded single retry on EFI_DEVICE_ERROR, including the
+raw EFI status and actual failed sector. Canonical validation, read-only
+protocol semantics, and the Linux kernel image/initramfs ownership boundary
+are unchanged.
+
+A bounded firmware transport diagnostic now times each *actual* ReadBlocks
+call with UEFI GetTime, reporting the first twelve calls that take at least
+2 seconds (sector, attempt, elapsed and status). It treats an unavailable or
+inconsistent clock as an unavailable measurement, not an I/O failure. It
+cannot interrupt a synchronous firmware operation. The two GetTime calls
+per block add some measurement cost; this build is for problem isolation,
+not a claim of optimized throughput. When no further slow reports are
+allowed, the timing calls are suppressed. Virtual CI and QEMU tests cannot
+qualify physical Dell latency.

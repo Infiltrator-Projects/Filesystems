@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.53 — 2026-10-22
+
+- Remove speculative EFI BlockIo read-ahead: physical Dell 0.5.52 testing demonstrated DEVICE_ERROR at 8, 4, and 2 sectors, with 30-second stalls before falling back to one-sector reads. The failed optimisation also made the measured 55% kernel transfer 386 seconds slower than 0.5.51.
+- Restore a single required 512-byte OFS block per firmware call, preserving canonical linked-block traversal, checksum validation, aligned DMA storage, exact failed-sector reporting and the existing one-retry bound.
+- Diagnose slow actual-sector transfers: capture EFI RTC times around each BlockIo call, report calls taking at least two seconds with sector, attempt, elapsed seconds and raw status, capped at twelve reports per controller. This observes synchronous firmware latency without pretending to interrupt it.
+- No changes to disk format, persistent data, boot configuration or external EFI filesystem interfaces. Physical throughput and full Linux EFI handoff remain unverified.
+
+
 ## 0.5.52 — 2026-10-22
 
 - Avoid permanently disabling eight-sector EFI read-ahead after a single speculative EFI_DEVICE_ERROR. Step down the per-controller batch 8 to 4 to 2 to 1 sectors for successive transient bulk failures, retaining a useful smaller batch when supported.
