@@ -101,7 +101,9 @@ def check(stock_only=False, modules_root=Path("/lib/modules"), enabled=None):
             assert name("filesystem", kind, version, False) == kind
             continue
         qualifier = f"version {version}" if kind in ("sfs", "sfs2") else version
-        assert name("filesystem", kind, version, True) == f"{long_name} ({qualifier})"
+        actual = name("filesystem", kind, version, True)
+        expected = f"{long_name} ({qualifier})"
+        assert actual == expected, (kind, version, actual, expected)
         assert name("filesystem", kind, version, False) == short_name
         assert name("filesystem", kind, "", True) == long_name
         assert name("filesystem", kind, "", False) == short_name

@@ -497,10 +497,14 @@ void install_packages_async(const std::vector<std::string>& packages,
         return;
     }
 
+    // Catalogue membership constrains requested packages, not APT's resolver.
+    // Installation grants no removal approval: enforce that at the final
+    // transaction rather than trusting an earlier simulation of its plan.
     std::vector<std::string> arguments = {
         kAptGet,
         "install",
-        "-y"
+        "-y",
+        "--no-remove"
     };
     arguments.insert(arguments.end(), packages.begin(), packages.end());
 

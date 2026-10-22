@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.55 — 2026-10-23
+
+- Refuse package removals during support installation, native-module build-prerequisite installation and standalone package installation. APT enforces `--no-remove` against its actual transaction, so a conflict cannot silently turn an installation into removal of unrelated applications or bypass the wrapper's earlier simulation.
+- Extend the private real-APT transaction regression to capture all three production installation commands. Verify that ordinary installations reach unpack while conflicting plans stop before any dpkg mutation; retain the existing exact-removal approval and package-protection cases.
+- Update the maintained installation-authority and validation contracts. This correction does not complete the recorded EXT3/EXT4 implementation migration or qualify physical OFS boot, writable PFS3 or Windows runtime support.
+
 ## 0.5.54 — 2026-10-22
 
 - Return OFS/FFS resize failures through the VFS setattr boundary instead of reporting success after restoring the previous size. Stop subsequent attribute updates on failure and preserve last-release resize status.

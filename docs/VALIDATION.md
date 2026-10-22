@@ -47,11 +47,19 @@ on both 512-byte and 4096-byte-block volumes after allocation, remount and
 truncate. Allocator/mapping counts remain in
 filesystem-block units; Linux `i_blocks` is always in 512-byte sectors.
 
-The package-removal transaction test uses the real installed-helper target
+The package transaction test uses the real installed-removal-guard target
 and real APT against a private dpkg database, package lists and archives.
 Its inert dpkg recorder refuses mutation. It checks that a dependency added
 after approval or newly protected package cannot reach a removal command,
-while an exact approved set can. No host package state is used as a fixture.
+while an exact approved set can. It also captures installation argv from
+the production C++ support-installation body, shell build-prerequisite
+function and standalone wrapper's final command, stubbing only the privilege
+launcher, allowlist lookup and dependency download during capture. Real APT then resolves those exact requests against
+independently manufactured packages: ordinary installations reach unpack,
+while conflicting packages cannot trigger any dpkg mutation. The fixture adds
+no removal restriction to either captured request. No host package state is
+used as a fixture, and this test does not claim full real-package installation
+or kernel-module build qualification.
 
 The main build qualifies core/catalogue/action behaviour, native install membership, desktop APT install/reinstall/purge, the Windows manager and EXT2 driver, and managed module compilation against explicit kernel APIs. Release candidates also require reusable exact-SHA sanitizer/adversarial, EXT runtime and Amiga runtime workflows.
 

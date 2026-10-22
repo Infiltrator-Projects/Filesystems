@@ -46,7 +46,9 @@ if awk '$1 == "Remv" { bad=1 } END { exit !bad }' "$work/plan"; then
     echo 'Refusing removal of an unrelated package' >&2
     exit 1
 fi
-/usr/bin/apt-get install -y --no-install-recommends "$work/filesystems.deb"
+# The simulated plan is advisory; the final transaction must independently
+# refuse removals if package state changed after the preflight.
+/usr/bin/apt-get install -y --no-remove --no-install-recommends "$work/filesystems.deb"
 echo 'Filesystems installed successfully.'
 exit 0
 __ARCHIVE_BELOW__

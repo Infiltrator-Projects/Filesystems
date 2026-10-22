@@ -497,10 +497,11 @@ if(BUILD_TESTING)
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/amiga_resize_error_test.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_C_COMPILER}")
-        add_test(NAME filesystems-package-removal-transaction
+        add_test(NAME filesystems-package-transactions
             COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_removal_transaction_test.py"
-                "$<TARGET_FILE:filesystems-package-removal-guard>")
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_transaction_test.py"
+                "$<TARGET_FILE:filesystems-package-removal-guard>"
+                "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CXX_COMPILER}")
     endif()
 
     add_executable(filesystems-ofs-core-test

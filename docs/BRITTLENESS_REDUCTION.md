@@ -38,6 +38,8 @@ The GTK shell owns presentation state only: button sensitivity and labels, confi
 
 The installer backend remains the privileged-operation boundary. Moving an operation behind `DesktopAction` does not transfer command validation, package allowlisting, native-module validation or privilege escalation into the presentation layer.
 
+Package installation authorises no package removals. Support installation, the kernel helper's build-prerequisite installation and the standalone package wrapper pass `--no-remove` to APT, which rejects a removal-requiring plan before dpkg mutation. Catalogue allowlisting alone cannot enforce this boundary because the resolver can add removals for conflicts or dependencies. An earlier simulation cannot authorise a different plan after authentication; installation therefore enforces the restriction in the actual APT transaction.
+
 Package removal confirmation is bound to the exact installed package identities shown to the user, including architecture. The installer repeats its simulation for early feedback, but that observation does not authorise a later recomputed plan. The installed `package-removal-guard` consumes APT's version-3 `DPkg::Pre-Install-Pkgs` action stream while APT holds its frontend lock across the guard and ensuing removals. It rechecks catalogue membership and Essential/Protected/required metadata through the same policy used by planning, then requires the complete removal multiset to equal the approved identities. Unsupported protocols, malformed actions, additional installation/configuration actions, missing metadata and changed plans all abort before package removal. The main package carries this helper; there is no additional package or persistent global APT hook.
 
 ## Probe truthfulness
@@ -88,6 +90,7 @@ Release state therefore moves in one direction: untagged source `VERSION` on ser
 - Desktop launchers consume committed active presentation state and must not inspect kernel deployment paths or duplicate native module policy.
 - The GTK shell must not import or invoke installer/package/module primitives directly.
 - Prepared desktop actions must be explicit data, not opaque executable callbacks.
+- Support, build-prerequisite and standalone package installation must refuse every APT plan requiring package removals.
 - Confirmed destructive plans must match APT's final locked removal actions, including architecture, and must use the same trusted APT identity as simulation.
 - Failed inventory probes must disable actions rather than synthesize absence.
 - Privileged executable selection and destructive planning must not depend on the caller's `PATH`.

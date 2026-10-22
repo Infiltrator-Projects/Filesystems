@@ -295,7 +295,9 @@ ensure_build_environment() {
             exit 1
         }
         apt-get update
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
+        # Building one module does not authorise package removals, including
+        # removals introduced by the resolver for headers or compiler packages.
+        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-remove --no-install-recommends "${packages[@]}"
     fi
 
     [[ -f "$kernel_build/Makefile" ]] || {
