@@ -12,6 +12,11 @@ read_sector = source[source.index("static int read_sector("):
                      source.index("/* Probe at most the boot block")]
 assert "result = ctx->block->ReadBlocks(" in read_sector
 assert "ctx->block->Media->MediaId" in read_sector
+assert "for (attempt = 0U; attempt < 2U; ++attempt)" in read_sector
+assert "result != EFI_DEVICE_ERROR" in read_sector
+assert "!ctx->block->Media->MediaPresent || attempt != 0U" in read_sector
+assert "BS->Stall(1000U);" in read_sector
+assert read_sector.count("ctx->block->ReadBlocks(") == 1
 assert "ctx->sector_buffer" in read_sector
 assert "result = ctx->disk->ReadDisk(" not in read_sector
 assert "ctx->last_failed_sector = number;" in read_sector

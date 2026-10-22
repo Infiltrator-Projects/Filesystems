@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.50 — 2026-10-22
+
+- Record physical Dell Latitude 5550 EFI `BlockIo` `EFI_DEVICE_ERROR` failures on distinct partition-relative sectors 125092067 and 125093772; Boot 0.1.28 reached 1,310,720 bytes before its fallback transfer failed. The status is a transport error, not proof of invalid OFS blocks.
+- Implement one bounded, delayed, read-only retry only for `EFI_DEVICE_ERROR` while the device remains present; maintain fail-closed behaviour for persistent errors, media loss, unsupported operations, metadata and checksums, and preserve raw sector diagnostics.
+- Extend the source regression contract. Firmware qualification and end-to-end OFS boot remain pending.
+
+
 ## 0.5.49 — 2026-10-21
 
 - Respond to physical Dell Latitude 5550 OFS evidence: Boot 0.1.28 read the first 524,288 bytes of vmlinuz but the following 64 KiB EFI file transfer failed with EFI_DEVICE_ERROR.

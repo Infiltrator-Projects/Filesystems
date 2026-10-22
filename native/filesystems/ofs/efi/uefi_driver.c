@@ -92,9 +92,9 @@ static EFI_STATUS allocate_zero(UINTN bytes, VOID **out)
 }
 
 /* The freestanding OFS reader returns only format-neutral -1/0/1 results.
- * Preserve a firmware I/O failure separately: an unreadable disk sector is
- * not evidence of invalid OFS metadata. Caller resets the status per parser
- * operation; no automatic retry or write is permitted. */
+ * Preserve firmware transport failures separately from metadata rejection.
+ * One repeat of a transient EFI_DEVICE_ERROR is permitted; all reads remain
+ * read-only, bounded, and subject to canonical block validation. */
 static EFI_STATUS reader_error(const OfsController *ctx)
 {
     return ctx && EFI_ERROR(ctx->last_read_error)
@@ -138,6 +138,7 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
 {
     OfsController *ctx = (OfsController *)opaque;
     EFI_STATUS result;
+    UINTN attempt;
     if (!ctx)
         return -1;
     if (!ctx->block || !ctx->block->Media || !data) {
@@ -161,9 +162,21 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
                               "OFS ReadBlocks metadata begin\r\n");
     /* For aligned full-sector accesses BlockIo is the authoritative firmware
      * transport. Retain DiskIo BY_DRIVER ownership; PartitionDxe may have
-     * already claimed BlockIo, as demonstrated by the OVMF binding test. */
-    result = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
-                                    (EFI_LBA)number, 512U, ctx->sector_buffer);
+     * already claimed BlockIo, as demonstrated by the OVMF binding test.
+     *
+     * Different failing sectors on successive Dell SD reads suggest a
+     * transient controller error, not demonstrated OFS corruption. Retry
+     * EFI_DEVICE_ERROR once, and only while media is present. Do not retry
+     * media changes, unsupported operations or metadata-validation errors. */
+    for (attempt = 0U; attempt < 2U; ++attempt) {
+        result = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
+                                        (EFI_LBA)number, 512U, ctx->sector_buffer);
+        if (result != EFI_DEVICE_ERROR ||
+            !ctx->block->Media->MediaPresent || attempt != 0U)
+            break;
+        ofs_trace("OFS ReadBlocks device error; retrying once\r\n");
+        BS->Stall(1000U);
+    }
     ofs_trace(EFI_ERROR(result) ? "OFS ReadBlocks error\r\n" :
                                   "OFS ReadBlocks complete\r\n");
     if (EFI_ERROR(result)) {

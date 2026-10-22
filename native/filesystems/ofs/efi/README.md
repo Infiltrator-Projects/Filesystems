@@ -104,3 +104,24 @@ On an actual file-read failure from BlockIo, the driver prints the raw
 firmware status and partition-relative failing sector. The transport change
 and diagnostic require physical Dell qualification; neither virtual tests
 nor host data comparison proves complete Linux boot.
+
+
+## Dell SD firmware transient read recovery — 0.5.50
+
+With Boot 0.1.28 and OFS EFI 0.5.49 on the Dell Latitude 5550,
+BlockIo returned `EFI_DEVICE_ERROR` at partition-relative sector
+125092067 during the initial loader operation and at 125093772 during
+the later fallback read, which reached file byte offset 1310720.
+These are distinct firmware transport failures, not established OFS
+data corruption. The canonical OFS reader previously compared the
+complete files successfully using Linux reads; firmware-specific I/O
+remains a separate qualification boundary.
+
+Version 0.5.50 bounds recovery to **one** additional read-only
+512-byte `BlockIo.ReadBlocks` attempt after a 1 ms delay, only on
+`EFI_DEVICE_ERROR` while the media is present. Other failures stop
+immediately; persistent errors preserve the exact failing sector
+and final raw firmware status. Canonical OFS checks are unchanged,
+the controller is never reset, and no disk writes are performed.
+This is a targeted mitigation, not proof of Dell firmware reliability
+or successful kernel/initramfs loading.
