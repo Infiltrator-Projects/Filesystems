@@ -152,8 +152,11 @@ static EFI_STATUS read_one_block(OfsController *ctx, UINT32 number, UINTN attemp
 
     if (ctx->slow_read_reports < OFS_SLOW_READ_REPORT_LIMIT)
         timed = !EFI_ERROR(RT->GetTime(&before, NULL));
+    ofs_trace("OFS ReadBlocks begin\r\n");
     status = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
                                     (EFI_LBA)number, 512U, ctx->sector_buffer);
+    ofs_trace(EFI_ERROR(status) ? "OFS ReadBlocks error\r\n" :
+                                  "OFS ReadBlocks complete\r\n");
     if (!timed || EFI_ERROR(RT->GetTime(&after, NULL)))
         return status;
     start = (UINTN)before.Hour * 3600U + (UINTN)before.Minute * 60U +
