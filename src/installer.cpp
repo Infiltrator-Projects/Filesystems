@@ -94,6 +94,21 @@ std::vector<std::string> parse_removals(const std::string& output)
     return packages;
 }
 
+std::string installed_package_identity(const std::string& package)
+{
+    const auto result = run_command({
+        kDpkgQuery, "-W", "-f=${Package}:${Architecture}\n", package
+    });
+    std::istringstream output(result.stdout_text);
+    std::string identity;
+    std::string extra;
+    if (!result.succeeded() || !(output >> identity) || (output >> extra) ||
+        !removal_identity_is_valid(identity)) {
+        return {};
+    }
+    return identity;
+}
+
 std::string diagnostic_output(const gchar* stdout_text,
                               const gchar* stderr_text)
 {
@@ -316,6 +331,18 @@ std::string native_module_helper_path()
     return {};
 }
 
+std::string removal_guard_path()
+{
+    for (const char* const path : {
+             "/usr/lib/filesystems/package-removal-guard",
+             "/usr/local/lib/filesystems/package-removal-guard"}) {
+        if (executable_file(path)) {
+            return path;
+        }
+    }
+    return {};
+}
+
 void destroy_removal_plan(gpointer data)
 {
     delete static_cast<RemovalPlan*>(data);
@@ -386,7 +413,14 @@ RemovalPlan plan_package_removal(const std::vector<std::string>& packages)
         return plan;
     }
 
-    plan.planned_packages = parse_removals(simulation.stdout_text);
+    for (const auto& package : parse_removals(simulation.stdout_text)) {
+        const std::string identity = installed_package_identity(package);
+        if (identity.empty()) {
+            plan.reason = "Unable to identify installed package " + package + ".";
+            return plan;
+        }
+        plan.planned_packages.push_back(identity);
+    }
 
     if (plan.planned_packages.empty()) {
         plan.allowed = true;
@@ -394,22 +428,13 @@ RemovalPlan plan_package_removal(const std::vector<std::string>& packages)
         return plan;
     }
 
+    if (!approved_removal_is_allowed(plan.planned_packages, &plan.reason)) {
+        return plan;
+    }
+
     std::unordered_set<std::string> affected_entries;
     for (const auto& package : plan.planned_packages) {
-        if (!package_is_catalogued(package)) {
-            plan.reason =
-                "Removal would also remove unrelated Debian package " +
-                package + "; refusing the operation.";
-            return plan;
-        }
-
-        std::string protection_reason;
-        if (package_is_protected(package, &protection_reason)) {
-            plan.reason = std::move(protection_reason);
-            return plan;
-        }
-
-        for (const auto id : catalogue_entries_using_package(package)) {
+        for (const auto id : catalogue_entries_using_package(removal_package_name(package))) {
             affected_entries.emplace(id);
         }
     }
@@ -438,15 +463,29 @@ void plan_package_removal_async(const std::vector<std::string>& packages,
     g_object_unref(task);
 }
 
-bool removal_plan_matches_approval(
-    const std::vector<std::string>& approved_packages,
-    const std::vector<std::string>& current_packages)
+bool approved_removal_is_allowed(
+    const std::vector<std::string>& canonical_packages,
+    std::string* reason)
 {
-    std::vector<std::string> approved = approved_packages;
-    std::vector<std::string> current = current_packages;
-    std::sort(approved.begin(), approved.end());
-    std::sort(current.begin(), current.end());
-    return approved == current;
+    if (canonical_packages.empty()) {
+        if (reason != nullptr) {
+            *reason = "No removal packages were approved.";
+        }
+        return false;
+    }
+    for (const auto& package : canonical_packages) {
+        if (!removal_identity_is_valid(package) ||
+            !package_is_catalogued(removal_package_name(package))) {
+            if (reason != nullptr) {
+                *reason = "Refusing unrelated or invalid Debian package " + package + ".";
+            }
+            return false;
+        }
+        if (package_is_protected(package, reason)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void install_packages_async(const std::vector<std::string>& packages,
@@ -500,8 +539,30 @@ void remove_packages_async(
                 return;
             }
 
+            const std::string guard = removal_guard_path();
+            if (guard.empty()) {
+                completion(false, "The installed package-removal guard is unavailable.");
+                return;
+            }
+            std::string hook = guard;
+            for (const auto& package : approved_planned_packages) {
+                gchar* const quoted = g_shell_quote(package.c_str());
+                hook += ' ';
+                hook += quoted;
+                g_free(quoted);
+            }
+
+            // This hook sees APT's final dpkg action list under its frontend
+            // lock. Re-simulation above improves feedback but grants no
+            // authority to remove a set recomputed after authentication.
             std::vector<std::string> arguments = {
                 kAptGet,
+                "-o", "Debug::NoLocking=0",
+                "-o", "DPkg::Pre-Install-Pkgs::=" + hook,
+                "-o", "DPkg::Tools::Options::" + guard + "::Version=3",
+                "-o", "DPkg::Tools::Options::" + guard + "::InfoFD=0",
+                "-o", "DPkg::ConfigurePending=0",
+                "-o", "APT::Get::Purge=0",
                 "remove",
                 "-y"
             };

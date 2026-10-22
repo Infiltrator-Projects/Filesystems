@@ -362,12 +362,23 @@ if(UNIX)
 
     add_library(filesystems-actions STATIC
         src/installer.cpp
+        src/removal_guard.cpp
         src/desktop_actions.cpp)
     target_include_directories(filesystems-actions
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_link_libraries(filesystems-actions
         PUBLIC filesystems-core PkgConfig::GIO2)
     filesystems_configure(filesystems-actions)
+
+    add_executable(filesystems-package-removal-guard
+        src/removal_guard_main.cpp)
+    target_link_libraries(filesystems-package-removal-guard
+        PRIVATE filesystems-actions)
+    set_target_properties(filesystems-package-removal-guard PROPERTIES
+        OUTPUT_NAME package-removal-guard)
+    filesystems_configure(filesystems-package-removal-guard)
+    install(TARGETS filesystems-package-removal-guard
+        RUNTIME DESTINATION "lib/filesystems")
 
     add_executable(filesystems
         src/main.cpp)
@@ -482,6 +493,14 @@ if(BUILD_TESTING)
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_source_digest_test.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}")
+        add_test(NAME filesystems-amiga-resize-errors
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/amiga_resize_error_test.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_C_COMPILER}")
+        add_test(NAME filesystems-package-removal-transaction
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_removal_transaction_test.py"
+                "$<TARGET_FILE:filesystems-package-removal-guard>")
     endif()
 
     add_executable(filesystems-ofs-core-test
@@ -549,6 +568,14 @@ if(BUILD_TESTING)
         COMMAND filesystems-windows-catalog-test)
 
     if(UNIX)
+        add_executable(filesystems-removal-guard-test
+            tests/removal_guard_test.cpp src/removal_guard.cpp)
+        target_include_directories(filesystems-removal-guard-test
+            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        filesystems_configure(filesystems-removal-guard-test)
+        add_test(NAME filesystems-removal-guard
+            COMMAND filesystems-removal-guard-test)
+
         add_executable(filesystems-action-policy-test
             tests/action_policy_test.cpp)
         target_link_libraries(filesystems-action-policy-test

@@ -57,6 +57,8 @@ struct ifs_sfs2_inode_info {
 	u32 hashtable;
 	int modified;
 	loff_t mmu_private;
+	/* File data blocks, independent of the VFS i_blocks 512-byte sectors. */
+	u64 allocated_blocks;
 	struct inramExtent ext_cache;
 	struct inode vfs_inode;
 };

@@ -10,6 +10,15 @@
 #include <linux/pagemap.h>
 #include "linux_adapter.h"
 
+/* The allocator counts filesystem data blocks; stat(2) always counts
+ * 512-byte sectors. Keep their units separate at every allocation boundary.
+ */
+static void sfs2_set_allocated_blocks(struct inode *inode, u64 blocks)
+{
+    IFS_SFS2_I(inode)->allocated_blocks = blocks;
+    inode->i_blocks = blocks * (inode->i_sb->s_blocksize >> 9);
+}
+
 static int sfs2_load_extent(
     struct super_block *sb,
     u32 key,
@@ -54,10 +63,11 @@ static int sfs2_extend_file_to_block(
     u32 added = 0U;
     int result;
 
-    if (block > U32_MAX || block < inode->i_blocks)
-        return block < inode->i_blocks ? 0 : -EFBIG;
+    if (block >= IFS_SFS2_SB(sb)->totalblocks ||
+        block < IFS_SFS2_I(inode)->allocated_blocks)
+        return block < IFS_SFS2_I(inode)->allocated_blocks ? 0 : -EFBIG;
 
-    requested = (u32)block - (u32)inode->i_blocks + 1U;
+    requested = (u32)block - IFS_SFS2_I(inode)->allocated_blocks + 1U;
     if (requested < IFS_SFS2_BLOCKCHUNKS)
         requested = IFS_SFS2_BLOCKCHUNKS;
 
@@ -75,7 +85,8 @@ static int sfs2_extend_file_to_block(
         } else {
             IFS_SFS2_I(inode)->mmu_private +=
                 (u64)added * sb->s_blocksize;
-            inode->i_blocks += added;
+            sfs2_set_allocated_blocks(
+                inode, IFS_SFS2_I(inode)->allocated_blocks + added);
             IFS_SFS2_I(inode)->ext_cache.key = 0U;
             IFS_SFS2_I(inode)->firstblock =
                 be32_to_cpu(object->object.file.data);
@@ -111,13 +122,13 @@ static int sfs2_map_block(
         return -EROFS;
 #endif
 
-    if (!create && logical_block >= inode->i_blocks)
+    if (!create && logical_block >= IFS_SFS2_I(inode)->allocated_blocks)
         return -EIO;
 
     mutex_lock(&IFS_SFS2_SB(sb)->lock);
 
 #ifdef CONFIG_IFS_SFS2_RW
-    if (create && logical_block >= inode->i_blocks) {
+    if (create && logical_block >= IFS_SFS2_I(inode)->allocated_blocks) {
         result = sfs2_extend_file_to_block(inode, logical_block);
         if (result != 0)
             goto out_unlock;
@@ -271,8 +282,8 @@ int ifs_sfs2_truncate(struct inode *inode)
         IFS_SFS2_I(inode)->mmu_private = inode->i_size;
         IFS_SFS2_I(inode)->modified = TRUE;
         IFS_SFS2_I(inode)->ext_cache.key = 0U;
-        inode->i_blocks = DIV_ROUND_UP(
-            (u64)inode->i_size, sb->s_blocksize);
+        sfs2_set_allocated_blocks(inode, DIV_ROUND_UP(
+            (u64)inode->i_size, sb->s_blocksize));
         ifs_sfs2_bstore(sb, bh);
     }
 
@@ -332,8 +343,8 @@ int ifs_sfs2_file_release(struct inode *inode, struct file *file)
         }
         if (result == 0) {
             IFS_SFS2_I(inode)->mmu_private = inode->i_size;
-            inode->i_blocks = DIV_ROUND_UP(
-                (u64)inode->i_size, sb->s_blocksize);
+            sfs2_set_allocated_blocks(inode, DIV_ROUND_UP(
+                (u64)inode->i_size, sb->s_blocksize));
             IFS_SFS2_I(inode)->ext_cache.key = 0U;
         }
     }
@@ -474,6 +485,7 @@ void ifs_sfs2_read_locked_inode(struct inode *inode, void *argument)
         (time64_t)be32_to_cpu(object->datemodified) +
         SFS2_UNIX_EPOCH_DELTA;
 
+    sfs2_set_allocated_blocks(inode, 0U);
     inode->i_mode = IFS_SFS2_SB(sb)->mode;
     inode_set_atime(inode, timestamp, 0);
     inode_set_mtime(inode, timestamp, 0);
@@ -513,8 +525,8 @@ void ifs_sfs2_read_locked_inode(struct inode *inode, void *argument)
     inode->i_size = (loff_t)ifs_sfs2_decode_file_size(
         be32_to_cpu(object->object.file.size),
         be16_to_cpu(object->sizeh));
-    inode->i_blocks = DIV_ROUND_UP(
-        (u64)inode->i_size, sb->s_blocksize);
+    sfs2_set_allocated_blocks(inode, DIV_ROUND_UP(
+        (u64)inode->i_size, sb->s_blocksize));
     inode->i_mode |= S_IFREG;
     inode->i_op = &sfs2_file_inode_operations;
     inode->i_fop = &sfs2_file_operations;
@@ -659,7 +671,7 @@ static int sfs2_create_object(
 
     inode->i_ino = be32_to_cpu(object->objectnode);
     inode->i_size = 0;
-    inode->i_blocks = 0;
+    sfs2_set_allocated_blocks(inode, 0U);
     i_uid_write(inode, i_uid_read(dir));
     i_gid_write(inode, i_gid_read(dir));
     inode->i_mode = mode | IFS_SFS2_SB(sb)->mode;

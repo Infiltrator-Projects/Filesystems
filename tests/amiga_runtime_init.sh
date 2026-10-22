@@ -113,6 +113,11 @@ qualify_sfs_rw()
     mount -t "$fs" "$dev" "$mnt" || fail "mount $fs"
     echo "runtime-$fs" > "$mnt/new.txt" || fail "create $fs"
     test "$(cat "$mnt/new.txt")" = "runtime-$fs" || fail "write-readback $fs"
+    # The VFS reports 512-byte sectors, independently of filesystem block size.
+    dd if=/dev/zero of="$mnt/accounting.bin" bs=4096 count=256 2>/dev/null ||
+        fail "accounting write $fs"
+    test "$(stat -c '%b' "$mnt/accounting.bin")" = 2048 ||
+        fail "sector accounting after allocation $fs"
     mkdir "$mnt/dir" || fail "mkdir $fs"
     mv "$mnt/new.txt" "$mnt/dir/renamed.txt" || fail "rename $fs"
     ln -s dir/renamed.txt "$mnt/soft.txt" || fail "symlink $fs"
@@ -122,6 +127,12 @@ qualify_sfs_rw()
     mount -t "$fs" "$dev" "$mnt" || fail "remount $fs"
     test "$(cat "$mnt/dir/renamed.txt")" = "runtime-$fs" || fail "remount-read $fs"
     test "$(cat "$mnt/soft.txt")" = "runtime-$fs" || fail "remount-symlink $fs"
+    test "$(stat -c '%b' "$mnt/accounting.bin")" = 2048 ||
+        fail "sector accounting after remount $fs"
+    : > "$mnt/accounting.bin" || fail "accounting truncate $fs"
+    test "$(stat -c '%b' "$mnt/accounting.bin")" = 0 ||
+        fail "sector accounting after truncate $fs"
+    rm "$mnt/accounting.bin" || fail "accounting unlink $fs"
     : > "$mnt/dir/renamed.txt" || fail "truncate $fs"
     test ! -s "$mnt/dir/renamed.txt" || fail "truncate-readback $fs"
     rm "$mnt/soft.txt" "$mnt/dir/renamed.txt" || fail "unlink $fs"
@@ -134,6 +145,8 @@ qualify_rw ofs /dev/vda
 qualify_rw ffs /dev/vdb
 qualify_sfs_rw sfs /dev/vdc
 qualify_sfs_rw sfs2 /dev/vdd
+qualify_sfs_rw sfs /dev/vdg
+qualify_sfs_rw sfs2 /dev/vdh
 
 mount -t pfs3 -o ro /dev/vde /mnt/pfs3 || fail "mount pfs3"
 test -s /mnt/pfs3/frag || fail "fixture-read pfs3"

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "removal_guard.hpp"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -22,9 +24,11 @@ RemovalPlan plan_package_removal(const std::vector<std::string>& packages);
 void plan_package_removal_async(const std::vector<std::string>& packages,
                                 RemovalPlanCompletion completion);
 
-bool removal_plan_matches_approval(
-    const std::vector<std::string>& approved_packages,
-    const std::vector<std::string>& current_packages);
+// Shared by the unprivileged planner and the locked APT hook. Protection
+// metadata must be checked again after authentication, before dpkg mutates it.
+bool approved_removal_is_allowed(
+    const std::vector<std::string>& canonical_packages,
+    std::string* reason);
 
 void install_packages_async(const std::vector<std::string>& packages,
                             ActionCompletion completion);

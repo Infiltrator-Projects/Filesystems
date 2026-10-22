@@ -39,6 +39,25 @@ for forbidden in (
     require(forbidden not in installer,
             f"caller PATH can again select Debian planning command: {forbidden}")
 
+# The final authority must be in the locked APT transaction, independently of
+# the advisory re-simulation in the unprivileged manager.
+for required in (
+    '"DPkg::Pre-Install-Pkgs::=" + hook',
+    '"DPkg::Tools::Options::" + guard + "::Version=3"',
+    'for (const auto& package : approved_planned_packages)',
+    'g_shell_quote(package.c_str())',
+    '"/usr/lib/filesystems/package-removal-guard"',
+):
+    require(required in installer,
+            f"approved removal no longer reaches the APT transaction guard: {required}")
+guard = text("src/removal_guard_main.cpp")
+for required in (
+    'std::getenv("DPKG_FRONTEND_LOCKED")',
+    'approved_removal_is_allowed(approved, &reason)',
+    'removal_hook_matches_approval(std::cin, approved, &reason)',
+):
+    require(required in guard, f"locked removal guard lost enforcement: {required}")
+
 runner = text("src/process_runner.hpp")
 for required in (
     'trusted_command_path',

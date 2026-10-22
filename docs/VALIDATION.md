@@ -26,14 +26,32 @@ an EFI kernel from OFS.
 
 A separate developer-preview partition mode requires an exact device-path
 confirmation, Linux kernel partition identification, exclusive open,
-512-byte logical blocks and a 1–2048 MiB size. Unit tests verify refusal
+512-byte logical blocks and a size from 1 MiB to the shared 31-bit
+block-count boundary (just under 1 TiB). Unit tests verify refusal
 of non-partition character devices and incorrect confirmation, while
-regular-file stress tests cover 2048 MiB geometry. These guards do not
+regular-file stress tests include a sparse 120 GiB image. These guards do not
 replace real-device testing: do not claim physical SD-card qualification
 until controlled formatting, native driver mount, copy, remount, independent
 validation and recovery have been demonstrated on expendable hardware.
 
 ## Qualification boundaries
+
+The OFS/FFS resize fault-injection test compiles the production VFS resize
+and setattr bodies with minimal host stubs. It requires exact propagation
+of allocation, corruption and I/O errors and prevents later attribute changes
+after a failed resize. This checks the caller contract; it does not qualify
+rollback of partially modified media.
+
+The Amiga runtime lane checks SFS/SFS2 sector accounting for a 1 MiB file
+on both 512-byte and 4096-byte-block volumes after allocation, remount and
+truncate. Allocator/mapping counts remain in
+filesystem-block units; Linux `i_blocks` is always in 512-byte sectors.
+
+The package-removal transaction test uses the real installed-helper target
+and real APT against a private dpkg database, package lists and archives.
+Its inert dpkg recorder refuses mutation. It checks that a dependency added
+after approval or newly protected package cannot reach a removal command,
+while an exact approved set can. No host package state is used as a fixture.
 
 The main build qualifies core/catalogue/action behaviour, native install membership, desktop APT install/reinstall/purge, the Windows manager and EXT2 driver, and managed module compilation against explicit kernel APIs. Release candidates also require reusable exact-SHA sanitizer/adversarial, EXT runtime and Amiga runtime workflows.
 

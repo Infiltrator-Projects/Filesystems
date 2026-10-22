@@ -136,6 +136,10 @@ jobs:
             --variant sfs --output /tmp/sfs.img --blocks 4096 --volume RuntimeSFS
           python3 tools/generate-sfs-runtime-images.py \
             --variant sfs2 --output /tmp/sfs2.img --blocks 4096 --volume RuntimeSFS2
+          python3 tools/generate-sfs-runtime-images.py \
+            --variant sfs --output /tmp/sfs-4k.img --blocks 4096 --block-size 4096 --volume RuntimeSFS4K
+          python3 tools/generate-sfs-runtime-images.py \
+            --variant sfs2 --output /tmp/sfs2-4k.img --blocks 4096 --block-size 4096 --volume RuntimeSFS24K
           /tmp/defrag-build/defragmenter-pfs3-native-test \
             --write-fixture /tmp/pfs3.img fragmented
           test -s /tmp/ofs.img
@@ -200,6 +204,8 @@ jobs:
             -drive file=/tmp/sfs2.img,format=raw,if=virtio \
             -drive file=/tmp/pfs3.img,format=raw,if=virtio \
             -drive file=/tmp/ofs-large.img,format=raw,if=virtio \
+            -drive file=/tmp/sfs-4k.img,format=raw,if=virtio \
+            -drive file=/tmp/sfs2-4k.img,format=raw,if=virtio \
             2>&1 | tee /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-READONLY-STATFS-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-LARGE-READONLY-PASS' /tmp/amiga-runtime.log

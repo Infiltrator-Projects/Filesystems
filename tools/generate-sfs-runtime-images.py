@@ -102,7 +102,10 @@ def set_bitmap_free(bitmap: bytearray, local_block: int) -> None:
     put32(bitmap, word_offset, word)
 
 
-def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
+def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str,
+               block_size: int = BLOCK_SIZE) -> None:
+    if block_size < 512 or block_size > 4096 or block_size & (block_size - 1):
+        raise ValueError("block size must be a power of two from 512 to 4096")
     if blocks < 128:
         raise ValueError("qualification image requires at least 128 blocks")
     if blocks > 0xFFFFFFFF:
@@ -112,7 +115,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     if not 1 <= len(volume_bytes) <= 30 or b":" in volume_bytes or b"/" in volume_bytes:
         raise ValueError("volume name must be 1..30 Latin-1 bytes without ':' or '/'")
 
-    bits_per_bitmap = (BLOCK_SIZE - 12) * 8
+    bits_per_bitmap = (block_size - 12) * 8
     bitmap_count = (blocks + bits_per_bitmap - 1) // bits_per_bitmap
     reserved_start = 1
     reserved_end = 1
@@ -130,17 +133,17 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     if bitmap_base + bitmap_count >= last_free_exclusive:
         raise ValueError("image too small for SFS metadata")
 
-    image = bytearray(blocks * BLOCK_SIZE)
+    image = bytearray(blocks * block_size)
 
     def install(block_number: int, block: bytearray) -> None:
-        start = block_number * BLOCK_SIZE
-        image[start : start + BLOCK_SIZE] = block
+        start = block_number * block_size
+        image[start : start + block_size] = block
 
     # Admin-space container.  Blocks admin..admin+31 are removed from the
     # general bitmap and allocated internally.  The first seven are the
     # initial filesystem metadata objects; the remaining 25 are available to
     # the driver for hash tables, object containers and node-tree growth.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_ADMC
     block[20] = ADMIN_BLOCKS
     put32(block, 24, admin)
@@ -149,7 +152,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     install(admin, block)
 
     # Root object container.  Its first object must be the root directory.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_OBJC
     write_object(
         block,
@@ -164,30 +167,30 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
         sfs2=sfs2,
     )
     free_blocks = blocks - ADMIN_BLOCKS - reserved_start - reserved_end - bitmap_count
-    root_info = BLOCK_SIZE - 36
+    root_info = block_size - 36
     put32(block, root_info + 8, free_blocks)
     put32(block, root_info + 12, 0)
     finish_block(block, root_object, sfs2)
     install(root_object, block)
 
     # Root directory hash table contains only the hidden recycled directory.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_HTAB
     put32(block, 12, ROOT_NODE)
-    chain_count = (BLOCK_SIZE - 16) // 4
+    chain_count = (block_size - 16) // 4
     chain = name_hash(b".recycled") % chain_count
     put32(block, 16 + chain * 4, RECYCLED_NODE)
     finish_block(block, root_hash, sfs2)
     install(root_hash, block)
 
     # Clean transaction marker.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_TROK
     finish_block(block, transaction, sfs2)
     install(transaction, block)
 
     # Empty extent B-tree leaf.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_BNDC
     block[14] = 1
     block[15] = 16 if sfs2 else 14
@@ -196,7 +199,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
 
     # Object-node leaf.  Nodes 1 and 2 identify root and recycled.  Nodes
     # 3..6 are reserved by the format; node 7 is the first creatable node.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_NDC
     put32(block, 12, 1)
     put32(block, 16, 1)
@@ -209,7 +212,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     install(object_node_root, block)
 
     # Hidden recycled directory.
-    block = bytearray(BLOCK_SIZE)
+    block = bytearray(block_size)
     block[0:4] = ID_OBJC
     put32(block, 12, ROOT_NODE)
     write_object(
@@ -230,7 +233,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     # General free-space bitmap.  Only blocks after admin space + bitmap
     # storage and before the backup root are initially free.
     for bitmap_index in range(bitmap_count):
-        block = bytearray(BLOCK_SIZE)
+        block = bytearray(block_size)
         block[0:4] = ID_BTMP
         coverage_start = bitmap_index * bits_per_bitmap
         coverage_end = min(blocks, coverage_start + bits_per_bitmap)
@@ -243,7 +246,7 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     # Root copies.  Both carry the same metadata; block identity is included
     # in each checksum.  A zero sequence tie intentionally selects a clean
     # equivalent root without inventing an update history.
-    root_template = bytearray(BLOCK_SIZE)
+    root_template = bytearray(block_size)
     root_template[0:4] = b"SFS\x02" if sfs2 else b"SFS\x00"
     put16(root_template, 12, 4 if sfs2 else 3)
     put16(root_template, 14, 0)
@@ -251,11 +254,11 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     root_template[20] = ROOTBITS_RECYCLED
     put32(root_template, 32, 0)
     put32(root_template, 36, 0)
-    total_bytes = blocks * BLOCK_SIZE
+    total_bytes = blocks * block_size
     put32(root_template, 40, total_bytes >> 32)
     put32(root_template, 44, total_bytes)
     put32(root_template, 48, blocks)
-    put32(root_template, 52, BLOCK_SIZE)
+    put32(root_template, 52, block_size)
     put32(root_template, 96, bitmap_base)
     put32(root_template, 100, admin)
     put32(root_template, 104, root_object)
@@ -275,9 +278,9 @@ def make_image(path: Path, *, sfs2: bool, blocks: int, volume: str) -> None:
     for number in [0, admin, root_object, root_hash, transaction,
                    extent_root, object_node_root, recycled_object,
                    *range(bitmap_base, bitmap_base + bitmap_count), blocks - 1]:
-        data = image[number * BLOCK_SIZE : (number + 1) * BLOCK_SIZE]
+        data = image[number * block_size : (number + 1) * block_size]
         total = sum(struct.unpack_from(">I", data, offset)[0]
-                    for offset in range(0, BLOCK_SIZE, 4)) & 0xFFFFFFFF
+                    for offset in range(0, block_size, 4)) & 0xFFFFFFFF
         if total != checksum_target:
             raise AssertionError(f"checksum mismatch in block {number}: {total:#x}")
         if get32(data, 8) != number:
@@ -293,6 +296,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--blocks", type=int, default=4096)
     parser.add_argument("--volume", default="RuntimeTest")
+    parser.add_argument("--block-size", type=int, default=BLOCK_SIZE)
     args = parser.parse_args()
 
     make_image(
@@ -300,6 +304,7 @@ def main() -> int:
         sfs2=args.variant == "sfs2",
         blocks=args.blocks,
         volume=args.volume,
+        block_size=args.block_size,
     )
     return 0
 

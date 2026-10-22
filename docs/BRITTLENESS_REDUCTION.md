@@ -38,7 +38,7 @@ The GTK shell owns presentation state only: button sensitivity and labels, confi
 
 The installer backend remains the privileged-operation boundary. Moving an operation behind `DesktopAction` does not transfer command validation, package allowlisting, native-module validation or privilege escalation into the presentation layer.
 
-Package removal confirmation is bound to the exact simulated package set shown to the user. The installer must simulate removal again immediately before execution and compare the resulting package multiset with the approved plan. If package state changes the plan, execution fails closed and requires a new confirmation; being merely catalogue-managed is not sufficient authority to remove a different package set.
+Package removal confirmation is bound to the exact installed package identities shown to the user, including architecture. The installer repeats its simulation for early feedback, but that observation does not authorise a later recomputed plan. The installed `package-removal-guard` consumes APT's version-3 `DPkg::Pre-Install-Pkgs` action stream while APT holds its frontend lock across the guard and ensuing removals. It rechecks catalogue membership and Essential/Protected/required metadata through the same policy used by planning, then requires the complete removal multiset to equal the approved identities. Unsupported protocols, malformed actions, additional installation/configuration actions, missing metadata and changed plans all abort before package removal. The main package carries this helper; there is no additional package or persistent global APT hook.
 
 ## Probe truthfulness
 
@@ -52,7 +52,7 @@ Privileged command identity is policy, not environment. `pkexec`, APT, `dpkg-que
 
 The APT executable that simulates and validates a removal is the same fixed executable identity later elevated to execute that removal. Protection metadata likewise comes from the fixed system `dpkg-query`. Approval must never be based on a PATH-shadowed command while execution uses a different binary.
 
-Arguments remain structured argv values rather than shell command text. Package and module allowlists remain deny-by-default even after the executable itself has been selected from a trusted path.
+Arguments remain structured argv values. The single exception is APT's documented shell-hook interface: the installer supplies only the fixed installed guard path and individually shell-quoted, validated package identities. Package and module allowlists remain deny-by-default even after the executable itself has been selected from a trusted path.
 
 ## Release promotion boundary
 
@@ -88,7 +88,7 @@ Release state therefore moves in one direction: untagged source `VERSION` on ser
 - Desktop launchers consume committed active presentation state and must not inspect kernel deployment paths or duplicate native module policy.
 - The GTK shell must not import or invoke installer/package/module primitives directly.
 - Prepared desktop actions must be explicit data, not opaque executable callbacks.
-- Confirmed destructive plans must still match immediately before execution and must use the same trusted APT identity as execution.
+- Confirmed destructive plans must match APT's final locked removal actions, including architecture, and must use the same trusted APT identity as simulation.
 - Failed inventory probes must disable actions rather than synthesize absence.
 - Privileged executable selection and destructive planning must not depend on the caller's `PATH`.
 - Native replacement rollback must verify restoration of previous runtime selection when that module was previously loaded.

@@ -197,7 +197,7 @@ int affs_add_entry(
     struct dentry *dentry, s32 type);
 
 void affs_free_prealloc(struct inode *inode);
-void affs_truncate(struct inode *inode);
+int affs_truncate(struct inode *inode);
 int affs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync);
 void affs_dir_truncate(struct inode *inode);
 

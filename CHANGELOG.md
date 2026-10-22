@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.54 — 2026-10-22
+
+- Return OFS/FFS resize failures through the VFS setattr boundary instead of reporting success after restoring the previous size. Stop subsequent attribute updates on failure and preserve last-release resize status.
+- Separate SFS/SFS2 allocated filesystem-block counts from Linux's 512-byte-sector accounting across growth, truncation, close and inode reload.
+- Bind package-removal approval to installed package names and architectures. Enforce the exact final removal set and protection policy with an installed APT transaction guard under the frontend lock, closing the authentication/concurrent-package-change race without a separate package.
+- Add resize fault injection, real-APT tests with an inert dpkg executor and mounted SFS/SFS2 accounting regressions. Update the maintained validation and privileged-operation contracts.
+- EXT3/EXT4 inherited migration units remain recorded in the provenance ledger; this defect repair does not claim their implementations have been rewritten.
+
 ## 0.5.53 — 2026-10-22
 
 - Remove speculative EFI BlockIo read-ahead: physical Dell 0.5.52 testing demonstrated DEVICE_ERROR at 8, 4, and 2 sectors, with 30-second stalls before falling back to one-sector reads. The failed optimisation also made the measured 55% kernel transfer 386 seconds slower than 0.5.51.

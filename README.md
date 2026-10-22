@@ -132,9 +132,9 @@ Probe failures are explicit. A failed package, repository, module or kernel inve
 
 Install and remove operations are scoped to the selected filesystem. Project-native filesystems deploy their own kernel driver and their own desktop-identification material. Package-backed filesystems use the selected provider package without turning provider package names into new filesystem identities.
 
-Destructive package removal is plan-bound: the exact package set shown for confirmation is simulated again immediately before execution and must still match. If package state changes underneath the confirmation, the operation fails closed and requires a new confirmation.
+Destructive package removal is bound to the exact installed package names and architectures shown for confirmation. The installer repeats its simulation for early feedback, then an installed APT guard checks the final removal actions and Debian protection metadata under APT's frontend lock. A changed plan is refused before any package removal, including changes made while authentication was pending.
 
-Privileged executable selection is fixed to trusted system/application locations rather than inherited from the caller's `PATH`, and privileged operations use structured argument vectors rather than shell command strings.
+Privileged executable selection is fixed to trusted system/application locations rather than inherited from the caller's `PATH`, and privileged operations use structured argument vectors. APT's required shell-hook interface receives a fixed installed guard path with individually quoted package identities; it never receives arbitrary command text.
 
 ## Project-native Linux filesystems
 

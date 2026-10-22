@@ -720,14 +720,16 @@ static int ifs_ofs_file_open(struct inode *inode, struct file *file)
 
 static int ifs_ofs_file_release(struct inode *inode, struct file *file)
 {
+    int result = 0;
+
     if (atomic_dec_and_test(&AFFS_I(inode)->i_opencnt)) {
         inode_lock(inode);
         if (inode->i_size != AFFS_I(inode)->mmu_private)
-            affs_truncate(inode);
+            result = affs_truncate(inode);
         affs_free_prealloc(inode);
         inode_unlock(inode);
     }
-    return 0;
+    return result;
 }
 
 static bool ifs_ofs_extension_valid(
@@ -1855,7 +1857,7 @@ out_unlock:
     return result;
 }
 
-void affs_truncate(struct inode *inode)
+int affs_truncate(struct inode *inode)
 {
     const loff_t requested = inode->i_size;
     const loff_t previous = AFFS_I(inode)->mmu_private;
@@ -1863,11 +1865,11 @@ void affs_truncate(struct inode *inode)
 
     if (requested < 0 || requested > U32_MAX) {
         inode->i_size = previous;
-        return;
+        return -EFBIG;
     }
 
     if (requested == previous)
-        return;
+        return 0;
 
     if (requested > previous) {
         if (affs_test_opt(AFFS_SB(inode->i_sb)->s_flags, SF_OFS))
@@ -1897,6 +1899,7 @@ void affs_truncate(struct inode *inode)
     }
 
     mark_inode_dirty(inode);
+    return result;
 }
 
 int affs_file_fsync(
@@ -2234,7 +2237,9 @@ int affs_notify_change(
             return result;
 
         truncate_setsize(inode, attributes->ia_size);
-        affs_truncate(inode);
+        result = affs_truncate(inode);
+        if (result != 0)
+            return result;
     }
 
     setattr_copy(&nop_mnt_idmap, inode, attributes);
