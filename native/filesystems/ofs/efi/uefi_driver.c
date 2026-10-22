@@ -40,7 +40,7 @@ struct OfsController {
     UINT32 cached_sector_count;
     UINT32 cached_media_id;
     BOOLEAN prefetch_in_file_read;
-    BOOLEAN prefetch_rejected; /* Firmware declined a multi-sector request. */
+    UINTN prefetch_sectors; /* Maximum bulk window; 1 disables prefetch. */
 };
 
 struct OfsFile {
@@ -179,10 +179,10 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         return 0;
     }
     ctx->cached_sector_count = 0U;
-    if (ctx->prefetch_in_file_read && !ctx->prefetch_rejected) {
+    if (ctx->prefetch_in_file_read && ctx->prefetch_sectors > 1U) {
         UINT64 available = ctx->block->Media->LastBlock - (UINT64)number + 1ULL;
-        UINTN sectors = available < OFS_READAHEAD_SECTORS
-            ? (UINTN)available : OFS_READAHEAD_SECTORS;
+        UINTN sectors = available < ctx->prefetch_sectors
+            ? (UINTN)available : ctx->prefetch_sectors;
         if (sectors > 1U) {
             result = ctx->block->ReadBlocks(ctx->block,
                     ctx->block->Media->MediaId, (EFI_LBA)number,
@@ -206,9 +206,17 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
                     ? EFI_DEVICE_ERROR : result;
                 return -1;
             }
-            /* The error may concern a prefetched sector, so retry only
-             * the requested one; permanently disable speculative I/O. */
-            ctx->prefetch_rejected = TRUE;
+            /* A speculative failure may concern an unneeded neighbour,
+             * not the requested sector. Size and protocol rejections forbid
+             * further batching. Transient DEVICE_ERROR progressively shrinks
+             * the controller's window (8 -> 4 -> 2 -> 1) rather than forcing
+             * an immediate permanent drop to single-sector I/O. */
+            if (result == EFI_DEVICE_ERROR)
+                ctx->prefetch_sectors /= 2U;
+            else
+                ctx->prefetch_sectors = 1U;
+            Print(L"OFS EFI: %u-sector prefetch returned %r; next batch %u sectors\n",
+                  sectors, result, ctx->prefetch_sectors);
         }
     }
     ofs_trace(number == 0U ? "OFS ReadBlocks boot begin\r\n" :
@@ -668,6 +676,7 @@ static EFI_STATUS EFIAPI ofs_start(EFI_DRIVER_BINDING_PROTOCOL *self,
     status = allocate_zero(sizeof(*ctx), (VOID **)&ctx);
     if (EFI_ERROR(status))
         return status;
+    ctx->prefetch_sectors = OFS_READAHEAD_SECTORS;
     status = ofs_probe(ctx, controller);
     if (EFI_ERROR(status)) {
         release_sector_buffer(ctx);

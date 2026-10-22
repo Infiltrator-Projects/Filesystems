@@ -150,3 +150,27 @@ A passed source contract or OVMF virtual boot does not establish improved
 throughput or reliable large-file reads on the Dell's SD controller. Nor can
 any driver-side progress display interrupt a blocked synchronous firmware
 BlockIo operation. Physical testing remains necessary.
+
+
+## Adaptive EFI bulk-read fallback — 0.5.52
+
+Boot 0.1.32 completed the 17,029,512-byte OFS kernel file read on the Dell
+Latitude 5550 in 1,091 seconds. Phase 4 (Linux EFI handoff and potential
+86 MB initramfs read) did not visibly complete. Both initramfs archives could
+be listed and referenced the expected 7.0.0-38-generic kernel, though they
+were not byte-identical after the host initramfs was rebuilt.
+
+Version 0.5.51 permanently disabled speculative eight-sector reads after
+one EFI_DEVICE_ERROR from a bulk operation. This policy could reduce all
+subsequent filesystem transfers to separate 512-byte firmware requests,
+even if smaller batches work reliably. Version 0.5.52 uses per-controller
+8 -> 4 -> 2 -> 1 sector batch step-down on repeated speculative
+EFI_DEVICE_ERROR returns. A size/protocol rejection directly selects the
+single-sector path. Each speculative failure falls back to the *actual*
+requested sector and retains the previous single-sector, one-retry policy.
+At most three bulk-window-change diagnostics are printed per controller.
+
+No media modifications, allocation policy changes, filesystem parser
+replacement or unbounded retries are introduced. Virtual build/OVMF checks
+cannot establish real Dell throughput or whether a firmware synchronous
+read can still take 30-90 seconds. Physical qualification is outstanding.

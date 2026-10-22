@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.52 — 2026-10-22
+
+- Avoid permanently disabling eight-sector EFI read-ahead after a single speculative EFI_DEVICE_ERROR. Step down the per-controller batch 8 to 4 to 2 to 1 sectors for successive transient bulk failures, retaining a useful smaller batch when supported.
+- Disable batching directly on size/protocol rejections; always retry the failed speculative operation as the exact requested 512-byte sector using the unchanged bounded error path. Emit a diagnostic whenever the bulk window changes.
+- Preserve read-only operation, full block validation, MediaId cache checks and no separate filesystem logic in Boot. Record that the Dell successfully read its complete 17 MB kernel in 1,091 seconds but Linux EFI-stub handoff and the 86 MB initramfs read remain unverified.
+
+
 ## 0.5.51 — 2026-10-22
 
 - Opportunistically fetch up to eight adjacent 512-byte EFI BlockIo sectors during OFS file reads, caching by sector and MediaId while preserving canonical OFS checksums and linked-block traversal.

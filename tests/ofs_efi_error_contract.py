@@ -18,11 +18,16 @@ assert "!ctx->block->Media->MediaPresent || attempt != 0U" in read_sector
 assert "BS->Stall(1000U);" in read_sector
 assert read_sector.count("ctx->block->ReadBlocks(") == 2
 assert "#define OFS_READAHEAD_SECTORS 8U" in source
-assert "ctx->prefetch_in_file_read && !ctx->prefetch_rejected" in read_sector
+assert "ctx->prefetch_in_file_read && ctx->prefetch_sectors > 1U" in read_sector
+assert "ctx->prefetch_sectors = OFS_READAHEAD_SECTORS;" in source
+assert "available < ctx->prefetch_sectors" in read_sector
+assert "ctx->prefetch_sectors /= 2U;" in read_sector
+assert "ctx->prefetch_sectors = 1U;" in read_sector
+assert "OFS EFI: %u-sector prefetch returned %r; next batch %u sectors" in read_sector
 assert "ctx->cached_media_id == ctx->block->Media->MediaId" in read_sector
 assert "ctx->cached_sector_count = 0U;" in read_sector
 assert "sectors * 512U, ctx->sector_buffer" in read_sector
-assert "ctx->prefetch_rejected = TRUE;" in read_sector
+assert "prefetch_rejected" not in source
 assert "result != EFI_BAD_BUFFER_SIZE" in read_sector
 assert "result != EFI_INVALID_PARAMETER" in read_sector
 assert "result != EFI_UNSUPPORTED" in read_sector
