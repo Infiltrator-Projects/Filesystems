@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.70 — 2026-10-23
+
+- Promote the original independent NTFS3 implementation as the managed
+  `ntfs3.ko` module for the single NTFS format identity, backed by the
+  passed Linux 6.12 QEMU mount/write/remount and independent ntfscat
+  verification (Actions run 39931921927).
+- Switch the catalogue from NTFS-3G userspace runtime to the project-managed
+  native VFS module; preserve original source and upstream authorship.
+- Use the existing native kernel-version matching, source fingerprinting,
+  signing, module selection and safe uninstall/rollback machinery.
+- Keep EFI/root qualification and untested NTFS semantics explicitly open.
+
+
 ## 0.5.69 — 2026-10-23
 
 - Restore 55 original CP/M implementation and build files from pinned

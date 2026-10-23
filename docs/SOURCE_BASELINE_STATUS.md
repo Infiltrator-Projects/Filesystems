@@ -1,34 +1,30 @@
 # Filesystem source availability
 
-**41 catalogue formats**, of which **37** now have editable source
+**41 catalogue formats**, of which **37** have editable source
 implementations in this repository:
 
-- **10** managed native Linux driver identities: EXT2, EXT3, EXT4, OFS,
-  FFS, SFS, SFS2, PFS3, Minix and BFS
-  (`data/native-filesystems.tsv`).
-- **25** additional actual copied Linux filesystem implementations under
-  `native/filesystems/<id>/linux/`
-  (`data/imported-source-filesystems.txt`).
+- **11** managed Linux filesystem module identities: EXT2, EXT3, EXT4, OFS,
+  FFS, SFS, SFS2, PFS3, Minix, BFS and NTFS (module `ntfs3`).
+  Authority: `data/native-filesystems.tsv`.
+- **24** other original Linux implementation trees, editable under
+  `native/filesystems/<id>/linux/`, but not yet natively managed.
+  Authority: `data/imported-source-filesystems.txt`.
 - **2** actual copied userspace filesystem implementations under
-  `native/filesystems/<id>/userspace/`: Smaky/Fosfat (original Fosfat)
-  and CP/M (original cpmtools). Neither has a Linux `.ko` yet.
-  (`data/imported-userspace-filesystems.txt`).
+  `native/filesystems/<id>/userspace/`: CP/M and Smaky/Fosfat.
+  Both still require native Linux VFS adapters; no `.ko` is claimed.
+  Authority: `data/imported-userspace-filesystems.txt`.
+- **4** source imports remain: InfiltratorFS (separate original project),
+  VMFS3/VMFS5, VMFS6 and ZFS.
 
-**4 formats still lack a complete source copy in this repository:**
-InfiltratorFS (maintained as its own independent driver repository),
-VMFS3/VMFS5, VMFS6 and ZFS.
+Native registration is not a claim of comprehensive read/write safety,
+EFI reader readiness, physical-media qualification or bootable root.
 
-This is a source inventory, not a claim that original modules have passed
-host integration, corrupt-media safety, independent writes/remounts, EFI
-reader qualification or root-filesystem installation.
+Minix and BFS passed Linux 6.12 QEMU mount/write/remount qualification.
+NTFS3 passed QEMU native mount/write/remount and independent ntfscat
+readback in workflow run 39931921927.
+Dedicated exFAT and UDF original-source native QEMU workflows have also
+been added; both remain unpromoted until their results pass.
 
-Minix and BFS have independent Linux 6.12 QEMU native mount/write/remount
-evidence. exFAT, NTFS3 and UDF have dedicated native runtime workflows
-but cannot be promoted until those tests and independent data validation pass.
-
-Original SFS, SFS2 and PFS3 implementation snapshots are also retained
-in per-filesystem `original/` directories. There are no obsolete source
-`reference/` quarantine directories under `native/filesystems/`.
-
-CP/M and Fosfat source has been copied with its original copyright and
-licence material, not implemented anew or claimed as kernel drivers.
+SFS/SFS2/PFS3 retained original sources remain in their separate
+`original/` directories. No obsolete reference-only source quarantine
+remains in the format source tree. Original copyright notices are retained.

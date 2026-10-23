@@ -51,7 +51,7 @@ inline const std::vector<LinuxSupportPolicy>& linux_support_policies()
         {"omfs", {"omfs"}, {}, AccessMode::Mixed, SupportProvider::Kernel},
         {"fat", {"vfat", "msdos"}, {"dosfstools"}, AccessMode::ReadWrite, SupportProvider::KernelWithUserspace},
         {"exfat", {"exfat"}, {"exfatprogs"}, AccessMode::ReadWrite, SupportProvider::KernelWithUserspace},
-        {"ntfs", {}, {"ntfs-3g"}, AccessMode::Userspace, SupportProvider::Userspace},
+        {"ntfs", {}, {}, AccessMode::ReadWrite, SupportProvider::Kernel},
         {"hfs", {"hfs"}, {"hfsprogs"}, AccessMode::Mixed, SupportProvider::KernelWithUserspace},
         {"hfsplus", {"hfsplus"}, {"hfsprogs"}, AccessMode::Mixed, SupportProvider::KernelWithUserspace},
         {"apfs", {"apfs"}, {"apfs-dkms", "apfsprogs"}, AccessMode::Experimental, SupportProvider::Dkms},

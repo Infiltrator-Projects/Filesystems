@@ -16,7 +16,6 @@ hfsplus
 hpfs
 jfs
 nilfs2
-ntfs
 ocfs2
 omfs
 qnx4

@@ -16,7 +16,7 @@ This index therefore does not repeat a second complete filesystem list. CI valid
 
 ## Active project-native formats
 
-The current native deployment manifest contains EXT2, EXT3, EXT4, Amiga OFS, Amiga FFS, SFS, SFS2, PFS3 and the original Linux Minix implementation. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
+The current native deployment manifest contains the independently qualified EXT2, EXT3, EXT4, Amiga OFS, FFS, SFS, SFS2, PFS3, Minix, BFS and NTFS3 implementations. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
 
 These are deliberately independent filesystem implementations. Similarity between related formats is not, by itself, a reason to merge their persistent semantics or runtime state. Only mechanisms that are genuinely filesystem-neutral belong in shared native/platform code.
 
@@ -24,20 +24,20 @@ InfiltratorFS is maintained in its separate repository. Filesystems contains its
 
 ## Editable copied-source baselines
 
-The copied Linux implementation sources for 26 formats are checked in under
+The copied Linux implementation sources for formats not yet natively deployed are checked in under
 `native/filesystems/<id>/linux/`, governed by
 [`data/imported-source-filesystems.txt`](../data/imported-source-filesystems.txt).
 This is the actual original working implementation source available for direct
 modification, not discarded or refreshed research-only material. Its upstream
 attribution is retained until a specific implementation is genuinely replaced.
 
-The nine managed native drivers use the separate deployment manifest. An imported
+The managed native drivers use the separate deployment manifest. An imported
 Linux source tree is not automatically an installable out-of-tree module:
 integration, dependencies, runtime behaviour and safe recovery need actual
 qualification before adding that format to the managed native deployment set.
 
-[`SOURCE_BASELINE_STATUS.md`](SOURCE_BASELINE_STATUS.md) records the six
-remaining formats whose complete source is not yet copied into this repository,
+[`SOURCE_BASELINE_STATUS.md`](SOURCE_BASELINE_STATUS.md) records the outstanding
+formats whose complete source is not yet copied into this repository,
 rather than treating empty directories or design documents as a code baseline.
 
 ## Retired identities

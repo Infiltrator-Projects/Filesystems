@@ -187,8 +187,8 @@ int main(int argc, char** argv)
     if (hfs_uses_removed_package) {
         return fail("HFS still references hfsutils, which is not in Debian trixie stable");
     }
-    if (kernel_only != 19U || kernel_with_userspace != 14U ||
-        dkms != 3U || userspace != 4U || tools_only != 1U) {
+    if (kernel_only != 20U || kernel_with_userspace != 14U ||
+        dkms != 3U || userspace != 3U || tools_only != 1U) {
         return fail("support-provider classification counts changed unexpectedly");
     }
 
@@ -212,7 +212,8 @@ int main(int argc, char** argv)
         return fail("catalogue module allowlist is inconsistent");
     }
 
-    if (!filesystems::linux_native_module_is_managed("bfs", "bfs") ||
+    if (!filesystems::linux_native_module_is_managed("ntfs", "ntfs3") ||
+        !filesystems::linux_native_module_is_managed("bfs", "bfs") ||
         !filesystems::linux_native_module_is_managed("minix", "minix") ||
         !filesystems::linux_native_module_is_managed("ext3", "ext3") ||
         !filesystems::linux_native_module_is_managed("ofs", "ofs") ||
