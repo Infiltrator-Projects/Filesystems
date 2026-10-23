@@ -221,6 +221,34 @@ while IFS= read -r fs; do
     }
 done < "$work/imported.expected"
 
+# Original userspace implementation code is also editable and is never a
+# kernel module until a real Linux VFS adapter receives qualification.
+userspace_manifest=data/imported-userspace-filesystems.txt
+test -s "$userspace_manifest"
+manifest_values "$userspace_manifest" | sort > "$work/userspace.expected"
+test "$(wc -l < "$work/userspace.expected")" -eq \
+     "$(sort -u "$work/userspace.expected" | wc -l)"
+while IFS= read -r fs; do
+    grep -Fxq "$fs" "$work/source.expected" || {
+        echo "Unknown original userspace filesystem: $fs" >&2
+        exit 1
+    }
+    if grep -Fxq "$fs" "$work/imported.expected" ||
+       awk -F '\t' -v fs="$fs" '$1 == fs { found = 1 } END { exit !found }' "$native_manifest"; then
+        echo "Userspace source cannot masquerade as a native module: $fs" >&2
+        exit 1
+    fi
+    source_dir="native/filesystems/$fs/userspace"
+    test -s "$source_dir/COPYING" || {
+        echo "Original source licence/provenance missing: $fs" >&2
+        exit 1
+    }
+    find "$source_dir" -type f -name '*.c' -print -quit | grep -q . || {
+        echo "Actual original userspace filesystem implementation missing: $fs" >&2
+        exit 1
+    }
+done < "$work/userspace.expected"
+
 if find native/filesystems -type d -name reference -print -quit | grep -q .; then
     echo "Obsolete source-reference directory has returned" >&2
     exit 1

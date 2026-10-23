@@ -1,33 +1,30 @@
 # Filesystem source availability
 
-41 catalogue formats exist. At this source-recovery revision:
+The current format catalogue contains **41 identities**. As of version 0.5.68:
 
-- 9 formats have existing native Linux driver source and managed deployment:
-  EXT2, EXT3, EXT4, OFS, FFS, SFS, SFS2, PFS3 and Minix.
-- 26 additional formats now have the **actual copied Linux source**, editable
-  under `native/filesystems/<id>/linux/`. This includes the 38-file, hash-verified original APFS out-of-tree module and NTFS source recovered
-  from the earlier NTFS3 copy in this repository's Git history.
-- 6 remain without a complete dedicated in-repository original-source copy:
-  CP/M, Fosfat, InfiltratorFS, VMFS3/VMFS5, VMFS6 and ZFS.
+- **10** project-managed native Linux drivers: EXT2, EXT3, EXT4, OFS, FFS,
+  SFS, SFS2, PFS3, Minix and BFS (`data/native-filesystems.tsv`).
+- **25** other actual copied Linux driver implementations that are editable
+  under `native/filesystems/<id>/linux/`
+  (`data/imported-source-filesystems.txt`).
+- **1** original editable userspace implementation for Fosfat/Smaky under
+  `native/filesystems/fosfat/userspace/`
+  (`data/imported-userspace-filesystems.txt`). This is not a `.ko`.
+- **5** without a complete source baseline in this repo: CP/M, InfiltratorFS,
+  VMFS3/VMFS5, VMFS6 and ZFS. InfiltratorFS maintains its own native driver
+  in a separate repository.
 
-This is an inventory of available implementation source, not a claim that all
-41 have project-qualified native Linux modules, Windows drivers or firmware
-readers. InfiltratorFS source is independently maintained in its own project,
-and its existing EFI vendor subset is not a complete source copy here.
+Source presence is not equivalent to build success, a qualified installable
+kernel module, EFI boot-reader support, or safe root-filesystem semantics.
 
-The six missing source baselines must not be represented as completed by
-design documents, package names, third-party runtime availability or empty
-directories. The source recovery also does not change previous release
-binaries or qualify any previously unqualified drivers.
+The original SFS, SFS2 and PFS3 implementations are also preserved in
+their per-format `original/` directories. There are no obsolete
+`reference/` source quarantines under `native/filesystems/`.
 
-The previous SFS, SFS2 and PFS3 sources are also retained byte-for-byte under their respective `original/` directories, separately from the qualified native drivers. No obsolete `reference/` directories remain under `native/filesystems/`.
+Minix and BFS passed Linux 6.12 QEMU mount/write/remount qualification.
+Dedicated original-driver runtime workflows have been added for exFAT,
+NTFS3 and UDF but these formats stay outside the managed manifest until
+their real runtime and data integrity checks pass.
 
-Minix was promoted from imported source to the managed Linux module set after an original-source build, symbol-resolved Debian 13 build, and a successful Linux 6.12 QEMU read/write/remount runtime qualification. The independently editable original Linux source and its attribution are retained. This does not qualify Minix as an InfiltratorOS root or establish a matching EFI driver.
-
-BFS was promoted to a managed independent Linux `bfs.ko` after Debian exported-symbol build and real Linux 6.12 QEMU read/write/remount qualification (run 39921073843). Its original implementation and attribution remain intact. This is native runtime qualification, not EFI or OS root qualification.
-
-Original exFAT is now covered by a dedicated Linux 6.12 QEMU read/write/remount and independent filesystem-check workflow. The source remains in the imported-only manifest until its real runtime test is green; no additional installed module is claimed by creating the test.
-
-The actual original NTFS3 Linux source has its own QEMU native runtime workflow with a kernel that does not contain NTFS3 built-in, independently formatted NTFS media and independent userspace readback. This is evidence-gathering only; an unverified runtime does not authorize native deployment.
-
-The original UDF implementation is now covered by an independent QEMU runtime qualification workflow using UDF 2.01 media from udftools, guest-mounted original udf.ko, persistent multi-block writes and an independent read-only host-kernel verification. UDF remains unpromoted pending successful runtime evidence.
+Fosfat's actual original source is now present, but needs a native Linux
+VFS adapter; no read/write kernel driver is being claimed.

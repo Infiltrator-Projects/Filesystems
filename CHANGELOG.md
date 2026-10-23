@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.68 — 2026-10-23
+
+- Import 35 original Fosfat/Smaky implementation and build files from
+  Skywalker13/Fosfat commit 289c7eb838dd5e6305c98f09aa375746a6043d86
+  under the directly editable per-format userspace source directory.
+- Preserve upstream licence/attribution, add CI that proves actual source
+  exists, and keep userspace source distinct from qualified .ko modules.
+- Inventory: 10 managed native drivers, 25 other original Linux baselines,
+  one userspace original baseline, and five source imports outstanding.
+
+
 ## 0.5.67 — 2026-10-23
 
 - Constrain OFS UEFI `BlockIo.ReadBlocks` transfer pages to the low 4 GiB DMA-addressable physical range using `AllocateMaxAddress`. The Dell's Realtek RTS525A is operated with a 32-bit DMA mask by Linux `rtsx_pci`, whereas the prior `AllocateAnyPages` offered no equivalent physical-address bound.

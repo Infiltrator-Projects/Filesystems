@@ -1,0 +1,3 @@
+# Original userspace implementations available in native/filesystems/<id>/userspace/
+# The original userspace code is editable but is not a qualified kernel .ko.
+fosfat
