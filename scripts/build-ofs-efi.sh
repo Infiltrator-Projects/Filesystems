@@ -15,7 +15,7 @@ extra_cflags=()
 if [[ ${OFS_EFI_TRACE:-0} == 1 ]]; then
     extra_cflags+=(-DIFS_OFS_UEFI_TRACE=1)
 fi
-for filename in uefi_driver reader; do
+for filename in uefi_driver reader rtsx525a_link; do
     gcc -Os -std=gnu11 -fpic -ffreestanding -fno-builtin -fshort-wchar \
       -fno-stack-protector -fno-strict-aliasing -mno-red-zone \
       -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror \
@@ -36,7 +36,7 @@ for filename in ofs_core ofs_primitives; do
 done
 gcc_lib="$(gcc -print-libgcc-file-name)"
 ld -T "$ldscript" -shared -Bsymbolic -nostdlib -znocombreloc -zdefs \
-  "$crt" "$work/uefi_driver.o" "$work/reader.o" "$work/ofs_core.o" \
+  "$crt" "$work/uefi_driver.o" "$work/reader.o" "$work/rtsx525a_link.o" "$work/ofs_core.o" \
   "$work/ofs_primitives.o" "$libefi" "$libgnuefi" "$gcc_lib" \
   -o "$work/OFS_x64.so"
 objcopy --output-target=efi-bsdrv-x86_64 \

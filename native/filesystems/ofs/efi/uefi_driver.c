@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include "reader.h"
 #include "uefi_trace.h"
+#include "rtsx525a_link.h"
 
 #define OFS_MAX_NAME 30U
 #define OFS_SIGNATURE 0x4f465333U
@@ -753,6 +754,13 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
 {
     EFI_STATUS status;
     InitializeLib(image, table);
+    /* Firmware-only workaround for the exact Dell RTS525A PCIe link.
+     * Leave all other hardware and the block protocol untouched. */
+    status = ifs_rtsx525a_disable_aspm();
+    if (status == EFI_SUCCESS)
+        Print(L"OFS EFI: Dell RTS525A PCIe ASPM disabled (volatile)\n");
+    else if (status != EFI_NOT_FOUND)
+        Print(L"OFS EFI: RTS525A PCIe ASPM mitigation unavailable: %r\n", status);
     g_binding.ImageHandle = image;
     g_binding.DriverBindingHandle = image;
     ofs_trace("OFS DriverBinding install begin\r\n");

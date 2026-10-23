@@ -243,3 +243,31 @@ OFS reader, media data, BlockIo read sizes, retry count and Linux modules are
 unchanged. This targets one plausible failure mode; Dell firmware may have
 other SD-controller faults, and the correction is **not physically qualified**
 until a new on-device trial confirms full kernel and initrd loading.
+
+## Exact Dell RTS525A PCIe ASPM firmware mitigation — 0.5.73
+
+The 0.5.67 physical Dell test proved that 4 KiB aligned/below-4-GiB
+BlockIo buffers alone do not solve the intermittent 30-second `EFI_DEVICE_ERROR`
+events during OFS kernel loading. Linux diagnostics identified the exact
+Realtek RTS525A PCIe endpoint 10ec:525a with Dell subsystem 1028:0cb9,
+its Intel 8086:7e39 upstream root port, and ASPM L1 enabled at both ends.
+
+`rtsx525a_link.c` performs one best-effort, volatile firmware-only PCI
+configuration change when **all** identifying information matches, before
+registering the OFS DriverBinding protocol. It locates the endpoint and
+its actual parent by segment/secondary bus, walks the standard PCI
+capability chain to the PCIe Link Control register, disables ASPM L0s/L1
+on the two link partners with verification and partial-failure rollback.
+It does not reset the controller, issue SD/MMC commands, modify PCIe link
+speed, change persistent BIOS/NVRAM settings or write the SD card. The
+standard firmware BlockIo implementation remains in use; other hardware
+is completely untouched. The OS may reconfigure PCIe after UEFI handoff.
+
+**Experimental: no physical Dell pass yet.** A compiler/OVMF success and
+source contract cannot determine whether L1 wake transitions cause these
+firmware timeouts, nor whether firmware exposes PCI I/O protocols for the
+specific devices. The driver prints one status message if the exact
+mitigation was applied, or an error if the exact controller was detected
+but the operation could not be completed. Test against a backed-up EFI
+driver with a working alternative boot entry; do not treat as production
+qualification before kernel and initrd load successfully on physical SD.

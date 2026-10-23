@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.73 — 2026-10-23
+
+- Add an exact-hardware UEFI PCIe link mitigation for the Dell Latitude 5550's 10ec:525a Realtek RTS525A reader (Dell 1028:0cb9) and the verified Intel 8086:7e39 upstream port.
+- Locate the parent via PCI segment and secondary-bus relationship rather than assuming Linux's BDF will equal firmware's. Clear only the ASPM Link Control bits in PCI config space, verify readback, restore both partners on partial failure and otherwise leave the firmware's BlockIo/SD driver unchanged.
+- Activate the volatile compatibility correction before EFI filesystem probing, with visible status. Unrelated PCI devices, BIOS settings, NVRAM, SD media and OFS filesystem contents are not modified. Preserve 0.5.67's low-DMA bounce buffer.
+- Extend the EFI build and regression contract for the added helper. The Dell SD-controller 30-second synchronous firmware read fault was reproduced with 0.5.67; this workaround requires new physical verification and must not be represented as a proven cure.
+
 ## 0.5.72 — 2026-10-23
 
 - Promote the actual original UDF implementation as managed native `udf.ko`
