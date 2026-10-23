@@ -24,7 +24,7 @@ InfiltratorFS is maintained in its separate repository. Filesystems contains its
 
 ## Editable copied-source baselines
 
-The copied Linux implementation sources for 26 formats are checked in under
+The copied Linux implementation sources for 27 formats are checked in under
 `native/filesystems/<id>/linux/`, governed by
 [`data/imported-source-filesystems.txt`](../data/imported-source-filesystems.txt).
 This is the actual original working implementation source available for direct
@@ -36,7 +36,7 @@ Linux source tree is not automatically an installable out-of-tree module:
 integration, dependencies, runtime behaviour and safe recovery need actual
 qualification before adding that format to the managed native deployment set.
 
-[`SOURCE_BASELINE_STATUS.md`](SOURCE_BASELINE_STATUS.md) records the seven
+[`SOURCE_BASELINE_STATUS.md`](SOURCE_BASELINE_STATUS.md) records the six
 remaining formats whose complete source is not yet copied into this repository,
 rather than treating empty directories or design documents as a code baseline.
 

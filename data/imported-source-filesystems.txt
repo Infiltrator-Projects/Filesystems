@@ -2,6 +2,7 @@
 # Source availability is distinct from native driver qualification.
 # Actual files live at native/filesystems/<id>/linux/.
 adfs
+apfs
 bcachefs
 befs
 bfs

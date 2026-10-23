@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.58 — 2026-10-23
+
+- Restore the exact 38-file original Linux APFS out-of-tree module source
+  (including Kbuild, DKMS, licences and upstream authorship) under the
+  single canonical APFS format identity; independently compare each Git
+  blob hash against its original upstream source.
+- Expand the actual editable-source baseline from 34 to 35 of the 41
+  catalogue formats. Six complete source imports still remain.
+- Introduce Linux 6.12 compilation probes for eight original legacy
+  filesystem drivers and strict exported-symbol checking against
+  Debian 13's packaged kernel headers. Compilation is not claimed
+  as mounted runtime or safe write-path qualification.
+- Preserve explicit native install gates; no imported module is silently
+  promoted to deployable kernel support.
+
+
 ## 0.5.57 — 2026-10-23
 
 - Complete the editable-original-source layout: preserve the copied legacy SFS, SFS2 and PFS3 source snapshots under per-filesystem `original/` trees, retaining their exact Git objects, while keeping the qualified independent `linux/` drivers unchanged.

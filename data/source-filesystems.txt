@@ -1,6 +1,7 @@
 # In-repository filesystem source trees.
 # One real on-media format per line; provider-only identities do not belong here.
 adfs
+apfs
 bcachefs
 befs
 bfs
