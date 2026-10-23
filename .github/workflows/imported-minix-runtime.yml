@@ -1,4 +1,4 @@
-name: Imported Minix native driver runtime
+name: Imported Minix and BFS native driver runtime
 
 # This is an independent out-of-tree VFS qualification, not an installation.
 on:
@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/imported-minix-runtime.yml"
       - "native/filesystems/minix/linux/**"
+      - "native/filesystems/bfs/linux/**"
   workflow_dispatch:
 
 permissions:
@@ -38,6 +39,7 @@ jobs:
           make -C /tmp/linux-minix defconfig
           /tmp/linux-minix/scripts/config --file /tmp/linux-minix/.config \
             --disable MINIX_FS \
+            --disable BFS_FS \
             --enable BLK_DEV_INITRD \
             --enable DEVTMPFS \
             --enable DEVTMPFS_MOUNT \
@@ -58,7 +60,11 @@ jobs:
           make -C /tmp/linux-minix \
             M="$PWD/native/filesystems/minix/linux" \
             CONFIG_MINIX_FS=m modules
+          make -C /tmp/linux-minix \
+            M="$PWD/native/filesystems/bfs/linux" \
+            CONFIG_BFS_FS=m modules
           test -s native/filesystems/minix/linux/minix.ko
+          test -s native/filesystems/bfs/linux/bfs.ko
           test -s /tmp/linux-minix/arch/x86/boot/bzImage
 
       - name: Format independent Minix V3 test media
@@ -67,18 +73,22 @@ jobs:
           set -euo pipefail
           truncate -s 32M /tmp/minix-volume.img
           mkfs.minix -3 /tmp/minix-volume.img
+          truncate -s 16M /tmp/bfs-volume.img
+          command -v mkfs.bfs
+          mkfs.bfs /tmp/bfs-volume.img
 
       - name: Build initramfs with only the external Minix driver
         shell: bash
         run: |
           set -euo pipefail
           root=/tmp/minix-qualification-root
-          mkdir -p "$root"/{bin,proc,sys,dev,mnt}
+          mkdir -p "$root"/{bin,proc,sys,dev,mnt,mnt/bfs}
           cp /usr/bin/busybox "$root/bin/busybox"
           for app in sh mount umount mkdir cat echo dd mv sync poweroff stat test grep ls; do
             ln -s busybox "$root/bin/$app"
           done
           cp native/filesystems/minix/linux/minix.ko "$root/minix.ko"
+          cp native/filesystems/bfs/linux/bfs.ko "$root/bfs.ko"
           cat > "$root/init" <<'EOF'
           #!/bin/sh
           set -eu
@@ -91,6 +101,7 @@ jobs:
           mount -t sysfs sysfs /sys || fail sysfs
           mount -t devtmpfs devtmpfs /dev || fail devtmpfs
           insmod /minix.ko || fail "insmod original minix.ko"
+          insmod /bfs.ko || fail "insmod original bfs.ko"
           grep -q '[[:space:]]minix$' /proc/filesystems ||
             fail "native Minix registration"
           mount -t minix /dev/vda /mnt || fail "mount Minix V3"
@@ -108,6 +119,16 @@ jobs:
           test "$(stat -c %s /mnt/tree/data.bin)" = "32768" ||
             fail "persistent payload size"
           umount /mnt || fail "final unmount"
+          mount -t bfs /dev/vdb /mnt/bfs || fail "mount original BFS"
+          echo "BFS independent runtime" > /mnt/bfs/bfs-file.txt ||
+            fail "BFS file creation"
+          sync
+          umount /mnt/bfs || fail "unmount BFS"
+          mount -t bfs /dev/vdb /mnt/bfs || fail "remount BFS"
+          test "$(cat /mnt/bfs/bfs-file.txt)" = "BFS independent runtime" ||
+            fail "BFS persistent readback"
+          umount /mnt/bfs || fail "BFS final unmount"
+          echo "BFS-RUNTIME-PASS" > /dev/ttyS0
           echo "MINIX-RUNTIME-PASS" > /dev/ttyS0
           poweroff -f
           EOF
@@ -125,6 +146,8 @@ jobs:
             -initrd /tmp/minix-qualification.cpio.gz \
             -append 'console=ttyS0 panic=1 rdinit=/init' \
             -drive file=/tmp/minix-volume.img,format=raw,if=virtio \
+            -drive file=/tmp/bfs-volume.img,format=raw,if=virtio \
             2>&1 | tee /tmp/minix-qualification.log
           grep -Fq 'MINIX-RUNTIME-PASS' /tmp/minix-qualification.log
+          grep -Fq 'BFS-RUNTIME-PASS' /tmp/minix-qualification.log
           ! grep -Fq 'MINIX-RUNTIME-FAIL' /tmp/minix-qualification.log
