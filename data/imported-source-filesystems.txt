@@ -7,7 +7,6 @@ bcachefs
 befs
 btrfs
 efs
-exfat
 f2fs
 fat
 gfs2

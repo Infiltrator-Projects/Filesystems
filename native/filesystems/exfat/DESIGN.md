@@ -1,69 +1,35 @@
-# exFAT Design and Ownership
+# exFAT Filesystem Implementation
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+## Editable original source
 
+The full original Samsung-origin Linux exFAT VFS implementation is retained
+under `native/filesystems/exfat/linux/` as the directly editable source
+baseline, with its original SPDX, copyright and authorship intact.
+Moving and compiling copied original source does not change its provenance.
 
-## Classification
+## Independently managed Linux module
 
-exFAT is a conventional local removable-media filesystem. Filesystems
-must implement its format semantics once and share them across host adapters.
+The original source now compiles as the self-contained project-managed
+`exfat.ko` with explicit `obj-m` registration. The single exFAT format
+identity maps to this Linux VFS module in `data/native-filesystems.tsv`.
+The native module helper owns kernel-version source builds, signing,
+selected module verification, clean removal and rollback.
 
-## Current state
+The independent Linux 6.12 QEMU runtime test
+(https://github.com/Infiltrator-Projects/Filesystems/actions/runs/39931682513)
+passed. It booted Linux with exFAT not compiled into vmlinux, loaded
+the project's copied original module, mounted an exFAT volume formatted
+using the independent exfatprogs formatter, created and renamed files,
+wrote a 128KiB multi-cluster file, unmounted/remounted, validated contents
+and size, and completed an independent offline `fsck.exfat` check.
 
-exFAT is currently **imported-source development state**. The pinned upstream Linux
-implementation is preserved under `linux/` with original licensing,
-copyright and filenames. It is not project-authored Filesystems code.
+This qualifies the exercised native runtime path, not every exFAT edge
+case, corruption recovery or removable-media failure. Unsupported variants
+must fail closed and be tested with independently generated images.
 
-## Current directory contract
+## Remaining capabilities
 
-While exFAT remains in imported-source development state, the filesystem root contains only
-`DESIGN.md` and `linux/`, with the pinned upstream Linux implementation
-under `linux/`. The future `core/`, `linux/`, `windows/` and
-`userspace/` directories appear only with independently authored implementation;
-`kernel/` is not a valid alternate source tree.
-
-CI enforces this boundary and rejects accidental production linkage of the
-imported reference source.
-
-## Target layout
-
-```text
-native/filesystems/exfat/
-  DESIGN.md
-  core/                 canonical exFAT format/filesystem semantics
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows IFS/WDK adapter
-  userspace/            optional userspace adapter over the same core
-  linux/      pinned upstream Linux evidence
-```
-
-`exfat-fuse` is an alternate provider choice for the same exFAT format, not a
-separate catalogue identity or a second exFAT implementation.
-
-## Canonical ownership
-
-The core owns exFAT-defined boot-region/geometry validation, FAT and allocation
-bitmap semantics, cluster chains, directory-entry sets, stream/name entries,
-upcase-table/name comparison, checksums, timestamps/attributes, file mapping,
-allocation and exact mutation/recovery rules.
-
-Linux VFS objects, NLS APIs, page cache and module lifetime stay in the Linux
-adapter. Windows IFS objects and platform security/attribute presentation stay
-in the Windows adapter.
-
-## Promotion sequence
-
-Begin with bounded format validation and read-only directory/file access,
-qualified against independently produced exFAT media and malformed fixtures.
-Then implement allocation/mutation with explicit transaction/recovery and
-destructive testing. All adapters consume the same core.
-
-## Failure policy
-
-Invalid boot checksums, impossible geometry, contradictory FAT/bitmap state,
-bad directory-entry sets, invalid cluster chains and unsupported features fail
-closed.
-
-## Copied implementation provenance
-
-The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
+Native filesystem-formatting/repair support, Linux runtime portability to
+other kernel interfaces, malformed media and sustained mutation/recovery
+qualification require separate evidence. A matching read-only EFI reader
+and root/setup boot tests have not been qualified.

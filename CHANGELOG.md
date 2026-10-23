@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.71 — 2026-10-23
+
+- Promote the independent original exFAT VFS implementation to managed
+  native `exfat.ko` after successful Linux 6.12 QEMU load, filesystem
+  mount/write/rename/unmount/remount and independent offline `fsck.exfat`
+  qualification (run 39931682513).
+- Remove the exfatprogs package requirement from the mount-provider path;
+  formatter and repair tool qualification remain separate work.
+- Retain original Samsung-origin code and attribution, and use the common
+  native module installation, source digest, signing and rollback authority.
+- No exFAT EFI reader or qualified InfiltratorOS root semantics are claimed.
+
+
 ## 0.5.70 — 2026-10-23
 
 - Promote the original independent NTFS3 implementation as the managed

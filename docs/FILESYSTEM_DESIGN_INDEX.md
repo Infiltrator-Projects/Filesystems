@@ -16,7 +16,7 @@ This index therefore does not repeat a second complete filesystem list. CI valid
 
 ## Active project-native formats
 
-The current native deployment manifest contains the independently qualified EXT2, EXT3, EXT4, Amiga OFS, FFS, SFS, SFS2, PFS3, Minix, BFS and NTFS3 implementations. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
+The current native deployment manifest contains the independently qualified EXT2, EXT3, EXT4, Amiga OFS, FFS, SFS, SFS2, PFS3, Minix, BFS, NTFS3 and exFAT implementations. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
 
 These are deliberately independent filesystem implementations. Similarity between related formats is not, by itself, a reason to merge their persistent semantics or runtime state. Only mechanisms that are genuinely filesystem-neutral belong in shared native/platform code.
 
