@@ -27,6 +27,11 @@ assert "!ctx->block->Media->MediaPresent || attempt != 0U" in read_sector
 assert "BS->Stall(1000U);" in read_sector
 assert "ctx->sector_buffer" in source
 assert "OFS_MAX_IO_ALIGNMENT" in source
+assert "OFS_DMA_PAGE_ALIGNMENT 4096U" in source
+assert "BS->AllocatePages(AllocateAnyPages, EfiBootServicesData" in source
+assert "BS->FreePages(ctx->sector_allocation, ctx->sector_allocation_pages)" in source
+assert "ctx->sector_allocation_pages = pages;" in source
+assert "if (alignment < OFS_DMA_PAGE_ALIGNMENT)" in source
 assert "alignment & (alignment - 1U)" in source
 assert "ctx->sector_buffer = (VOID *)" in source
 assert "release_sector_buffer(&probe);" in source

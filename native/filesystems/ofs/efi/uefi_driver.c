@@ -17,6 +17,7 @@
 #define OFS_SIGNATURE 0x4f465333U
 #define OFS_FILE_SIGNATURE 0x4f464633U
 #define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
+#define OFS_DMA_PAGE_ALIGNMENT 4096U
 #define OFS_SLOW_READ_REPORT_LIMIT 12U
 
 typedef struct OfsController OfsController;
@@ -34,8 +35,9 @@ struct OfsController {
     EFI_STATUS last_read_error; /* Error of the current canonical reader operation. */
     EFI_STATUS last_block_status; /* Unmodified BlockIo error for diagnosis. */
     UINT32 last_failed_sector; /* Partition-relative 512-byte block number. */
-    VOID *sector_allocation; /* Owned pool allocation, possibly unaligned. */
-    VOID *sector_buffer; /* Aligned pointer into sector_allocation. */
+    EFI_PHYSICAL_ADDRESS sector_allocation; /* AllocatePages physical base. */
+    UINTN sector_allocation_pages; /* Exact count for FreePages. */
+    VOID *sector_buffer; /* DMA-safe, suitably aligned sector pointer. */
     UINTN slow_read_reports; /* Bounded, per-controller firmware diagnostics. */
 };
 
@@ -106,10 +108,16 @@ static EFI_STATUS reader_error(const OfsController *ctx)
 /* The portable OFS reader uses 512-byte stack arrays, which do not meet
  * arbitrary firmware DMA alignment requirements. Keep exactly one bounded,
  * aligned sector buffer per controller. Supported() releases its probe buffer. */
+/* Some firmware-backed removable-media controllers reject unaligned DMA
+ * buffers even when Media.IoAlign understates their actual requirements.
+ * Allocate whole UEFI physical pages, never a transient pool allocation;
+ * honour any stricter advertised IoAlign and keep a full 512-byte transfer
+ * within the allocation. No change to the actual OFS block read sequence. */
 static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
 {
     EFI_STATUS status;
-    UINTN alignment, address;
+    EFI_PHYSICAL_ADDRESS address = 0U;
+    UINTN alignment, pages, aligned;
     if (ctx->sector_buffer)
         return EFI_SUCCESS;
     alignment = (UINTN)ctx->block->Media->IoAlign;
@@ -118,21 +126,27 @@ static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
     if ((alignment & (alignment - 1U)) != 0U ||
         alignment > OFS_MAX_IO_ALIGNMENT)
         return EFI_UNSUPPORTED;
-    status = allocate_zero(512U + alignment - 1U,
-                           &ctx->sector_allocation);
+    if (alignment < OFS_DMA_PAGE_ALIGNMENT)
+        alignment = OFS_DMA_PAGE_ALIGNMENT;
+    pages = (512U + alignment - 1U + OFS_DMA_PAGE_ALIGNMENT - 1U) /
+            OFS_DMA_PAGE_ALIGNMENT;
+    status = BS->AllocatePages(AllocateAnyPages, EfiBootServicesData,
+                               pages, &address);
     if (EFI_ERROR(status))
         return status;
-    address = (UINTN)ctx->sector_allocation;
-    ctx->sector_buffer = (VOID *)((address + alignment - 1U) &
-                                  ~(alignment - 1U));
+    aligned = ((UINTN)address + alignment - 1U) & ~(alignment - 1U);
+    ctx->sector_allocation = address;
+    ctx->sector_allocation_pages = pages;
+    ctx->sector_buffer = (VOID *)aligned;
     return EFI_SUCCESS;
 }
 
 static VOID release_sector_buffer(OfsController *ctx)
 {
-    if (ctx && ctx->sector_allocation) {
-        BS->FreePool(ctx->sector_allocation);
-        ctx->sector_allocation = NULL;
+    if (ctx && ctx->sector_allocation_pages != 0U) {
+        BS->FreePages(ctx->sector_allocation, ctx->sector_allocation_pages);
+        ctx->sector_allocation = 0U;
+        ctx->sector_allocation_pages = 0U;
         ctx->sector_buffer = NULL;
     }
 }

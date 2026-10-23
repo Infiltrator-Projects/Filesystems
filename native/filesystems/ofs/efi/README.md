@@ -202,3 +202,27 @@ per block add some measurement cost; this build is for problem isolation,
 not a claim of optimized throughput. When no further slow reports are
 allowed, the timing calls are suppressed. Virtual CI and QEMU tests cannot
 qualify physical Dell latency.
+
+## Page-backed EFI sector-buffer qualification — 23 October 2026
+
+Physical Dell testing read the same high-numbered OFS sectors successfully
+under Linux while EFI `BlockIo.ReadBlocks` intermittently returned
+`EFI_DEVICE_ERROR`. The UEFI firmware transport, not a corrupt OFS
+checksum or the Linux `ofs.ko` module, is the observed failure boundary.
+
+The EFI adapter now obtains its single 512-byte transfer buffer using
+`AllocatePages` instead of pool allocation. The transfer address is at
+least 4096-byte aligned, respects any stricter power-of-two
+`Media.IoAlign` up to 64 KiB, is backed by contiguous UEFI physical pages,
+and is released with `FreePages` on probe/stop/error paths. This isolates
+a possible Dell DMA-buffer issue without altering the shared OFS parser,
+linked-block traversal, 512-byte BlockIo requests, retry bound, on-media
+format, or any Linux module. The static contract and OVMF driver-binding
+tests guard these properties.
+
+**Status: experimental, physical Dell validation required.** This change
+is a targeted transport-compatibility hypothesis, not evidence that the
+SD reader's failing firmware calls are fixed. In particular, a firmware
+defect with large partition-relative LBAs would not be solved by buffer
+alignment alone. Do not publish as a physically qualified driver until
+the complete kernel read and handoff have succeeded on the Dell.
