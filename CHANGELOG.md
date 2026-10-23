@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.65 — 2026-10-23
+
+- Add an independent Linux 6.12 QEMU native NTFS3 qualification workflow using the original source recovered under the canonical NTFS identity, not the NTFS-3G mount provider.
+- Format test media independently with `mkfs.ntfs`, load only our actual `ntfs3.ko` inside a Linux guest, exercise directory/file creation, multi-cluster write, rename, unmount/remount persistence and independent `ntfscat` verification.
+- Keep NTFS out of the managed module deployment manifest until real guest runtime and data-integrity checks pass; preserve original implementation and attribution.
+
+
 ## 0.5.64 — 2026-10-23
 
 - Add isolated Linux 6.12 QEMU runtime qualification for the original copied exFAT driver, using `exfatprogs` to format independent disposable media, a kernel without exFAT built into vmlinux, the actual external `exfat.ko`, directory creation, file writes, rename, unmount/remount readback and offline fsck.

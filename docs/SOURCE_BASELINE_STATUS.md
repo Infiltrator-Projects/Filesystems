@@ -27,3 +27,5 @@ Minix was promoted from imported source to the managed Linux module set after an
 BFS was promoted to a managed independent Linux `bfs.ko` after Debian exported-symbol build and real Linux 6.12 QEMU read/write/remount qualification (run 39921073843). Its original implementation and attribution remain intact. This is native runtime qualification, not EFI or OS root qualification.
 
 Original exFAT is now covered by a dedicated Linux 6.12 QEMU read/write/remount and independent filesystem-check workflow. The source remains in the imported-only manifest until its real runtime test is green; no additional installed module is claimed by creating the test.
+
+The actual original NTFS3 Linux source has its own QEMU native runtime workflow with a kernel that does not contain NTFS3 built-in, independently formatted NTFS media and independent userspace readback. This is evidence-gathering only; an unverified runtime does not authorize native deployment.
