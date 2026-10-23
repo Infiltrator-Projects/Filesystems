@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.69 — 2026-10-23
+
+- Restore 55 original CP/M implementation and build files from pinned
+  lipro-cpm4l/cpmtools e534e20c15973a9559e981efb498a102020e5db7
+  under editable per-format `userspace/`, retaining original code and COPYING.
+- Extend the original-userspace source manifest and CI implementation
+  presence guard to cover CP/M, keeping native installation disabled
+  until a real kernel adapter is implemented and independently qualified.
+- Source inventory now covers 37/41 formats: 10 managed native drivers,
+  25 other Linux driver sources and two userspace-origin implementations.
+
+
 ## 0.5.68 — 2026-10-23
 
 - Import 35 original Fosfat/Smaky implementation and build files from
