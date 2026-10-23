@@ -1,5 +1,8 @@
 # GFS2 Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 GFS2 is a shared-disk clustered filesystem. Multiple hosts coordinate access to
@@ -12,8 +15,8 @@ adapters around that engine.
 
 ## Current state
 
-GFS2 is currently **reference/import state**. The pinned upstream Linux GFS2
-implementation under `reference/linux/` is compatibility and design evidence
+GFS2 is currently **imported-source development state**. The pinned upstream Linux GFS2
+implementation under `linux/` is compatibility and design evidence
 only and is not project-authored Filesystems code.
 
 ## Target layout
@@ -25,7 +28,7 @@ native/filesystems/gfs2/
   linux/                thin Linux VFS/block adapter
   windows/              thin Windows adapter if eventually justified
   cluster/              host-neutral cluster-lock service adapter boundary
-  reference/linux/      pinned upstream Linux evidence
+  linux/      pinned upstream Linux evidence
 ```
 
 The exact cluster transport may evolve, but filesystem semantics must not be
@@ -56,8 +59,6 @@ Invalid resource groups, lock-state contradictions, bad journal descriptors,
 out-of-range block mappings, unsupported format features and uncertain
 multi-node recovery state must fail closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/gfs2` into
-`reference/linux/`. Reference refreshes must not overwrite project-owned
-`core/` or adapter source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

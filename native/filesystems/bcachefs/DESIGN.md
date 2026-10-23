@@ -1,5 +1,8 @@
 # Bcachefs Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 Bcachefs is a conventional local copy-on-write block filesystem. Filesystem
@@ -39,11 +42,11 @@ filesystem semantics.
 
 ## Current implementation state
 
-Bcachefs is currently **reference/import state**.
+Bcachefs is currently **imported-source development state**.
 
 There is no project-authored Bcachefs canonical engine or Filesystems
 Bcachefs kernel module claimed by this directory. The large source tree under
-`reference/linux/` is copied from the pinned Linux reference source by the
+`linux/` is copied from the pinned Linux reference source by the
 refresh workflow.
 
 The imported tree includes the mature Linux Bcachefs implementation, with
@@ -73,14 +76,14 @@ native/filesystems/bcachefs/
   core/                     canonical Bcachefs implementation
   linux/                    thin Linux VFS/module adapter
   windows/                  thin Windows IFS/WDK adapter when implemented
-  reference/linux/          preserved upstream evidence
+  linux/          preserved upstream evidence
 ```
 
 The reference tree is not part of the Filesystems CMake production
 source graph.
 
-While Bcachefs remains in reference/import state, the filesystem root therefore
-contains only `DESIGN.md` and `reference/`. CI treats the appearance of
+While Bcachefs remains in imported-source development state, the filesystem root therefore
+contains only `DESIGN.md` and `linux/`. CI treats the appearance of
 `core/`, `linux/`, `windows/` or `kernel/` as a deliberate promotion event and
 rejects accidental production linkage of the imported tree. The reference
 filenames remain upstream filenames until implementation bodies are actually
@@ -89,7 +92,7 @@ replaced.
 ## File-boundary rule
 
 Upstream filenames such as `btree_*.c`, `alloc_*.c`, `journal_*.c` and
-kernel-specific support files are retained unchanged in `reference/linux/` so
+kernel-specific support files are retained unchanged in `linux/` so
 their provenance is obvious.
 
 Project-authored files must be cut around Filesystems responsibilities
@@ -99,7 +102,7 @@ boundary.
 
 ## Promotion sequence
 
-Bcachefs should leave reference/import state only in deliberate stages:
+Bcachefs should leave imported-source development state only in deliberate stages:
 
 1. document the supported on-disk format and feature set;
 2. establish bounded host-neutral format decoding and feature negotiation;
@@ -120,9 +123,6 @@ B-tree/key geometry, bad checksums, out-of-range extents and unrecoverable
 journal state must fail closed. Multi-device and repair operations require
 stronger evidence than a successful mount.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow currently pins Linux v6.12.107 and copies `fs/bcachefs`
-to `reference/linux/`. Refreshing the reference tree may update evidence, but
-must never overwrite future project-authored `core/`, `linux/` or
-`windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

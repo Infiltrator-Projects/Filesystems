@@ -1,5 +1,8 @@
 # FAT12 / FAT16 / FAT32 Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 This directory owns the classic FAT filesystem family: FAT12, FAT16 and FAT32,
@@ -9,15 +12,15 @@ implementations.
 
 ## Current state
 
-FAT is currently **reference/import state**. The pinned Linux FAT/VFAT/MS-DOS
-implementation is preserved under `reference/linux/` with upstream licensing
+FAT is currently **imported-source development state**. The pinned Linux FAT/VFAT/MS-DOS
+implementation is preserved under `linux/` with upstream licensing
 and provenance. It is not project-authored Filesystems code.
 
 ## Current directory contract
 
-While FAT remains in reference/import state, the filesystem root contains only
-`DESIGN.md` and `reference/`, with the pinned upstream Linux FAT/MS-DOS/VFAT
-implementation under `reference/linux/`. The future `core/`, `linux/`,
+While FAT remains in imported-source development state, the filesystem root contains only
+`DESIGN.md` and `linux/`, with the pinned upstream Linux FAT/MS-DOS/VFAT
+implementation under `linux/`. The future `core/`, `linux/`,
 `windows/` and `userspace/` directories appear only with independently
 authored implementation; `kernel/` is not a valid alternate source tree.
 
@@ -33,7 +36,7 @@ native/filesystems/fat/
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows IFS/WDK adapter
   userspace/            optional adapter over the same core
-  reference/linux/      pinned upstream Linux evidence
+  linux/      pinned upstream Linux evidence
 ```
 
 ## Canonical ownership
@@ -66,8 +69,6 @@ Impossible geometry, inconsistent FAT copies, loops/out-of-range cluster
 chains, malformed LFN sequences and contradictory free-space metadata must fail
 closed or be surfaced as corruption according to the operation.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/fat` into
-`reference/linux/`. Reference refreshes must never overwrite future
-project-owned code.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

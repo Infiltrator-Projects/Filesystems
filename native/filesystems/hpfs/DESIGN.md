@@ -1,5 +1,8 @@
 # HPFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 HPFS (High Performance File System) is a conventional local block filesystem
@@ -8,15 +11,15 @@ normal one-canonical-filesystem architecture.
 
 ## Current implementation state
 
-HPFS is currently **reference/import state**.
+HPFS is currently **imported-source development state**.
 
 There is no project-authored HPFS canonical engine and no Filesystems
 HPFS Linux or Windows driver claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux HPFS implementation retained
+`linux/` is the pinned upstream Linux HPFS implementation retained
 as compatibility and semantic evidence.
 
 Those files keep their upstream SPDX/licence/copyright notices, filenames and
-implementation boundaries. Relocating them beneath `reference/linux/` is
+implementation boundaries. Relocating them beneath `linux/` is
 provenance hygiene only and is not an implementation rewrite.
 
 ## Current layout
@@ -38,7 +41,7 @@ native/filesystems/hpfs/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter
   userspace/             optional inspection/image adapter
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical-core ownership
@@ -67,7 +70,7 @@ and NTSTATUS translation belong in `windows/`.
 ## File-boundary rule
 
 Reference filenames such as `alloc.c`, `anode.c`, `dnode.c`, `map.c`,
-`namei.c` and `super.c` remain unchanged under `reference/linux/` so
+`namei.c` and `super.c` remain unchanged under `linux/` so
 their provenance is explicit.
 
 Project-authored source must be cut around Filesystems responsibilities
@@ -77,7 +80,7 @@ rewritten.
 
 ## Promotion sequence
 
-HPFS leaves reference/import state only through a deliberate rewrite:
+HPFS leaves imported-source development state only through a deliberate rewrite:
 
 1. define supported HPFS versions, codepages and media geometry;
 2. implement bounded host-neutral superblock/spare-block/fnode/anode decoding;
@@ -100,12 +103,9 @@ state and unsafe recovery state must fail closed.
 The presence of write paths in an external reference implementation is not
 evidence that Filesystems has qualified HPFS writes.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/hpfs` into
-`reference/linux/`. Refreshes may update reference evidence but must never
-overwrite future project-owned `core/`, `linux/`, `windows/` or
-`userspace/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

@@ -1,5 +1,8 @@
 # BeFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 BeFS is the BeOS filesystem and is a conventional local block filesystem.
@@ -33,9 +36,9 @@ lifetime rules belong only in the Linux adapter.
 
 ## Current implementation state
 
-BeFS is currently **reference/import state**.
+BeFS is currently **imported-source development state**.
 
-The source under `reference/linux/` is the pinned upstream Linux BeFS driver.
+The source under `linux/` is the pinned upstream Linux BeFS driver.
 It is primarily useful as a mature read-oriented compatibility reference for
 legacy BeOS media. Filesystems does not claim that source as its own
 implementation.
@@ -53,8 +56,8 @@ native/filesystems/befs/
     linux/                  pinned upstream Linux BeFS source
 ```
 
-While BeFS remains in reference/import state, CI therefore treats
-`DESIGN.md` and `reference/` as the only valid filesystem-root entries. The
+While BeFS remains in imported-source development state, CI therefore treats
+`DESIGN.md` and `linux/` as the only valid filesystem-root entries. The
 appearance of `core/`, `linux/`, `windows/`, `userspace/` or `kernel/` is a
 promotion event and must arrive with independently authored implementation and
 qualification, not as a directory rename. The imported tree is excluded from
@@ -68,7 +71,7 @@ native/filesystems/befs/
   core/                     canonical BeFS semantics
   linux/                    thin Linux VFS/module adapter
   windows/                  thin Windows IFS/WDK adapter when implemented
-  reference/linux/          preserved upstream evidence
+  linux/          preserved upstream evidence
 ```
 
 ## File-boundary rule
@@ -98,8 +101,6 @@ Unsupported variants, invalid B+tree nodes, out-of-range datastream runs,
 contradictory endian/geometry fields and malformed directory/metadata records
 must fail closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow currently pins Linux v6.12.107 and copies `fs/befs` into
-`reference/linux/`. Refreshing reference evidence must never overwrite future
-project-authored source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

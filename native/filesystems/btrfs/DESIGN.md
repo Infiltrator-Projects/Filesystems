@@ -1,5 +1,8 @@
 # Btrfs Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 Btrfs is a conventional local copy-on-write filesystem with checksums,
@@ -8,8 +11,8 @@ canonical-engine architecture.
 
 ## Current state
 
-Btrfs is currently **reference/import state**. The source under
-`reference/linux/` is the pinned upstream Linux implementation and is not
+Btrfs is currently **imported-source development state**. The source under
+`linux/` is the pinned upstream Linux implementation and is not
 project-authored Filesystems code.
 
 The reference tree is intentionally preserved with upstream filenames,
@@ -17,9 +20,9 @@ licences, copyright and subsystem boundaries.
 
 ## Current directory contract
 
-While Btrfs remains in reference/import state, the filesystem root contains only
-`DESIGN.md` and `reference/`; the copied Linux tree remains under
-`reference/linux/` with upstream filenames and boundaries intact. The future
+While Btrfs remains in imported-source development state, the filesystem root contains only
+`DESIGN.md` and `linux/`; the copied Linux tree remains under
+`linux/` with upstream filenames and boundaries intact. The future
 `core/`, `linux/` and `windows/` directories are created only when an
 independent rewrite actually begins. `kernel/` and `userspace/` are not valid
 shortcuts around that promotion boundary.
@@ -35,7 +38,7 @@ native/filesystems/btrfs/
   core/                 canonical Btrfs filesystem semantics
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows IFS/WDK adapter when implemented
-  reference/linux/      pinned upstream Linux evidence
+  linux/      pinned upstream Linux evidence
 ```
 
 ## Canonical ownership
@@ -72,8 +75,6 @@ Unsupported incompatibility features, invalid tree keys/levels, checksum
 failures, contradictory chunk/device maps, out-of-range extents and unsafe
 transaction/log state fail closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/btrfs` to
-`reference/linux/`. Reference refreshes must never overwrite project-owned
-implementation directories.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

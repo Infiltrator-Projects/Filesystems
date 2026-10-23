@@ -1,5 +1,8 @@
 # ADFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 ADFS (Acorn Disc Filing System) is a conventional local block filesystem used
@@ -54,11 +57,11 @@ formats, filetype encoding or other ADFS-defined behaviour.
 
 ## Current implementation state
 
-ADFS is currently **reference/import state**.
+ADFS is currently **imported-source development state**.
 
 There is no project-authored canonical ADFS engine and no Filesystems
 ADFS Linux or Windows adapter claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux ADFS implementation copied by
+`linux/` is the pinned upstream Linux ADFS implementation copied by
 `.github/workflows/import-linux-filesystems.yml`.
 
 The imported source currently demonstrates a Linux VFS implementation with F
@@ -90,21 +93,21 @@ native/filesystems/adfs/
   core/                  canonical ADFS implementation
   linux/                 thin native Linux adapter
   windows/               thin native Windows adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 The reference tree is not linked by the product CMake build and is not an
 Infiltrator ADFS module.
 
-While ADFS remains in reference/import state, `core/`, `linux/`, `windows/`
+While ADFS remains in imported-source development state, `core/`, `linux/`, `windows/`
 and `kernel/` are deliberately absent. Their appearance is a promotion event,
-not a harmless directory reshuffle. CI enforces the reference-only root shape,
+not a harmless directory reshuffle. CI enforces the working-source root shape,
 checks copied C/header provenance markers and rejects accidental production
-linkage of `reference/linux/`.
+linkage of `linux/`.
 
 ## Promotion rule
 
-ADFS leaves reference/import state only after an explicit rewrite milestone:
+ADFS leaves imported-source development state only after an explicit rewrite milestone:
 
 1. document the supported ADFS format variants and geometry limits;
 2. implement host-neutral disc-record, map, directory and object parsing;
@@ -126,9 +129,6 @@ indirect addresses, malformed directory structures and unsupported variants
 must fail closed. A future writer must not mutate media until the complete
 affected structure is understood and independently validated.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow currently pins Linux v6.12.107 and copies `fs/adfs` to
-`reference/linux/`. Refreshing that evidence may change the reference tree,
-but it must never overwrite future project-authored `core/`, `linux/` or
-`windows/` implementation.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

@@ -1,5 +1,8 @@
 # SCO BFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 BFS here means the SCO/UnixWare Boot File System. It is a conventional local
@@ -8,8 +11,8 @@ canonical filesystem engine with thin operating-system adapters.
 
 ## Current state
 
-BFS is currently **reference/import state**. The Linux source is preserved
-unchanged under `reference/linux/`; Filesystems does not claim that
+BFS is currently **imported-source development state**. The Linux source is preserved
+unchanged under `linux/`; Filesystems does not claim that
 implementation as project-authored code.
 
 The upstream files retain their original names, licences and provenance.
@@ -18,9 +21,9 @@ required permanent project file boundaries.
 
 ## Current directory contract
 
-While BFS remains in reference/import state, the filesystem root contains only
-`DESIGN.md` and `reference/`, with the copied Linux implementation below
-`reference/linux/`. The future `core/`, `linux/` and `windows/` directories do
+While BFS remains in imported-source development state, the filesystem root contains only
+`DESIGN.md` and `linux/`, with the copied Linux implementation below
+`linux/`. The future `core/`, `linux/` and `windows/` directories do
 not exist until an independent rewrite actually begins; `kernel/` and
 `userspace/` are not valid substitutes for that architecture.
 
@@ -35,7 +38,7 @@ native/filesystems/bfs/
   core/                 canonical BFS format and filesystem semantics
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows IFS/WDK adapter when implemented
-  reference/linux/      pinned upstream Linux evidence
+  linux/      pinned upstream Linux evidence
 ```
 
 ## Canonical ownership
@@ -50,13 +53,12 @@ Manager/IRP integration remain in `windows/`.
 
 ## Promotion rule
 
-BFS leaves reference/import state only after host-neutral format decoding,
+BFS leaves imported-source development state only after host-neutral format decoding,
 independent fixtures, malformed-media tests and a real adapter are implemented.
 Write support requires a separately reviewed durability/recovery contract.
 
 Moving or renaming upstream source does not cross the authorship boundary.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/bfs` into
-`reference/linux/`. It must never overwrite future project-owned source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

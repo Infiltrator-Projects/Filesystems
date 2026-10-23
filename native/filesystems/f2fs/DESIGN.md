@@ -1,5 +1,8 @@
 # F2FS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 F2FS is a conventional local flash-oriented filesystem with checkpoint,
@@ -8,15 +11,15 @@ implement those semantics once in a host-neutral core.
 
 ## Current state
 
-F2FS is currently **reference/import state**. The Linux implementation under
-`reference/linux/` is preserved unchanged as upstream evidence and is not
+F2FS is currently **imported-source development state**. The Linux implementation under
+`linux/` is preserved unchanged as upstream evidence and is not
 project-authored source.
 
 ## Current directory contract
 
-While F2FS remains in reference/import state, the filesystem root contains only
-`DESIGN.md` and `reference/`, with the pinned upstream Linux implementation
-under `reference/linux/`. The future `core/`, `linux/` and `windows/`
+While F2FS remains in imported-source development state, the filesystem root contains only
+`DESIGN.md` and `linux/`, with the pinned upstream Linux implementation
+under `linux/`. The future `core/`, `linux/` and `windows/`
 directories appear only with independently authored implementation. `kernel/`
 and `userspace/` are not valid alternate source trees.
 
@@ -31,7 +34,7 @@ native/filesystems/f2fs/
   core/                 canonical F2FS format/filesystem semantics
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows adapter when implemented
-  reference/linux/      pinned upstream Linux evidence
+  linux/      pinned upstream Linux evidence
 ```
 
 ## Canonical ownership
@@ -56,7 +59,6 @@ and recovery only after explicit durability/destructive qualification.
 Invalid checkpoint packs, contradictory NAT/SIT/segment state, bad node
 addresses, unsupported incompat features and unsafe recovery state fail closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/f2fs` to
-`reference/linux/`. It must never overwrite future project-owned source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

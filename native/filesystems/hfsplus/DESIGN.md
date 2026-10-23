@@ -1,5 +1,8 @@
 # HFS+ / HFSX Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 HFS+ (Mac OS Extended) and HFSX are conventional local block filesystems.
@@ -21,16 +24,16 @@ architecture:
 
 ## Current implementation state
 
-HFS+ is currently **reference/import state**.
+HFS+ is currently **imported-source development state**.
 
 There is no project-authored HFS+ canonical engine and no Filesystems
 HFS+ native driver claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux HFS+ implementation copied by
+`linux/` is the pinned upstream Linux HFS+ implementation copied by
 the reference-refresh workflow.
 
 Those files retain their upstream SPDX identifiers, copyrights, filenames and
 implementation boundaries. Moving the reference source beneath
-`reference/linux/` is provenance/layout hygiene only; it does not turn that
+`linux/` is provenance/layout hygiene only; it does not turn that
 implementation into project-authored code.
 
 The reference tree is not the permanent Filesystems source architecture.
@@ -54,7 +57,7 @@ native/filesystems/hfsplus/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
   userspace/             optional image/inspection adapter over the same core
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical-core ownership
@@ -101,7 +104,7 @@ HFS+ implementations.
 
 The upstream reference filenames such as `btree.c`, `catalog.c`,
 `extents.c`, `inode.c`, `super.c`, `unicode.c` and `xattr.c` remain
-unchanged under `reference/linux/` so their provenance is obvious.
+unchanged under `linux/` so their provenance is obvious.
 
 Project-authored HFS+ files must be cut around Filesystems
 responsibilities and portable invariants. Copying, renaming, merging,
@@ -110,7 +113,7 @@ implementation has been rewritten.
 
 ## Promotion sequence
 
-HFS+ leaves reference/import state only through an explicit rewrite:
+HFS+ leaves imported-source development state only through an explicit rewrite:
 
 1. define the supported HFS+/HFSX media variants and feature/journal limits;
 2. implement bounded host-neutral volume-header and fork/extents decoding;
@@ -138,14 +141,9 @@ state must fail closed.
 Write support must never be inferred merely because the reference Linux driver
 contains write paths.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/hfsplus` into
-`reference/linux/`.
-
-Refreshing that reference evidence may update the upstream snapshot, but it must
-never overwrite future project-authored `core/`, `linux/`, `windows/` or
-`userspace/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 
