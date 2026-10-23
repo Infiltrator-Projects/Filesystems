@@ -146,3 +146,116 @@ jobs:
           done
           echo "Debian symbol-resolved modules: $count / 8" >> "$GITHUB_STEP_SUMMARY"
           test "$failures" -eq 0
+
+  remaining-imported-symbol-probe:
+    # Exploratory per-format survey; unresolved drivers remain unqualified.
+    # This job has no path to package deployment and must not be interpreted
+    # as a successful runtime qualification for any filesystem.
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: consumer
+            filesystems: "apfs befs exfat fat hfs hfsplus hpfs ntfs udf ufs"
+          - group: journaling
+            filesystems: "btrfs f2fs jfs nilfs2 reiserfs"
+          - group: cluster
+            filesystems: "gfs2 ocfs2"
+          - group: large
+            filesystems: "bcachefs xfs"
+    steps:
+      - name: Checkout original, editable filesystem source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Get Debian 13 exported kernel interfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential linux-headers-amd64 kmod ca-certificates
+          headers=$(find /usr/src -mindepth 1 -maxdepth 1 -type d \
+            -name 'linux-headers-*-amd64' | sort -V | tail -n1)
+          test -n "$headers"
+          test -s "$headers/Module.symvers"
+          echo "DEBIAN_HEADERS=$headers" >> "$GITHUB_ENV"
+
+      - name: Survey real symbol-resolved Linux driver builds
+        shell: bash
+        env:
+          FILESYSTEM_LIST: ${{ matrix.filesystems }}
+          GROUP_NAME: ${{ matrix.group }}
+        run: |
+          set -euo pipefail
+          declare -A config=(
+            [apfs]=APFS_ALREADY_OUT_OF_TREE
+            [befs]=CONFIG_BEFS_FS
+            [exfat]=CONFIG_EXFAT_FS
+            [fat]=CONFIG_FAT_FS
+            [hfs]=CONFIG_HFS_FS
+            [hfsplus]=CONFIG_HFSPLUS_FS
+            [hpfs]=CONFIG_HPFS_FS
+            [ntfs]=CONFIG_NTFS3_FS
+            [udf]=CONFIG_UDF_FS
+            [ufs]=CONFIG_UFS_FS
+            [btrfs]=CONFIG_BTRFS_FS
+            [f2fs]=CONFIG_F2FS_FS
+            [jfs]=CONFIG_JFS_FS
+            [nilfs2]=CONFIG_NILFS2_FS
+            [reiserfs]=CONFIG_REISERFS_FS
+            [gfs2]=CONFIG_GFS2_FS
+            [ocfs2]=CONFIG_OCFS2_FS
+            [bcachefs]=CONFIG_BCACHEFS_FS
+            [xfs]=CONFIG_XFS_FS
+          )
+          errors=0
+          passed=0
+          for filesystem in $FILESYSTEM_LIST; do
+            directory="$GITHUB_WORKSPACE/native/filesystems/$filesystem/linux"
+            log="$RUNNER_TEMP/$GROUP_NAME-$filesystem.log"
+            name="$filesystem"
+            extra=()
+            case "$filesystem" in
+              apfs)
+                # Upstream DKMS PRE_BUILD generates this required version.h;
+                # its source files and build flags are otherwise unchanged.
+                (cd "$directory" && sh ./genver.sh)
+                ;;
+              fat)
+                extra=(CONFIG_FAT_FS=m CONFIG_VFAT_FS=m CONFIG_MSDOS_FS=m)
+                ;;
+              ntfs)
+                name=ntfs3
+                extra=("${config[$filesystem]}=m")
+                ;;
+              *)
+                extra=("${config[$filesystem]}=m")
+                ;;
+            esac
+            if make -C "$DEBIAN_HEADERS" M="$directory" \
+                 "${extra[@]}" modules >"$log" 2>&1 &&
+               test -s "$directory/$name.ko" &&
+               [[ $(modinfo -F name "$directory/$name.ko") == "$name" ]]; then
+              if [[ "$filesystem" == fat ]]; then
+                test -s "$directory/vfat.ko" && test -s "$directory/msdos.ko" || {
+                  echo "::error title=FAT family incomplete::vfat/msdos modules missing"
+                  errors=$((errors + 1))
+                  continue
+                }
+              fi
+              echo "SYMBOL-RESOLVED: $filesystem ($name)"
+              echo "$filesystem: exported-symbol link PASS" >> "$GITHUB_STEP_SUMMARY"
+              passed=$((passed + 1))
+            else
+              echo "::warning title=Driver needs porting::$filesystem failed strict distribution module build"
+              echo "$filesystem: source present, exported-symbol link FAILED" >> "$GITHUB_STEP_SUMMARY"
+              tail -n 70 "$log" || true
+              errors=$((errors + 1))
+            fi
+          done
+          echo "Group $GROUP_NAME: $passed passed, $errors need repair" >> "$GITHUB_STEP_SUMMARY"
+          test "$errors" -eq 0
