@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.74 — 2026-10-23
+
+- Remove the experimentally unsuccessful Dell RTS525A PCIe ASPM mutation from the OFS filesystem driver's EFI entry point. OFS is format-only; no hardware vendor matching or PCI configuration writes occur in production OFS.
+- Archive the experimental RTS525A link-control source under `firmware/uefi/storage/experimental/`, outside the production compilation path. Never install it as an unqualified storage provider.
+- Keep standard BlockIo read-only access and conservative DMA allocation, fix source contracts and document the independent, optional storage-driver protocol boundary with Boot's `storage_x64/` first-pass loader.
+- The physical Dell 30-second firmware reads are still unresolved; 0.5.74 is an architectural safety correction, not a claimed speed fix.
+
 ## 0.5.73 — 2026-10-23
 
 - Add an exact-hardware UEFI PCIe link mitigation for the Dell Latitude 5550's 10ec:525a Realtek RTS525A reader (Dell 1028:0cb9) and the verified Intel 8086:7e39 upstream port.

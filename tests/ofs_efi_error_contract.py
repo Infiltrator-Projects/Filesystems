@@ -7,23 +7,14 @@ equating disk transport errors with corrupted AmigaDOS metadata.
 from pathlib import Path
 
 source = Path("native/filesystems/ofs/efi/uefi_driver.c").read_text()
-link = Path("native/filesystems/ofs/efi/rtsx525a_link.c").read_text()
-build_script = Path("scripts/build-ofs-efi.sh").read_text()
-assert "ifs_rtsx525a_disable_aspm();" in source
-assert "rtsx525a_link" in build_script
-assert "DELL_RTS525A_PCI_ID    0x525a10ecU" in link
-assert "DELL_RTS525A_SUBSYS_ID 0x0cb91028U" in link
-assert "DELL_INTEL_ROOT_ID     0x7e398086U" in link
-assert "endpoint_count != 1U" in link
-assert "bridge_count != 1U" in link
-assert "seg != endpoint_segment" in link
-assert "(UINTN)secondary != endpoint_bus" in link
-assert "PCIE_EXP_ASPM" not in link
-assert "PCI_EXP_ASPM_MASK      0x0003U" in link
-assert "disable_aspm(endpoint, endpoint_offset, endpoint_ctl)" in link
-assert "disable_aspm(bridge, bridge_offset, bridge_ctl)" in link
-assert "(void)pci_put16(endpoint, endpoint_offset, endpoint_ctl);" in link
-assert "BS->FreePool(handles);" in link
+# An independent filesystem driver may never mutate platform PCI devices.
+# Controller-specific UEFI implementations must live in the separate,
+# explicitly opt-in firmware/storage subsystem and publish standard BlockIo.
+assert "ifs_rtsx525a_disable_aspm" not in source
+assert "#include \"rtsx525a_link.h\"" not in source
+assert "rtsx525a_link" not in Path("scripts/build-ofs-efi.sh").read_text()
+assert "EFI_PCI_IO_PROTOCOL" not in source
+assert "pci->Pci.Write" not in source
 
 read_one = source[source.index("static EFI_STATUS read_one_block("):
                   source.index("static int read_sector(")]

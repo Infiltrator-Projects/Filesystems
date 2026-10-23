@@ -271,3 +271,26 @@ mitigation was applied, or an error if the exact controller was detected
 but the operation could not be completed. Test against a backed-up EFI
 driver with a working alternative boot entry; do not treat as production
 qualification before kernel and initrd load successfully on physical SD.
+
+## Portable storage-provider boundary — 0.5.74
+
+OFS is a **filesystem** driver. Hardware-specific PCIe controller work
+does not belong in its `efi_main`, and no OFS probing or reads may
+modify controller PCI configuration. Earlier versions 0.5.73 and
+0.5.67 physically loaded the Linux kernel but still suffered recurring
+30-second `EFI_DEVICE_ERROR` sector read timeouts on the Dell
+RTS525A. PCIe ASPM configuration and 32-bit bounce-buffer experiments
+are not accepted physical fixes.
+
+0.5.74 removes the Dell-specific `rtsx525a_link` implementation from
+the OFS production driver, retaining conservative page-backed DMA
+buffers and format-neutral standard UEFI `EFI_BLOCK_IO.ReadBlocks`.
+Source of the unsuccessful experiment is retained separately under
+`firmware/uefi/storage/experimental/rtsx525a/` for audit, but is not
+compiled into OFS or shipped as a native controller driver.
+
+The firmware's 30-second synchronous block-read failures **remain
+unresolved**. Boot can now load an independently qualified native
+storage provider from `storage_x64/` before normal filesystem drivers
+from `drivers_x64/`; the provider must publish standard BlockIo
+handles. No qualifying native Realtek RTS525A provider exists yet.

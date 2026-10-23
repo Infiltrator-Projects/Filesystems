@@ -12,14 +12,13 @@
 #include <stdint.h>
 #include "reader.h"
 #include "uefi_trace.h"
-#include "rtsx525a_link.h"
 
 #define OFS_MAX_NAME 30U
 #define OFS_SIGNATURE 0x4f465333U
 #define OFS_FILE_SIGNATURE 0x4f464633U
 #define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
 #define OFS_DMA_PAGE_ALIGNMENT 4096U
-#define OFS_DMA_MAX_ADDRESS 0xffffffffULL /* 32-bit Realtek DMA window. */
+#define OFS_DMA_MAX_ADDRESS 0xffffffffULL /* Conservative 32-bit firmware DMA window. */
 #define OFS_SLOW_READ_REPORT_LIMIT 12U
 
 typedef struct OfsController OfsController;
@@ -114,11 +113,11 @@ static EFI_STATUS reader_error(const OfsController *ctx)
  * buffers even when Media.IoAlign understates their actual requirements.
  * Allocate whole UEFI physical pages, never a transient pool allocation;
  * honour any stricter advertised IoAlign and keep a full 512-byte transfer
- * within the allocation. Limit this memory to the low 4 GiB: the Linux
- * rtsx_pci driver uses a 32-bit DMA mask for the RTS525A, but firmware
- * BlockIo may not provide equivalent DMA remapping for buffers above 4 GiB.
- * Fail closed if suitable memory is unavailable, never silently fall back
- * to an arbitrary-address DMA buffer. OFS data validation is unchanged. */
+ * within the allocation. Limit this memory to the low 4 GiB for broad
+ * compatibility with UEFI controllers lacking 64-bit DMA access; never
+ * assume that the filesystem driver knows which controller is beneath
+ * BlockIo. Fail closed if suitable memory is unavailable. OFS data
+ * validation is unchanged. */
 static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
 {
     EFI_STATUS status;
@@ -754,13 +753,6 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *table)
 {
     EFI_STATUS status;
     InitializeLib(image, table);
-    /* Firmware-only workaround for the exact Dell RTS525A PCIe link.
-     * Leave all other hardware and the block protocol untouched. */
-    status = ifs_rtsx525a_disable_aspm();
-    if (status == EFI_SUCCESS)
-        Print(L"OFS EFI: Dell RTS525A PCIe ASPM disabled (volatile)\n");
-    else if (status != EFI_NOT_FOUND)
-        Print(L"OFS EFI: RTS525A PCIe ASPM mitigation unavailable: %r\n", status);
     g_binding.ImageHandle = image;
     g_binding.DriverBindingHandle = image;
     ofs_trace("OFS DriverBinding install begin\r\n");
