@@ -189,7 +189,7 @@ jobs:
             # without an artificial portable core directory.
             test -d "$base/linux"
             if [[ ! -d "$base/core" ]]; then
-              grep -Eq '^obj-m[[:space:]]*\\+=[[:space:]]*[a-z0-9_]+[.]o' "$base/linux/Makefile"
+              grep -Eq '^obj-m[[:space:]]*[+]=[[:space:]]*[a-z0-9_]+[.]o' "$base/linux/Makefile"
             fi
           done < data/native-filesystems.tsv
 
