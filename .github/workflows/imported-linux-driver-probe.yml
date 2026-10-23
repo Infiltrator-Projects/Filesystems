@@ -1,0 +1,88 @@
+name: Qualify imported Linux driver build baselines
+
+# This deliberately builds ORIGINAL imported code before changing its internals.
+# Nothing here updates data/native-filesystems.tsv, packages or live devices.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/imported-linux-driver-probe.yml"
+      - "native/filesystems/adfs/linux/**"
+      - "native/filesystems/bfs/linux/**"
+      - "native/filesystems/efs/linux/**"
+      - "native/filesystems/minix/linux/**"
+      - "native/filesystems/omfs/linux/**"
+      - "native/filesystems/qnx4/linux/**"
+      - "native/filesystems/qnx6/linux/**"
+      - "native/filesystems/sysv/linux/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-imported-linux-6-12:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout editable original Filesystems source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Prepare pinned Linux 6.12.107 module build interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bc bison flex libelf-dev libssl-dev
+          kernel_tree="$RUNNER_TEMP/linux-6.12.107"
+          echo "KERNEL_TREE=$kernel_tree" >> "$GITHUB_ENV"
+          git clone --filter=blob:none --depth 1 --branch v6.12.107 \
+            https://github.com/gregkh/linux.git "$kernel_tree"
+          make -C "$kernel_tree" defconfig
+          make -C "$kernel_tree" modules_prepare
+
+      - name: Build all eight imported legacy modules and report exact failures
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use each original Kbuild's CONFIG gate: no source rewrite, no
+          # substitution with the stock kernel's built-in filesystem.
+          # CONFIG flags here select an out-of-tree *build*, not live loading.
+          declare -A config=(
+            [adfs]=CONFIG_ADFS_FS
+            [bfs]=CONFIG_BFS_FS
+            [efs]=CONFIG_EFS_FS
+            [minix]=CONFIG_MINIX_FS
+            [omfs]=CONFIG_OMFS_FS
+            [qnx4]=CONFIG_QNX4FS_FS
+            [qnx6]=CONFIG_QNX6FS_FS
+            [sysv]=CONFIG_SYSV_FS
+          )
+          count=0
+          failures=0
+          for filesystem in adfs bfs efs minix omfs qnx4 qnx6 sysv; do
+            directory="$GITHUB_WORKSPACE/native/filesystems/$filesystem/linux"
+            log="$RUNNER_TEMP/$filesystem-build.log"
+            printf '\n=== ORIGINAL SOURCE BUILD: %s ===\n' "$filesystem"
+            # modules_prepare does not produce Module.symvers. Permit the
+            # temporary modpost symbol-resolution warnings ONLY in this
+            # early compilation probe, not in future qualification gates.
+            if make -C "$KERNEL_TREE" M="$directory" \
+                  "${config[$filesystem]}=m" \
+                  KBUILD_MODPOST_WARN=1 modules > "$log" 2>&1 &&
+               test -s "$directory/$filesystem.ko"; then
+              echo "COMPILED: $filesystem"
+              count=$((count + 1))
+            else
+              echo "::error title=Linux module build failed::$filesystem did not compile as an out-of-tree module"
+              failures=$((failures + 1))
+              tail -n 100 "$log" || true
+            fi
+            if grep -Eq 'section mismatch|WARNING: modpost: .*undefined' "$log"; then
+              echo "::warning title=Kernel linking needs qualification::$filesystem has modpost warnings; compilation alone is not runtime qualification"
+              grep -E 'section mismatch|WARNING: modpost: .*undefined' "$log" | head -n 12 || true
+            fi
+            echo "$filesystem: source compilation $([[ -s "$directory/$filesystem.ko" ]] && echo present || echo absent)" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "Compiled $count of 8 original source candidates; failures $failures" >> "$GITHUB_STEP_SUMMARY"
+          test "$failures" -eq 0
