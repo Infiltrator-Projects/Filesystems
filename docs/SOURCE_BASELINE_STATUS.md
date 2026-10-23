@@ -23,3 +23,5 @@ binaries or qualify any previously unqualified drivers.
 The previous SFS, SFS2 and PFS3 sources are also retained byte-for-byte under their respective `original/` directories, separately from the qualified native drivers. No obsolete `reference/` directories remain under `native/filesystems/`.
 
 Minix was promoted from imported source to the managed Linux module set after an original-source build, symbol-resolved Debian 13 build, and a successful Linux 6.12 QEMU read/write/remount runtime qualification. The independently editable original Linux source and its attribution are retained. This does not qualify Minix as an InfiltratorOS root or establish a matching EFI driver.
+
+BFS was promoted to a managed independent Linux `bfs.ko` after Debian exported-symbol build and real Linux 6.12 QEMU read/write/remount qualification (run 39921073843). Its original implementation and attribution remain intact. This is native runtime qualification, not EFI or OS root qualification.

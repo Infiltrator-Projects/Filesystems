@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.63 — 2026-10-23
+
+- Promote original independent SCO BFS to managed `bfs.ko`, following successful Debian symbol-resolved module compilation and Linux 6.12 QEMU mount/write/unmount/remount qualification.
+- Register BFS in the one native deployment manifest, enabling the existing kernel-version build, signing, module-selection, source freshness and transaction rollback mechanisms. Build `bfs.o` directly as its own out-of-tree module without rewriting the original filesystem logic.
+- Retain BFS's source provenance and separate unqualified EFI/root capability. Add a native catalogue regression asserting the managed BFS identity.
+
+
 ## 0.5.62 — 2026-10-23
 
 - Trial a UEFI-specific SD-controller compatibility correction: allocate the

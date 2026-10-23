@@ -3,6 +3,19 @@
 > **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
 
 
+## Qualified Linux module state
+
+The actual original Linux BFS implementation now builds as its own `bfs.ko`
+using explicit out-of-tree Kbuild registration. Debian 13 Module.symvers-backed
+compilation and the independent Linux 6.12 QEMU mount/write/unmount/remount
+runtime test passed (Filesystems CI run 39921073843). The Filesystems native
+module helper owns installation, source digest, selection, signing, rollback and
+removal. This does not qualify a UEFI reader or InfiltratorOS root filesystem.
+
+The original implementation files and provenance are preserved. Older
+imported-only and rewrite-first descriptions below are historical and do not
+supersede this qualified Linux runtime status.
+
 ## Classification
 
 BFS here means the SCO/UnixWare Boot File System. It is a conventional local

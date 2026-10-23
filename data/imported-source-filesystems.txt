@@ -5,7 +5,6 @@ adfs
 apfs
 bcachefs
 befs
-bfs
 btrfs
 efs
 exfat
