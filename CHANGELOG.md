@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.66 — 2026-10-23
+
+- Add standalone Linux 6.12 UDF filesystem-module runtime qualification: build original copied `udf.ko` against a kernel without built-in UDF, mount media produced by the independent `udftools` formatter, write and rename files, unmount/remount, and verify persistent contents using the separate host kernel's read-only UDF mount.
+- Keep UDF in the original-source-only manifest until native runtime qualification passes; this adds no premature installable driver or filesystem capabilities.
+
+
 ## 0.5.65 — 2026-10-23
 
 - Add an independent Linux 6.12 QEMU native NTFS3 qualification workflow using the original source recovered under the canonical NTFS identity, not the NTFS-3G mount provider.

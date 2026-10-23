@@ -1,0 +1,151 @@
+name: Qualify original UDF native Linux runtime
+
+# Build and boot the actual copied Linux UDF implementation on disposable
+# independently formatted media. This workflow never installs or promotes it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/imported-udf-runtime.yml"
+      - "native/filesystems/udf/linux/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-udf-qemu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Check out exact original UDF implementation
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Install kernel/QEMU and independently maintained UDF tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison flex libelf-dev libssl-dev \
+            qemu-system-x86 busybox-static cpio udftools kmod
+
+      - name: Build Linux 6.12 without built-in UDF support
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --depth 1 --branch v6.12.107 \
+            https://github.com/gregkh/linux.git /tmp/linux-udf
+          make -C /tmp/linux-udf defconfig
+          /tmp/linux-udf/scripts/config --file /tmp/linux-udf/.config \
+            --module UDF_FS \
+            --enable CRC_ITU_T \
+            --enable NLS \
+            --enable BLK_DEV_INITRD \
+            --enable DEVTMPFS \
+            --enable DEVTMPFS_MOUNT \
+            --enable VIRTIO \
+            --enable VIRTIO_PCI \
+            --enable VIRTIO_BLK \
+            --enable SERIAL_8250 \
+            --enable SERIAL_8250_CONSOLE \
+            --enable TMPFS
+          make -C /tmp/linux-udf olddefconfig
+          grep -Fxq 'CONFIG_UDF_FS=m' /tmp/linux-udf/.config
+          grep -Fxq 'CONFIG_CRC_ITU_T=y' /tmp/linux-udf/.config
+          make -C /tmp/linux-udf -j"$(nproc)" bzImage modules
+          test -s /tmp/linux-udf/Module.symvers
+
+      - name: Link the actual original UDF source as an external udf.ko
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C /tmp/linux-udf \
+            M="$PWD/native/filesystems/udf/linux" \
+            CONFIG_UDF_FS=m modules
+          test -s native/filesystems/udf/linux/udf.ko
+          test "$(modinfo -F name native/filesystems/udf/linux/udf.ko)" = udf
+
+      - name: Independently format disposable UDF 2.01 media
+        shell: bash
+        run: |
+          set -euo pipefail
+          truncate -s 128M /tmp/udf-qualification.img
+          mkudffs --media-type=hd --udfrev=0x0201 --blocksize=512 \
+            --label=FSQUAL /tmp/udf-qualification.img
+          udfinfo /tmp/udf-qualification.img | tee /tmp/udf-before.txt
+
+      - name: Package a guest with only our UDF module
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=/tmp/udf-qualification-root
+          mkdir -p "$root"/{bin,proc,sys,dev,mnt/udf}
+          cp /usr/bin/busybox "$root/bin/busybox"
+          for app in sh mount umount mkdir cat echo dd mv sync poweroff stat test grep ls; do
+            ln -s busybox "$root/bin/$app"
+          done
+          cp native/filesystems/udf/linux/udf.ko "$root/udf.ko"
+          cat > "$root/init" <<'EOF'
+          #!/bin/sh
+          set -eu
+          fail() {
+            echo "UDF-RUNTIME-FAIL: $*" > /dev/ttyS0
+            poweroff -f
+            exit 1
+          }
+          mount -t proc proc /proc || fail proc
+          mount -t sysfs sys /sys || fail sysfs
+          mount -t devtmpfs devtmpfs /dev || fail devtmpfs
+          if grep -q '[[:space:]]udf$' /proc/filesystems; then
+            fail "UDF unexpectedly pre-registered"
+          fi
+          insmod /udf.ko || fail "load independent udf.ko"
+          grep -q '[[:space:]]udf$' /proc/filesystems ||
+            fail "UDF not registered"
+          mount -t udf /dev/vda /mnt/udf || fail "mount UDF"
+          mkdir /mnt/udf/tree || fail "create directory"
+          echo "independent UDF module persistence" > /mnt/udf/tree/original.txt ||
+            fail "create original data"
+          dd if=/dev/zero of=/mnt/udf/tree/payload.bin bs=4096 count=32 ||
+            fail "write multi-extent payload"
+          mv /mnt/udf/tree/original.txt /mnt/udf/tree/renamed.txt ||
+            fail "rename"
+          sync
+          umount /mnt/udf || fail "first unmount"
+          mount -t udf /dev/vda /mnt/udf || fail "UDF remount"
+          test "$(cat /mnt/udf/tree/renamed.txt)" = \
+            "independent UDF module persistence" || fail "readback"
+          test "$(stat -c %s /mnt/udf/tree/payload.bin)" = 131072 ||
+            fail "persistent file length"
+          umount /mnt/udf || fail "final unmount"
+          echo "UDF-RUNTIME-PASS" > /dev/ttyS0
+          poweroff -f
+          EOF
+          chmod +x "$root/init"
+          (cd "$root" && find . -print0 | cpio --null -ov --format=newc | gzip -9) \
+            > /tmp/udf-qualification.cpio.gz
+
+      - name: Boot external UDF driver and verify host kernel readback
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180 qemu-system-x86_64 \
+            -machine accel=tcg -m 768 -nographic -no-reboot \
+            -kernel /tmp/linux-udf/arch/x86/boot/bzImage \
+            -initrd /tmp/udf-qualification.cpio.gz \
+            -append 'console=ttyS0 panic=1 rdinit=/init' \
+            -drive file=/tmp/udf-qualification.img,format=raw,if=virtio \
+            2>&1 | tee /tmp/udf-qualification.log
+          grep -Fq 'UDF-RUNTIME-PASS' /tmp/udf-qualification.log
+          ! grep -Fq 'UDF-RUNTIME-FAIL' /tmp/udf-qualification.log
+          udfinfo /tmp/udf-qualification.img
+          sudo mkdir -p /mnt/filesystems-udf-qualification
+          sudo mount -o loop,ro -t udf /tmp/udf-qualification.img \
+            /mnt/filesystems-udf-qualification
+          trap 'sudo umount /mnt/filesystems-udf-qualification || true' EXIT
+          test "$(cat /mnt/filesystems-udf-qualification/tree/renamed.txt)" = \
+            "independent UDF module persistence"
+          test "$(stat -c %s /mnt/filesystems-udf-qualification/tree/payload.bin)" = 131072
+          sudo umount /mnt/filesystems-udf-qualification
+          trap - EXIT

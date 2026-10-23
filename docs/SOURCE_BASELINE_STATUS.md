@@ -29,3 +29,5 @@ BFS was promoted to a managed independent Linux `bfs.ko` after Debian exported-s
 Original exFAT is now covered by a dedicated Linux 6.12 QEMU read/write/remount and independent filesystem-check workflow. The source remains in the imported-only manifest until its real runtime test is green; no additional installed module is claimed by creating the test.
 
 The actual original NTFS3 Linux source has its own QEMU native runtime workflow with a kernel that does not contain NTFS3 built-in, independently formatted NTFS media and independent userspace readback. This is evidence-gathering only; an unverified runtime does not authorize native deployment.
+
+The original UDF implementation is now covered by an independent QEMU runtime qualification workflow using UDF 2.01 media from udftools, guest-mounted original udf.ko, persistent multi-block writes and an independent read-only host-kernel verification. UDF remains unpromoted pending successful runtime evidence.
