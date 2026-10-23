@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.62 — 2026-10-23
+
+- Trial a UEFI-specific SD-controller compatibility correction: allocate the
+  OFS EFI driver's 512-byte firmware transfer buffer from contiguous UEFI
+  physical pages aligned to at least 4096 bytes while respecting any stricter
+  Media.IoAlign up to 64 KiB.
+- Keep the canonical OFS core, linked-block validation, 512-byte ReadBlocks
+  request size, bounded retry policy and Linux ofs.ko unchanged.
+- Extend the EFI source contract and retain full OVMF binding/read regression.
+  The Dell Latitude 5550's intermittent high-LBA firmware errors still require
+  real-device validation; passing CI is not physical boot qualification.
+
 ## 0.5.61 — 2026-10-23
 
 - Promote the original independent Minix filesystem driver to the managed
