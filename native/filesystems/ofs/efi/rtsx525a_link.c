@@ -30,7 +30,11 @@
 #define PCI_EXP_LNKCTL         0x10U
 #define PCI_EXP_ASPM_MASK      0x0003U
 
-static EFI_GUID pci_io_guid = EFI_PCI_IO_PROTOCOL;
+/* EFI_PCI_IO_PROTOCOL is a type name in GNU-EFI 3.0.15, not a GUID. */
+static EFI_GUID pci_io_guid = {
+    0x4cf5b200U, 0x68b8U, 0x4ca5U,
+    {0x9eU, 0xecU, 0xb2U, 0x3eU, 0x3fU, 0x50U, 0x02U, 0x9aU}
+};
 
 static EFI_STATUS pci_get8(EFI_PCI_IO *pci, UINT32 address, UINT8 *value)
 {
