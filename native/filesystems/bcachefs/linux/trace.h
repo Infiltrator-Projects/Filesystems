@@ -1897,7 +1897,7 @@ static inline void trace_btree_path_free_trans_begin(btree_path_idx_t path) {}
 
 /* This part must be outside protection */
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH ../../fs/bcachefs
+#define TRACE_INCLUDE_PATH .
 
 #undef TRACE_INCLUDE_FILE
 #define TRACE_INCLUDE_FILE trace

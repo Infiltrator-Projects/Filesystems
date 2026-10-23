@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.60 — 2026-10-23
+
+- Make the original Bcachefs tracepoint re-inclusion resolve through the
+  actual out-of-tree Kbuild source directory instead of assuming the source
+  resides at `fs/bcachefs` in the Linux kernel tree.
+- Preserve the original module's code, semantics and independent identity;
+  validate the change through Debian exported-symbol linker probes before
+  considering native deployment.
+- No new module is added to the installable native manifest without runtime
+  qualification.
+
+
 ## 0.5.59 — 2026-10-23
 
 - Repair two concrete original-driver out-of-tree integration failures:
