@@ -95,24 +95,18 @@ for identity_field in ("description;", "family;", "std::string_view name;"):
     require(identity_field not in linux_policy,
             f"filesystem identity leaked into Linux policy: {identity_field}")
 
-# Reference refresh must discover the current repository boundary. A workflow
-# must never own a second historical list capable of recreating retired trees.
+# Imported implementations are editable production-development source.
+# Upstream refresh must never reset local changes or publish source edits.
 refresh = text(".github/workflows/import-linux-filesystems.yml")
 for required in (
-    "data/source-filesystems.txt",
-    "data/native-filesystems.tsv",
-    "data/retired-source-identities.txt",
-    "*/reference/linux",
+    "workflow_dispatch:",
+    "data/imported-source-filesystems.txt",
     "bash tools/validate-source-contract.sh",
 ):
-    require(required in refresh, f"reference refresh lost boundary: {required}")
-for retired in (
-    line.strip()
-    for line in text("data/retired-source-identities.txt").splitlines()
-    if line.strip() and not line.lstrip().startswith("#")
-):
-    require(f"native/filesystems/{retired}" not in refresh,
-            f"reference refresh hard-codes retired source identity: {retired}")
+    require(required in refresh, f"source audit lost boundary: {required}")
+for forbidden in ("git push", "cp -a ", "rm -rf ", "*/reference/linux"):
+    require(forbidden not in refresh,
+            f"source audit could overwrite editable code: {forbidden}")
 
 # VERSION/tag identity is the release-state authority. Commit prose is not
 # executable state, and publication consumes rather than rebuilds the exact

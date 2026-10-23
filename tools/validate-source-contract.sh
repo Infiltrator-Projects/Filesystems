@@ -181,7 +181,37 @@ done
 ! grep -R -Eq 'IFS_FFS_IS_OFS|SF_OFS|AFFS_MOUNT_SF_OFS|affs_aops_ofs|ifs_ffs_ofs_|AFFS_DATA_HEAD|AFFS_DATA\(' \
     native/filesystems/ffs/linux
 
-# References are evidence only and are never compiled into active modules.
+# Copied Linux code is editable working source, not a disposable reference cache.
+# Only the native deployment manifest may turn code into an installable module.
+imported_manifest=data/imported-source-filesystems.txt
+test -s "$imported_manifest"
+manifest_values "$imported_manifest" | sort > "$work/imported.expected"
+test "$(wc -l < "$work/imported.expected")" -eq \
+     "$(sort -u "$work/imported.expected" | wc -l)"
+while IFS= read -r fs; do
+    grep -Fxq "$fs" "$work/source.expected" || {
+        echo "Undeclared imported filesystem source: $fs" >&2
+        exit 1
+    }
+    if awk -F '\t' -v fs="$fs" '$1 == fs { found = 1 } END { exit !found }' "$native_manifest"; then
+        echo "Imported-only source was added to the native deployment manifest: $fs" >&2
+        exit 1
+    fi
+    test -d "native/filesystems/$fs/linux" || {
+        echo "Missing actual imported implementation: $fs" >&2
+        exit 1
+    }
+    find "native/filesystems/$fs/linux" -type f \( -name '*.c' -o -name '*.h' \) -print -quit |
+      grep -q . || {
+        echo "No implementation source present: $fs" >&2
+        exit 1
+    }
+done < "$work/imported.expected"
+
+if find native/filesystems -type d -path '*/reference/linux' -print -quit | grep -q .; then
+    echo "Obsolete reference/linux quarantine has returned" >&2
+    exit 1
+fi
 ! grep -Fq '/reference' CMakeLists.txt
 while IFS=$'\t' read -r fs desktop_variant; do
     [[ -n "$fs" && "${fs:0:1}" != "#" ]] || continue

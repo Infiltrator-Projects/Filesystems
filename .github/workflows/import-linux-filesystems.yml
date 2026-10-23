@@ -1,106 +1,17 @@
-name: Refresh copied reference filesystem drivers
-
+name: Verify editable original filesystem sources
 on:
-  push:
-    paths:
-      - .github/import-linux-drivers.trigger
-
+  workflow_dispatch:
 permissions:
-  contents: write
-
+  contents: read
 jobs:
-  refresh:
+  original-source-audit:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out Filesystems
+      - name: Check out exact Filesystems source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-        with:
-          fetch-depth: 0
-
-      - name: Resolve current reference-only Linux trees
-        shell: bash
+      - name: Verify original source remains available
         run: |
           set -euo pipefail
-
-          mapfile -t native_ids < <(
-            awk -F '\t' '$0 !~ /^[[:space:]]*(#|$)/ { print $1 }' data/native-filesystems.tsv
-          )
-          mapfile -t reference_ids < <(
-            find native/filesystems \
-              -mindepth 3 -maxdepth 3 -type d \
-              -path '*/reference/linux' -printf '%P\n' |
-              awk -F/ '{ print $1 }' | sort -u
-          )
-
-          : > /tmp/linux-reference-filesystems.txt
-          for fs in "${reference_ids[@]}"; do
-            if printf '%s\n' "${native_ids[@]}" | grep -Fxq "$fs"; then
-              # Active project-native implementations may retain historical
-              # Linux evidence. That evidence is provenance, not a refresh target.
-              continue
-            fi
-            grep -Fxq "$fs" data/source-filesystems.txt || {
-              echo "Reference tree is outside the source manifest: $fs" >&2
-              exit 1
-            }
-            if grep -Ev '^[[:space:]]*(#|$)' data/retired-source-identities.txt |
-                 grep -Fxq "$fs"; then
-              echo "Retired source identity cannot be refreshed: $fs" >&2
-              exit 1
-            fi
-            printf '%s\n' "$fs" >> /tmp/linux-reference-filesystems.txt
-          done
-
-          test -s /tmp/linux-reference-filesystems.txt || {
-            echo 'No current reference-only Linux trees were found.' >&2
-            exit 1
-          }
-
-          mapfile -t sparse_paths < <(
-            sed 's#^#fs/#' /tmp/linux-reference-filesystems.txt
-          )
-          git clone --filter=blob:none --no-checkout --depth 1 --branch v6.12.107 \
-            https://github.com/gregkh/linux.git /tmp/linux
-          git -C /tmp/linux sparse-checkout init --cone
-          git -C /tmp/linux sparse-checkout set "${sparse_paths[@]}"
-          git -C /tmp/linux checkout
-
-      - name: Refresh current reference-only Linux trees
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          while IFS= read -r fs; do
-            source="/tmp/linux/fs/$fs"
-            destination="native/filesystems/$fs/reference/linux"
-            test -d "$source" || {
-              echo "Pinned Linux source is missing fs/$fs" >&2
-              exit 1
-            }
-            test -d "$destination" || {
-              echo "Current reference destination disappeared: $destination" >&2
-              exit 1
-            }
-            rm -rf "$destination"
-            mkdir -p "$destination"
-            cp -a "$source/." "$destination/"
-          done < /tmp/linux-reference-filesystems.txt
-
-          # A refresh is not allowed to change repository scope, native
-          # deployment membership or any of the project-owned rewrite boundaries.
+          test -s data/imported-source-filesystems.txt
           bash tools/validate-source-contract.sh
-
-      - name: Commit refreshed reference trees
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f .github/import-linux-drivers.trigger
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No reference-tree changes."
-            exit 0
-          fi
-          git commit -m "Refresh copied reference filesystem sources"
-          git push origin HEAD:main
+          python3 tests/repository_architecture_test.py .

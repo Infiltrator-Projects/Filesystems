@@ -1,0 +1,29 @@
+# Real, editable original Linux implementations copied into Filesystems.
+# Source availability is distinct from native driver qualification.
+# Actual files live at native/filesystems/<id>/linux/.
+adfs
+bcachefs
+befs
+bfs
+btrfs
+efs
+exfat
+f2fs
+fat
+gfs2
+hfs
+hfsplus
+hpfs
+jfs
+minix
+nilfs2
+ntfs
+ocfs2
+omfs
+qnx4
+qnx6
+reiserfs
+sysv
+udf
+ufs
+xfs
