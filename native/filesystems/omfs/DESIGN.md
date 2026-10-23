@@ -1,5 +1,8 @@
 # OMFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 OMFS is the Optimized MPEG Filesystem used by certain media-recording devices.
@@ -18,9 +21,9 @@ applies the normal canonical-engine architecture.
 
 ## Current implementation state
 
-OMFS is currently **reference/import state**.
+OMFS is currently **imported-source development state**.
 
-The source below `reference/linux/` is the pinned upstream Linux OMFS driver.
+The source below `linux/` is the pinned upstream Linux OMFS driver.
 It is retained as format, interoperability and failure-behaviour evidence only;
 Filesystems does not claim it as project-authored implementation.
 
@@ -46,7 +49,7 @@ native/filesystems/omfs/
   core/                  canonical OMFS format/filesystem implementation
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical-core ownership
@@ -74,7 +77,7 @@ translation belong in `windows/`.
 
 Upstream files such as `bitmap.c`, `dir.c`, `file.c`, `inode.c`,
 `omfs.h` and `omfs_fs.h` retain their original names, licences and
-provenance under `reference/linux/`.
+provenance under `linux/`.
 
 Project-authored source must be cut around canonical filesystem responsibilities
 and thin host adapters. Moving, renaming or recommenting copied Linux source is
@@ -100,9 +103,6 @@ variants must fail closed.
 A future writer must not modify media until all affected structures and the
 operation's recovery boundary are independently understood and verified.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/omfs` into
-`reference/linux/`. Refreshing that evidence may replace only the copied
-reference tree and must never overwrite future project-owned `core/`,
-`linux/` or `windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

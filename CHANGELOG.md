@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.56 — 2026-10-23
+
+- Restore 1,239 original copied Linux source files for 25 in-scope
+  filesystem formats from the reference quarantine to editable per-filesystem
+  `linux/` working directories without altering their implementation blobs.
+- Recover the original NTFS3 Linux implementation from Filesystems Git history
+  as the single NTFS format's editable source baseline. Existing source
+  attribution and licensing remain intact.
+- Remove automatic upstream source replacement/pushing and update CI to require
+  actual editable imported code, separated from the eight independently
+  qualified and deployable native modules.
+- Restore documentation of the original-source development model and report the
+  remaining seven unimported complete source baselines honestly.
+- This source-recovery release does not claim newly qualified native drivers,
+  physical-media capability, Windows drivers or firmware boot behaviour.
+
+
 ## 0.5.55 — 2026-10-23
 
 - Refuse package removals during support installation, native-module build-prerequisite installation and standalone package installation. APT enforces `--no-remove` against its actual transaction, so a conflict cannot silently turn an installation into removal of unrelated applications or bypass the wrapper's earlier simulation.

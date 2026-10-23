@@ -1,5 +1,8 @@
 # QNX6 Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 QNX6 Power-Safe is a conventional local block filesystem. Filesystems
@@ -21,11 +24,11 @@ their adapters.
 
 ## Current implementation state
 
-QNX6 is currently **reference/import state**.
+QNX6 is currently **imported-source development state**.
 
 There is no project-authored canonical QNX6 engine and no Filesystems
 QNX6 native driver claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux QNX6 implementation copied by
+`linux/` is the pinned upstream Linux QNX6 implementation copied by
 `.github/workflows/import-linux-filesystems.yml`.
 
 Those files retain their upstream provenance, licences, filenames and source
@@ -53,7 +56,7 @@ native/filesystems/qnx6/
   core/                  canonical QNX6 filesystem implementation
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -75,7 +78,7 @@ mount/module lifetime remain Linux-adapter responsibilities.
 ## File-boundary rule
 
 The imported `dir.c`, `inode.c`, `namei.c`, `qnx6.h` and
-`super_mmi.c` remain unchanged beneath `reference/linux/`.
+`super_mmi.c` remain unchanged beneath `linux/`.
 
 Project-authored implementation files must be organised around portable QNX6
 responsibilities rather than mechanically copying, renaming or recommenting the
@@ -101,12 +104,9 @@ directories, out-of-range block references, checksum failures and unsupported
 format states must fail closed. A successful read-only mount by the reference
 Linux driver is not evidence of safe project-owned mutation.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux reference refresh currently pins Linux v6.12.107 and copies
-`fs/qnx6` into `reference/linux/`. Refreshing that evidence may replace only
-the imported reference tree and must never overwrite future project-owned
-`core/`, `linux/` or `windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

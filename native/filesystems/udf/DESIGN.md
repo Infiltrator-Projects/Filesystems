@@ -1,5 +1,8 @@
 # UDF Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 UDF is a conventional local filesystem format based on ECMA-167 and used on
@@ -8,10 +11,10 @@ therefore applies the standard canonical-engine model.
 
 ## Current implementation state
 
-UDF is currently **reference/import state**.
+UDF is currently **imported-source development state**.
 
 There is no project-authored canonical UDF engine and no Filesystems UDF
-native module claimed by this directory. The source under `reference/linux/`
+native module claimed by this directory. The source under `linux/`
 is pinned upstream Linux UDF source retained as format, interoperability and
 failure-behaviour evidence.
 
@@ -38,7 +41,7 @@ native/filesystems/udf/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows adapter when implemented
   userspace/             optional image/tool adapter over the same core
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -62,7 +65,7 @@ mount/module lifetime are platform-adapter concerns.
 
 Imported Linux units such as `super.c`, `inode.c`, `partition.c`,
 `directory.c`, `balloc.c`, `unicode.c` and the ECMA/UDF headers remain
-unchanged beneath `reference/linux/`.
+unchanged beneath `linux/`.
 
 Project-authored source must be cut around portable UDF responsibilities rather
 than by renaming or recommenting those reference translation units.
@@ -87,12 +90,9 @@ partition/allocation references, malformed directory records and unsupported
 partition-map or revision states must fail closed. Optical/removable media
 peculiarities must remain explicit rather than guessed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux-reference refresh copies `fs/udf` into `reference/linux/`.
-Refreshes may replace only that imported evidence and must never overwrite
-future project-owned `core/`, `linux/`, `windows/` or `userspace/`
-source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

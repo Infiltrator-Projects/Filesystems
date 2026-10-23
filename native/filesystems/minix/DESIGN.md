@@ -1,5 +1,8 @@
 # Minix Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 The Minix filesystem family (v1, v2 and v3) is a conventional local block
@@ -9,15 +12,15 @@ with thin operating-system adapters around that core.
 
 ## Current implementation state
 
-Minix is currently **reference/import state**.
+Minix is currently **imported-source development state**.
 
 Filesystems does not claim the imported Linux Minix implementation as
 project-authored code. The pinned upstream source is retained unchanged beneath
-`reference/linux/` as compatibility, format and failure-behaviour evidence.
+`linux/` as compatibility, format and failure-behaviour evidence.
 
 The upstream filenames, licences, copyrights and implementation boundaries are
 preserved. Moving the tree out of the retired `kernel/` staging path and into
-`reference/linux/` is provenance/layout hygiene only; it is not a rewrite.
+`linux/` is provenance/layout hygiene only; it is not a rewrite.
 
 ## Current layout
 
@@ -38,7 +41,7 @@ native/filesystems/minix/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
   userspace/             optional image/qualification adapter
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical-core ownership
@@ -67,7 +70,7 @@ three unrelated host implementations.
 ## File-boundary rule
 
 Upstream files such as `inode.c`, `namei.c`, `bitmap.c` and
-`itree_*.c` remain unchanged only under `reference/linux/`.
+`itree_*.c` remain unchanged only under `linux/`.
 
 Project-authored source must be cut around Filesystems responsibilities
 and portable Minix invariants. Moving, renaming, merging or recommenting copied
@@ -90,11 +93,9 @@ Impossible geometry, invalid bitmap references, out-of-range zones/inodes,
 malformed directory entries, cyclic/invalid indirect trees and unsupported
 format state must fail closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux reference refresh workflow pins Linux v6.12.107 and copies
-`fs/minix` into `reference/linux/`. Refreshes may update reference evidence
-but must never overwrite future project-owned implementation directories.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

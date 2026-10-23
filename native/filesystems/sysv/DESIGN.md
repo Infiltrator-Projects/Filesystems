@@ -1,5 +1,8 @@
 # System V / Xenix / Coherent Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 The SysV filesystem family represented by the Linux `sysv` driver covers
@@ -11,11 +14,11 @@ supported SysV-family variants, with thin operating-system adapters.
 
 ## Current implementation state
 
-SysV is currently **reference/import state**.
+SysV is currently **imported-source development state**.
 
 There is no project-authored canonical SysV-family engine and no Filesystem
 Support SysV native module claimed by this directory. The source beneath
-`reference/linux/` is the pinned upstream Linux implementation retained as
+`linux/` is the pinned upstream Linux implementation retained as
 format, variant-detection and interoperability evidence.
 
 The upstream licences, copyrights, filenames and translation-unit boundaries
@@ -39,7 +42,7 @@ native/filesystems/sysv/
   core/                  canonical supported SysV/Xenix/Coherent semantics
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -58,7 +61,7 @@ lifecycle remain Linux-adapter concerns.
 
 The imported `balloc.c`, `ialloc.c`, `dir.c`, `inode.c`,
 `itree.c`, `namei.c`, `super.c` and `sysv.h` remain unchanged in
-`reference/linux/`.
+`linux/`.
 
 Project-owned source must be cut around portable format/variant responsibilities
 rather than mechanically preserving those Linux file boundaries.
@@ -79,11 +82,9 @@ references, corrupt free-list state and malformed directory records must fail
 closed. Variant guessing must never turn an uncertain image into a writable
 mount.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux-reference workflow copies `fs/sysv` into `reference/linux/`.
-Refreshes may replace only that reference tree and must never overwrite future
-project-owned `core/`, `linux/` or `windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

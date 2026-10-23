@@ -1,5 +1,8 @@
 # ReiserFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 ReiserFS is a conventional local journalled block filesystem. Filesystem
@@ -21,11 +24,11 @@ only in platform adapters.
 
 ## Current implementation state
 
-ReiserFS is currently **reference/import state**.
+ReiserFS is currently **imported-source development state**.
 
 There is no project-authored canonical ReiserFS engine and no Filesystem
 Support ReiserFS native module claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux ReiserFS implementation copied
+`linux/` is the pinned upstream Linux ReiserFS implementation copied
 by the Linux-reference refresh workflow.
 
 The imported files retain their upstream licensing, copyright, filenames and
@@ -54,7 +57,7 @@ native/filesystems/reiserfs/
   core/                  canonical ReiserFS filesystem implementation
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -79,7 +82,7 @@ locking, credentials and module/mount lifetime are Linux-adapter concerns.
 
 Upstream files such as `do_balan.c`, `fix_node.c`, `ibalance.c`,
 `lbalance.c`, `stree.c`, `journal.c`, `inode.c` and `super.c`
-remain unchanged beneath `reference/linux/`.
+remain unchanged beneath `linux/`.
 
 Project-authored source must be cut around Filesystems responsibilities
 and portable invariants rather than preserving or cosmetically renaming the
@@ -108,12 +111,9 @@ contradictory allocation state, unsupported features and unsafe journal/replay
 state must fail closed. A reference Linux implementation being able to mount a
 volume is not evidence that a future project writer may safely mutate it.
 
-## Reference provenance
+## Copied implementation provenance
 
-The reference refresh pins the selected upstream Linux source and copies
-`fs/reiserfs` into `reference/linux/`. Refreshing that evidence may replace
-only the imported reference tree and must never overwrite future project-owned
-`core/`, `linux/` or `windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

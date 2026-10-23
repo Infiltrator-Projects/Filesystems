@@ -1,5 +1,8 @@
 # QNX4 Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 QNX4 is a conventional local block filesystem used by QNX 4 systems.
@@ -21,11 +24,11 @@ platform adapters.
 
 ## Current implementation state
 
-QNX4 is currently **reference/import state**.
+QNX4 is currently **imported-source development state**.
 
 There is no project-authored canonical QNX4 engine and no Filesystems
 QNX4 native driver claimed by this directory. The source under
-`reference/linux/` is the pinned upstream Linux QNX4 implementation copied by
+`linux/` is the pinned upstream Linux QNX4 implementation copied by
 `.github/workflows/import-linux-filesystems.yml`.
 
 Those files retain their upstream SPDX/licence/copyright notices, filenames and
@@ -53,7 +56,7 @@ native/filesystems/qnx4/
   core/                  canonical QNX4 format/filesystem implementation
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -76,7 +79,7 @@ format semantics.
 ## File-boundary rule
 
 Upstream files such as `bitmap.c`, `dir.c`, `inode.c`, `namei.c` and
-`qnx4.h` remain unchanged below `reference/linux/`.
+`qnx4.h` remain unchanged below `linux/`.
 
 Project-authored code must be organised around Filesystems
 responsibilities and portable filesystem invariants rather than by renaming
@@ -103,12 +106,9 @@ contradictory allocation state, malformed directory records and unsupported
 format states must fail closed. Read-only compatibility of the current external
 Linux provider must not be mistaken for validated first-party write support.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux reference refresh currently pins Linux v6.12.107 and copies
-`fs/qnx4` into `reference/linux/`. Refreshing that evidence may replace only
-the imported reference tree and must never overwrite future project-owned
-`core/`, `linux/` or `windows/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

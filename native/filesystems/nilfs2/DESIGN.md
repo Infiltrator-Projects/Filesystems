@@ -1,5 +1,8 @@
 # NILFS2 Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 NILFS2 is a conventional local log-structured block filesystem with continuous
@@ -8,9 +11,9 @@ applies the one-canonical-filesystem architecture.
 
 ## Current implementation state
 
-NILFS2 is currently **reference/import state**.
+NILFS2 is currently **imported-source development state**.
 
-The Linux NILFS2 implementation beneath `reference/linux/` is pinned upstream
+The Linux NILFS2 implementation beneath `linux/` is pinned upstream
 source retained as format, interoperability and recovery evidence. It is not
 project-authored Filesystems code. Its original filenames, licences and
 source boundaries remain intact.
@@ -36,7 +39,7 @@ native/filesystems/nilfs2/
   linux/                 thin Linux VFS/block adapter
   windows/               thin Windows adapter when implemented
   userspace/             optional image/qualification adapter
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -68,11 +71,9 @@ Invalid segment summaries, contradictory checkpoint/DAT state, out-of-range
 blocks/inodes, malformed metadata trees and uncertain recovery state must fail
 closed.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux reference refresh workflow pins Linux v6.12.107 and copies
-`fs/nilfs2` into `reference/linux/`. Refreshes may update reference evidence
-but must never overwrite future project-owned implementation directories.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

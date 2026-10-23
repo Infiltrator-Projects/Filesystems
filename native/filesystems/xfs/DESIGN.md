@@ -1,5 +1,8 @@
 # XFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 XFS is a conventional local journalled extent filesystem. Filesystems
@@ -9,16 +12,16 @@ systems expose that core through thin adapters.
 
 ## Current implementation state
 
-XFS is currently **reference/import state**.
+XFS is currently **imported-source development state**.
 
 There is no project-authored canonical XFS engine and no Filesystems XFS
-native module claimed by this directory. The source under `reference/linux/`
+native module claimed by this directory. The source under `linux/`
 is the pinned upstream Linux XFS implementation retained as format,
 interoperability, repair and failure-behaviour evidence.
 
 Those files retain their upstream SPDX/licence/copyright notices, filenames and
 implementation boundaries. Relocating the unchanged Linux tree from the old
-`kernel/` staging path to `reference/linux/` is provenance/layout hygiene
+`kernel/` staging path to `linux/` is provenance/layout hygiene
 only; it is not an implementation rewrite and does not change authorship.
 
 ## Current directory layout
@@ -40,7 +43,7 @@ native/filesystems/xfs/
   linux/                 thin Linux VFS/block/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
   userspace/             optional image/inspection/qualification adapter
-  reference/linux/       preserved upstream Linux evidence
+  linux/       preserved upstream Linux evidence
 ```
 
 Empty project implementation directories are not created merely to imply
@@ -84,7 +87,7 @@ that their implementation has crossed the project-authorship boundary.
 
 ## Promotion sequence
 
-XFS leaves reference/import state only through deliberate independent work:
+XFS leaves imported-source development state only through deliberate independent work:
 
 1. define the supported XFS format generation and incompat/ro-compat features;
 2. implement bounded host-neutral superblock and allocation-group validation;
@@ -111,12 +114,9 @@ A reference Linux implementation being able to mount or repair a volume is not
 evidence that Filesystems has independently qualified equivalent write
 or recovery support.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux **v6.12.107** and copies `fs/xfs` unchanged
-into `reference/linux/`. Refreshes may replace only that copied reference
-tree and must never overwrite future project-owned `core/`, `linux/`,
-`windows/` or `userspace/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

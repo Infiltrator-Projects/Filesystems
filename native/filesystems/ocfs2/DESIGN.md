@@ -1,5 +1,8 @@
 # OCFS2 Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 OCFS2 is a shared-disk clustered filesystem. Multiple hosts may access the same
@@ -13,9 +16,9 @@ boundary around that engine.
 
 ## Current implementation state
 
-OCFS2 is currently **reference/import state**.
+OCFS2 is currently **imported-source development state**.
 
-The source under `reference/linux/` is the pinned upstream Linux OCFS2 tree,
+The source under `linux/` is the pinned upstream Linux OCFS2 tree,
 including its O2CB cluster and DLM/DLMFS implementation. It is retained as
 format, interoperability, cluster-state and failure/recovery evidence only.
 Filesystems does not claim that source as project-authored code.
@@ -33,7 +36,7 @@ native/filesystems/ocfs2/
   linux/                thin Linux VFS/block/module adapter
   windows/              thin Windows adapter if eventually justified
   cluster/              host-neutral cluster/locking service boundary
-  reference/linux/      pinned upstream Linux OCFS2/O2CB/DLM evidence
+  linux/      pinned upstream Linux OCFS2/O2CB/DLM evidence
 ```
 
 The exact cluster transport may evolve. Filesystem semantics must not fork per
@@ -76,7 +79,7 @@ implementation.
 
 ## File-boundary rule
 
-Files below `reference/linux/` retain upstream filenames, SPDX identifiers,
+Files below `linux/` retain upstream filenames, SPDX identifiers,
 copyrights and source boundaries, including `alloc.c`, `journal.c`,
 `dlmglue.c`, the `cluster/` tree and the `dlm/` and `dlmfs/` trees.
 
@@ -86,7 +89,7 @@ upstream OCFS2 file does not constitute an independent rewrite.
 
 ## Promotion sequence
 
-OCFS2 leaves reference/import state only through deliberate milestones:
+OCFS2 leaves imported-source development state only through deliberate milestones:
 
 1. document supported on-disk features, cluster model and unsupported states;
 2. implement bounded host-neutral superblock/system-file/inode/extent decoding;
@@ -113,9 +116,6 @@ uncertain fencing state and ambiguous node-recovery state must fail closed.
 Mutation must not continue when the project cannot prove exclusive or correctly
 coordinated access to affected metadata.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/ocfs2` into
-`reference/linux/`. Refreshing that tree may replace only copied reference
-material and must never overwrite future project-owned `core/`, `linux/`,
-`windows/` or `cluster/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.

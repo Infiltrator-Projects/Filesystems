@@ -10,6 +10,22 @@ The authoritative source/release version is stored in [`VERSION`](VERSION). Publ
 
 The baseline Linux distribution is **Debian stable**. As of September 2026 that is Debian 13 "trixie". Derivatives can benefit where they retain Debian-compatible package names and APT behaviour, but the catalogue is authored and qualified against Debian first.
 
+## Actual copied filesystem implementations
+
+The 41-format catalogue is distinct from the source inventory. **The original
+Linux implementation code for 26 additional formats is checked in under
+`native/filesystems/<id>/linux/` as editable working source**, including NTFS
+recovered from the historical NTFS3 source tree. These are not frozen references
+and an automated upstream refresh is not permitted to overwrite modifications.
+
+The existing eight individually managed native modules remain governed by
+`data/native-filesystems.tsv`; simply having original code does not qualify a
+module for installation. See
+[`docs/SOURCE_BASELINE_STATUS.md`](docs/SOURCE_BASELINE_STATUS.md) for the
+seven formats whose complete source baselines are still absent from this
+repository. Neither design documents nor Debian provider names are counted as
+copied implementation source.
+
 ## Product scope
 
 The catalogue contains **41 real on-media filesystem formats**. A catalogue row is a filesystem format identity, not a Linux provider or a generic mount mechanism.

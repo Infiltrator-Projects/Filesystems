@@ -1,5 +1,8 @@
 # JFS Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 JFS is a conventional local journalled block filesystem. Filesystems
@@ -9,15 +12,15 @@ adapter around that core.
 
 ## Current implementation state
 
-JFS is currently **reference/import state**.
+JFS is currently **imported-source development state**.
 
 There is no project-authored canonical JFS engine and no Filesystems JFS
-native module claimed by this directory. The source under `reference/linux/`
+native module claimed by this directory. The source under `linux/`
 is the pinned upstream Linux JFS implementation retained as semantic,
 interoperability and failure-behaviour evidence.
 
 The reference files retain their original provenance, licences, filenames and
-implementation boundaries. Their relocation under `reference/linux/` is not
+implementation boundaries. Their relocation under `linux/` is not
 an implementation rewrite.
 
 ## Current layout
@@ -38,7 +41,7 @@ native/filesystems/jfs/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows IFS/WDK adapter when implemented
   userspace/             optional image/qualification adapter
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical-core ownership
@@ -63,7 +66,7 @@ adapter.
 
 ## File-boundary rule
 
-Upstream Linux filenames remain unchanged beneath `reference/linux/`.
+Upstream Linux filenames remain unchanged beneath `linux/`.
 Project-owned source must be organised around Filesystems
 responsibilities and host-neutral JFS invariants, not copied or mechanically
 renamed from Linux.
@@ -73,7 +76,7 @@ the implementation has crossed the project-authorship boundary.
 
 ## Promotion sequence
 
-JFS leaves reference/import state only through an independent rewrite:
+JFS leaves imported-source development state only through an independent rewrite:
 
 1. document supported on-disk format and journal variants;
 2. implement bounded superblock, inode-map, allocation-map and extent decoding;
@@ -94,11 +97,9 @@ closed.
 Write support must not be inferred from the capabilities of the reference
 driver.
 
-## Reference provenance
+## Copied implementation provenance
 
-The refresh workflow pins Linux v6.12.107 and copies `fs/jfs` into
-`reference/linux/`. Refreshes may update reference evidence but must never
-overwrite future project-owned source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

@@ -1,5 +1,8 @@
 # UFS Filesystem Design and Ownership
 
+> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+
+
 ## Classification
 
 UFS is a family of conventional local block filesystems used by BSD, Sun and
@@ -12,10 +15,10 @@ adapters.
 
 ## Current implementation state
 
-UFS is currently **reference/import state**.
+UFS is currently **imported-source development state**.
 
 There is no project-authored canonical UFS engine and no Filesystems UFS
-native module claimed by this directory. The source under `reference/linux/`
+native module claimed by this directory. The source under `linux/`
 is the pinned upstream Linux UFS implementation retained as format,
 variant-detection, byte-order and interoperability evidence.
 
@@ -41,7 +44,7 @@ native/filesystems/ufs/
   linux/                 thin Linux VFS/module adapter
   windows/               thin Windows adapter when implemented
   userspace/             optional image/inspection adapter
-  reference/linux/       preserved upstream evidence
+  linux/       preserved upstream evidence
 ```
 
 ## Canonical ownership
@@ -65,7 +68,7 @@ lifetime remain Linux-adapter concerns.
 
 The imported `super.c`, `cylinder.c`, `balloc.c`, `ialloc.c`,
 `inode.c`, `dir.c`, `namei.c`, `ufs_fs.h` and related files remain
-unchanged beneath `reference/linux/`.
+unchanged beneath `linux/`.
 
 Project-owned source must be cut around portable UFS responsibilities and
 explicit variant boundaries, not mechanically renamed from Linux.
@@ -86,11 +89,9 @@ inode/block references, malformed directories and unsupported writable
 features must fail closed. Read-only support for one UFS variant must never
 silently imply safe mutation of another.
 
-## Reference provenance
+## Copied implementation provenance
 
-The Linux-reference refresh copies `fs/ufs` into `reference/linux/`.
-Refreshes may replace only that reference tree and must never overwrite future
-project-owned `core/`, `linux/`, `windows/` or `userspace/` source.
+The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
 
 ## Completion rule
 

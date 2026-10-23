@@ -22,17 +22,27 @@ These are deliberately independent filesystem implementations. Similarity betwee
 
 InfiltratorFS is maintained in its separate repository. Filesystems contains its catalogue/provider contract, not a duplicate InfiltratorFS source tree.
 
-## Reference/import and external-provider states
+## Editable copied-source baselines
 
-A source-manifest directory can legitimately contain only `DESIGN.md`, or `DESIGN.md` plus provenance-preserving `reference/` evidence, while no project-authored canonical engine exists. That state is intentional and must not be presented as native implementation progress.
+The copied Linux implementation sources for 26 formats are checked in under
+`native/filesystems/<id>/linux/`, governed by
+[`data/imported-source-filesystems.txt`](../data/imported-source-filesystems.txt).
+This is the actual original working implementation source available for direct
+modification, not discarded or refreshed research-only material. Its upstream
+attribution is retained until a specific implementation is genuinely replaced.
 
-Imported reference source remains evidence only. It is never linked into an active Filesystems implementation merely because it is present in the repository. Promotion requires independently authored canonical semantics, an explicit adapter boundary and qualification for every capability claimed by the format's design document.
+The eight native drivers use the separate deployment manifest. An imported
+Linux source tree is not automatically an installable out-of-tree module:
+integration, dependencies, runtime behaviour and safe recovery need actual
+qualification before adding that format to the managed native deployment set.
 
-Conversely, some catalogue formats are currently served entirely by external providers and need no local source directory. Catalogue membership and repository source-tree membership are different concerns and must not be inferred from one another.
+[`SOURCE_BASELINE_STATUS.md`](SOURCE_BASELINE_STATUS.md) records the seven
+remaining formats whose complete source is not yet copied into this repository,
+rather than treating empty directories or design documents as a code baseline.
 
 ## Retired identities
 
-[`../data/retired-source-identities.txt`](../data/retired-source-identities.txt) is the guardrail for historical provider, transport, overlay, archive, container and other non-format source identities that must not return as native filesystem trees. The Linux-reference refresh machinery must operate only on current in-scope reference trees; it may not recreate a retired identity.
+[`../data/retired-source-identities.txt`](../data/retired-source-identities.txt) is the guardrail for historical provider, transport, overlay, archive, container and other non-format source identities that must not return as native filesystem trees. The imported-source verification must not overwrite original working implementations or recreate retired identities.
 
 Provider names such as NTFS3, zfs-fuse or APFS provider variants never acquire an independent filesystem identity. Provider choice remains subordinate to the one canonical on-media format identity.
 
