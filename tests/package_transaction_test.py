@@ -59,7 +59,7 @@ void run_privileged_async(const std::vector<std::string>& arguments,
 }
 int main()
 {
-    filesystems::install_packages_async({"ntfs-3g"},
+    filesystems::install_packages_async({"hfsprogs"},
         [](bool success, const std::string&) { if (!success) std::exit(1); });
 }
 ''', encoding="utf-8")
@@ -191,32 +191,32 @@ with tempfile.TemporaryDirectory(prefix="filesystems-packages-") as temporary:
     def invoke(approved, database):
         status.write_text(database, encoding="utf-8")
         marker.unlink(missing_ok=True)
-        return apt(["remove", "-y", "ntfs-3g"], approved)
+        return apt(["remove", "-y", "hfsprogs"], approved)
 
-    approved = ["ntfs-3g:amd64"]
-    ordinary = installed("ntfs-3g", "Priority: optional\n")
+    approved = ["hfsprogs:amd64"]
+    ordinary = installed("hfsprogs", "Priority: optional\n")
     result = invoke(approved, ordinary)
     assert marker.exists() and "--remove" in marker.read_text(), (
         result.stdout, marker.read_text() if marker.exists() else "no dpkg call")
 
     # Both names are catalogue-managed. The newly dependent second package
     # must still be refused because it was absent from the user's approval.
-    changed = ordinary + installed("hfsprogs", "Depends: ntfs-3g\n")
+    changed = ordinary + installed("dosfstools", "Depends: hfsprogs\n")
     result = invoke(approved, changed)
     assert result.returncode != 0 and not marker.exists(), result.stdout
     assert "plan changed after confirmation" in result.stdout, result.stdout
 
-    result = invoke(["ntfs-3g:amd64", "hfsprogs:amd64"], changed)
+    result = invoke(["hfsprogs:amd64", "dosfstools:amd64"], changed)
     assert marker.exists() and "--remove" in marker.read_text(), result.stdout
 
-    result = invoke(approved, installed("ntfs-3g", "Priority: required\n"))
+    result = invoke(approved, installed("hfsprogs", "Priority: required\n"))
     assert result.returncode != 0 and not marker.exists(), result.stdout
     assert "marked Essential, Protected, or required" in result.stdout, result.stdout
 
-    result = invoke(["ntfs-3g:i386"], ordinary)
+    result = invoke(["hfsprogs:i386"], ordinary)
     assert result.returncode != 0 and not marker.exists(), result.stdout
 
-    result = invoke(["ntfs-3g:all"], installed("ntfs-3g", architecture="all"))
+    result = invoke(["hfsprogs:all"], installed("hfsprogs", architecture="all"))
     assert marker.exists() and "--remove" in marker.read_text(), result.stdout
 
     # Bypassing APT does not make the helper a general-purpose approval oracle.
@@ -234,7 +234,7 @@ with tempfile.TemporaryDirectory(prefix="filesystems-packages-") as temporary:
     commands = installation_commands(root)
     for conflict in (False, True):
         index = []
-        for package in ("ntfs-3g", "linux-headers-fixture", "filesystems"):
+        for package in ("hfsprogs", "linux-headers-fixture", "filesystems"):
             control = (
                 f"Package: {package}\nVersion: 1\nArchitecture: amd64\n"
                 "Maintainer: Disposable Test <test@example.invalid>\n"
