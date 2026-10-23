@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.64 — 2026-10-23
+
+- Add isolated Linux 6.12 QEMU runtime qualification for the original copied exFAT driver, using `exfatprogs` to format independent disposable media, a kernel without exFAT built into vmlinux, the actual external `exfat.ko`, directory creation, file writes, rename, unmount/remount readback and offline fsck.
+- Keep exFAT outside the managed native installation manifest until this runtime workflow completes successfully. Preserve copied source and its original attribution unchanged.
+- Do not conflate the earlier Debian exported-symbol build pass with genuine runtime qualification.
+
+
 ## 0.5.63 — 2026-10-23
 
 - Promote original independent SCO BFS to managed `bfs.ko`, following successful Debian symbol-resolved module compilation and Linux 6.12 QEMU mount/write/unmount/remount qualification.
