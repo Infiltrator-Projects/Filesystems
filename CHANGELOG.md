@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.61 — 2026-10-23
+
+- Promote the original independent Minix filesystem driver to the managed
+  `minix.ko` install/remove lifecycle after its Linux 6.12 QEMU mount,
+  write, unmount and remount runtime test and Debian symbol-resolved build.
+- Allow complete native Linux drivers to retain original format semantics
+  in their actual `linux/` source directory without manufacturing empty
+  `core/` placeholders; retain per-format source hashing, kernel ABI
+  matching, signing, module-selection checks and rollback.
+- Preserve explicit separation of source availability, native Linux driver
+  qualification and future EFI/root qualification.
+
+
 ## 0.5.60 — 2026-10-23
 
 - Make the original Bcachefs tracepoint re-inclusion resolve through the

@@ -71,7 +71,7 @@ native_source_digest_for() {
     local source_fs="$self_dir/native/filesystems/$requested"
     local source_platform="$self_dir/native/platform/linux_kernel"
 
-    [[ -d "$source_fs/core" && -d "$source_fs/linux" &&
+    [[ -d "$source_fs/linux" &&
        -f "$source_fs/linux/Makefile" ]] || {
         echo "packaged native source is incomplete for $requested" >&2
         return 1
@@ -95,9 +95,11 @@ native_source_digest_for() {
         # application working directory cannot change the file identities.
         cd "$self_dir"
         {
-            find \
-                "native/filesystems/$requested/core" \
-                "native/filesystems/$requested/linux" \
+            source_paths=("native/filesystems/$requested/linux")
+            if [[ -d "$source_fs/core" ]]; then
+                source_paths+=("native/filesystems/$requested/core")
+            fi
+            find "${source_paths[@]}" \
                 -type f \
                 \( -name 'Makefile' -o -name '*.c' -o -name '*.h' \) \
                 -print0
@@ -497,7 +499,9 @@ install_native() {
     tmp_native="$tmp/native"
 
     mkdir -p "$tmp_native/filesystems/$filesystem"
-    cp -a "$source_fs/core" "$tmp_native/filesystems/$filesystem/core"
+    if [[ -d "$source_fs/core" ]]; then
+        cp -a "$source_fs/core" "$tmp_native/filesystems/$filesystem/core"
+    fi
     cp -a "$source_linux" "$tmp_native/filesystems/$filesystem/linux"
     if uses_shared_linux_kernel_adapter "$filesystem"; then
         mkdir -p "$tmp_native/platform"

@@ -11,7 +11,7 @@ There are 26 independently copied Linux source baselines enumerated by
 original historical NTFS3 tree into the single NTFS identity.
 These directories are available for direct code modifications.
 
-The eight independently managed native Linux drivers are listed instead in
+The nine independently managed native Linux drivers are listed instead in
 `data/native-filesystems.tsv`. They are built and deployed only through
 their existing qualification and installation workflows. Copying an original
 working driver into the working tree is **not** an automatic claim that its
@@ -23,3 +23,5 @@ requirement is correct functionality, stable provenance and evidenced
 qualification, not rewriting code simply to change attribution.
 
 For SFS, SFS2 and PFS3, retained copies of the earlier working upstream implementations are under `original/` as separately editable code snapshots. Their qualified native `linux/` adapters are unchanged. No `reference/` source quarantine remains.
+
+The Minix module was promoted from the original Linux Kbuild source after Debian header symbol linking and a real Minix V3 QEMU read/write/remount test. It intentionally has no invented empty `core/` tree; its complete format implementation remains in `linux/`. Other filesystem imports stay outside the managed manifest until independently qualified.

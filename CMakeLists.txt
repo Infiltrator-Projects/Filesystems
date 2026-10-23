@@ -413,9 +413,13 @@ if(UNIX)
         FILES_MATCHING PATTERN "*.h")
 
     foreach(native_fs IN LISTS FILESYSTEMS_NATIVE_FILESYSTEMS)
-        install(DIRECTORY
-            "native/filesystems/${native_fs}/core"
-            "native/filesystems/${native_fs}/linux"
+        set(native_source_directories
+            "native/filesystems/${native_fs}/linux")
+        if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/${native_fs}/core")
+            list(APPEND native_source_directories
+                "native/filesystems/${native_fs}/core")
+        endif()
+        install(DIRECTORY ${native_source_directories}
             DESTINATION "lib/filesystems/native/filesystems/${native_fs}"
             PATTERN "*.o" EXCLUDE
             PATTERN "*.ko" EXCLUDE

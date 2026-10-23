@@ -103,8 +103,21 @@ while IFS=$'\t' read -r fs module; do
         echo "Native filesystem $fs is not present in $source_manifest" >&2
         exit 1
     }
-    test -d "native/filesystems/$fs/core"
     test -f "native/filesystems/$fs/linux/Makefile"
+    find "native/filesystems/$fs/linux" -type f -name '*.c' -print -quit |
+        grep -q . || {
+        echo "Managed native filesystem has no source code: $fs" >&2
+        exit 1
+    }
+    # The original Linux VFS implementation is sufficient when it is
+    # self-contained: a manufactured empty canonical core is not required.
+    if [[ ! -d "native/filesystems/$fs/core" ]]; then
+        grep -Eq "^[[:space:]]*obj-m[[:space:]]*[+:?]?=[[:space:]]*${module}[.]o" \
+            "native/filesystems/$fs/linux/Makefile" || {
+            echo "Core-less native driver is not explicitly standalone: $fs" >&2
+            exit 1
+        }
+    fi
 done < "$native_manifest"
 
 # Desktop policy may reference only a managed native filesystem. Its variant

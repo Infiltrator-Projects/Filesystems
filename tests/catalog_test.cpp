@@ -212,7 +212,8 @@ int main(int argc, char** argv)
         return fail("catalogue module allowlist is inconsistent");
     }
 
-    if (!filesystems::linux_native_module_is_managed("ext3", "ext3") ||
+    if (!filesystems::linux_native_module_is_managed("minix", "minix") ||
+        !filesystems::linux_native_module_is_managed("ext3", "ext3") ||
         !filesystems::linux_native_module_is_managed("ofs", "ofs") ||
         !filesystems::linux_native_module_is_managed("ffs", "ffs") ||
         !filesystems::linux_native_module_is_managed("sfs", "sfs") ||
