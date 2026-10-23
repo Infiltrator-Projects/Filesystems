@@ -28,7 +28,12 @@ assert "BS->Stall(1000U);" in read_sector
 assert "ctx->sector_buffer" in source
 assert "OFS_MAX_IO_ALIGNMENT" in source
 assert "OFS_DMA_PAGE_ALIGNMENT 4096U" in source
-assert "BS->AllocatePages(AllocateAnyPages, EfiBootServicesData" in source
+assert "#define OFS_DMA_MAX_ADDRESS 0xffffffffULL" in source
+assert "EFI_PHYSICAL_ADDRESS address = OFS_DMA_MAX_ADDRESS;" in source
+assert "BS->AllocatePages(AllocateMaxAddress, EfiBootServicesData" in source
+assert "BS->AllocatePages(AllocateAnyPages, EfiBootServicesData" not in source
+assert "(UINT64)aligned + 511ULL > OFS_DMA_MAX_ADDRESS" in source
+assert "BS->FreePages(address, pages);" in source
 assert "BS->FreePages(ctx->sector_allocation, ctx->sector_allocation_pages)" in source
 assert "ctx->sector_allocation_pages = pages;" in source
 assert "if (alignment < OFS_DMA_PAGE_ALIGNMENT)" in source

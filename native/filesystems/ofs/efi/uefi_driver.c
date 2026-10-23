@@ -18,6 +18,7 @@
 #define OFS_FILE_SIGNATURE 0x4f464633U
 #define OFS_MAX_IO_ALIGNMENT (64U * 1024U)
 #define OFS_DMA_PAGE_ALIGNMENT 4096U
+#define OFS_DMA_MAX_ADDRESS 0xffffffffULL /* 32-bit Realtek DMA window. */
 #define OFS_SLOW_READ_REPORT_LIMIT 12U
 
 typedef struct OfsController OfsController;
@@ -112,11 +113,15 @@ static EFI_STATUS reader_error(const OfsController *ctx)
  * buffers even when Media.IoAlign understates their actual requirements.
  * Allocate whole UEFI physical pages, never a transient pool allocation;
  * honour any stricter advertised IoAlign and keep a full 512-byte transfer
- * within the allocation. No change to the actual OFS block read sequence. */
+ * within the allocation. Limit this memory to the low 4 GiB: the Linux
+ * rtsx_pci driver uses a 32-bit DMA mask for the RTS525A, but firmware
+ * BlockIo may not provide equivalent DMA remapping for buffers above 4 GiB.
+ * Fail closed if suitable memory is unavailable, never silently fall back
+ * to an arbitrary-address DMA buffer. OFS data validation is unchanged. */
 static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
 {
     EFI_STATUS status;
-    EFI_PHYSICAL_ADDRESS address = 0U;
+    EFI_PHYSICAL_ADDRESS address = OFS_DMA_MAX_ADDRESS;
     UINTN alignment, pages, aligned;
     if (ctx->sector_buffer)
         return EFI_SUCCESS;
@@ -130,11 +135,16 @@ static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
         alignment = OFS_DMA_PAGE_ALIGNMENT;
     pages = (512U + alignment - 1U + OFS_DMA_PAGE_ALIGNMENT - 1U) /
             OFS_DMA_PAGE_ALIGNMENT;
-    status = BS->AllocatePages(AllocateAnyPages, EfiBootServicesData,
+    status = BS->AllocatePages(AllocateMaxAddress, EfiBootServicesData,
                                pages, &address);
     if (EFI_ERROR(status))
         return status;
     aligned = ((UINTN)address + alignment - 1U) & ~(alignment - 1U);
+    if ((UINT64)aligned + 511ULL > OFS_DMA_MAX_ADDRESS ||
+        aligned < (UINTN)address) {
+        BS->FreePages(address, pages);
+        return EFI_UNSUPPORTED;
+    }
     ctx->sector_allocation = address;
     ctx->sector_allocation_pages = pages;
     ctx->sector_buffer = (VOID *)aligned;

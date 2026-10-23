@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.67 — 2026-10-23
+
+- Constrain OFS UEFI `BlockIo.ReadBlocks` transfer pages to the low 4 GiB DMA-addressable physical range using `AllocateMaxAddress`. The Dell's Realtek RTS525A is operated with a 32-bit DMA mask by Linux `rtsx_pci`, whereas the prior `AllocateAnyPages` offered no equivalent physical-address bound.
+- Retain the page-backed power-of-two alignment guarantees, check the full 512-byte bounce buffer stays in range and fail closed rather than falling back above 4 GiB. Preserve the read-only OFS parser, single-sector reads, bounded retry limit and all Linux drivers.
+- Add regression assertions and require real GNU-EFI/OVMF qualification. Dell Latitude 5550 OFS kernel loading remains unverified until the deployed artifact is physically retested.
+
 ## 0.5.66 — 2026-10-23
 
 - Add standalone Linux 6.12 UDF filesystem-module runtime qualification: build original copied `udf.ko` against a kernel without built-in UDF, mount media produced by the independent `udftools` formatter, write and rename files, unmount/remount, and verify persistent contents using the separate host kernel's read-only UDF mount.

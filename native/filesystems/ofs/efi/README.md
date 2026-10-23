@@ -226,3 +226,20 @@ SD reader's failing firmware calls are fixed. In particular, a firmware
 defect with large partition-relative LBAs would not be solved by buffer
 alignment alone. Do not publish as a physically qualified driver until
 the complete kernel read and handoff have succeeded on the Dell.
+
+## Dell RTS525A firmware DMA-address limit experiment — 0.5.67
+
+Linux `rtsx_pci` configures a 32-bit DMA mask for the RTS525A PCIe SD reader. EFI
+`BlockIo.ReadBlocks` failures on the Dell Latitude 5550 were observed even
+though Linux could read the same partition-relative sectors. The previous
+page-aligned UEFI buffer used `AllocateAnyPages`, potentially placing it above
+4 GiB; alignment alone did not enforce the hardware's DMA addressing range.
+
+The OFS UEFI adapter now requests physical pages using `AllocateMaxAddress`
+with a maximum address of `0xffffffff` and validates that its complete 512-byte
+aligned transfer is below that limit. Failure to allocate suitable memory is
+a hard error, not permission to use a potentially unreachable address. The
+OFS reader, media data, BlockIo read sizes, retry count and Linux modules are
+unchanged. This targets one plausible failure mode; Dell firmware may have
+other SD-controller faults, and the correction is **not physically qualified**
+until a new on-device trial confirms full kernel and initrd loading.
