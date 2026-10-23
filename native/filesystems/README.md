@@ -21,3 +21,5 @@ A future canonical `core/` can separate platform-independent semantics from
 the existing Linux adapter *without discarding the working source*. The
 requirement is correct functionality, stable provenance and evidenced
 qualification, not rewriting code simply to change attribution.
+
+For SFS, SFS2 and PFS3, retained copies of the earlier working upstream implementations are under `original/` as separately editable code snapshots. Their qualified native `linux/` adapters are unchanged. No `reference/` source quarantine remains.

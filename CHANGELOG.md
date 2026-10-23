@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.57 — 2026-10-23
+
+- Complete the editable-original-source layout: preserve the copied legacy SFS, SFS2 and PFS3 source snapshots under per-filesystem `original/` trees, retaining their exact Git objects, while keeping the qualified independent `linux/` drivers unchanged.
+- Enforce the absence of all obsolete `reference/` filesystem source directories rather than only `reference/linux/`.
+- Maintain the separate native driver deployment manifest and the version/tag immutability policy. No new filesystem capability is claimed.
+
+
 ## 0.5.56 — 2026-10-23
 
 - Restore 1,239 original copied Linux source files for 25 in-scope

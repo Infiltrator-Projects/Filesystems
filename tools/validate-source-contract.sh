@@ -208,8 +208,8 @@ while IFS= read -r fs; do
     }
 done < "$work/imported.expected"
 
-if find native/filesystems -type d -path '*/reference/linux' -print -quit | grep -q .; then
-    echo "Obsolete reference/linux quarantine has returned" >&2
+if find native/filesystems -type d -name reference -print -quit | grep -q .; then
+    echo "Obsolete source-reference directory has returned" >&2
     exit 1
 fi
 ! grep -Fq '/reference' CMakeLists.txt

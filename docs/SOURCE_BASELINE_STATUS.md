@@ -19,3 +19,5 @@ The seven missing source baselines must not be represented as completed by
 design documents, package names, third-party runtime availability or empty
 directories. The source recovery also does not change version 0.5.55 release
 binaries or qualify any previously unqualified drivers.
+
+The previous SFS, SFS2 and PFS3 sources are also retained byte-for-byte under their respective `original/` directories, separately from the qualified native drivers. No obsolete `reference/` directories remain under `native/filesystems/`.
