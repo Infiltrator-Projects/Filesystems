@@ -86,3 +86,63 @@ jobs:
           done
           echo "Compiled $count of 8 original source candidates; failures $failures" >> "$GITHUB_STEP_SUMMARY"
           test "$failures" -eq 0
+
+  debian-6-12-symbol-qualified:
+    # Debian's packaged kernel headers contain Module.symvers. This is a
+    # genuine modpost link check, unlike the source-only kernel tree above.
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 35
+    steps:
+      - name: Checkout original Linux drivers
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+
+      - name: Install distribution kernel headers and build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential linux-headers-amd64 kmod ca-certificates
+          headers=$(find /usr/src -mindepth 1 -maxdepth 1 -type d \
+            -name 'linux-headers-*-amd64' | sort -V | tail -n1)
+          test -n "$headers"
+          test -s "$headers/Module.symvers"
+          echo "DEBIAN_HEADERS=$headers" >> "$GITHUB_ENV"
+
+      - name: Resolve actual exported symbols for eight original drivers
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -A config=(
+            [adfs]=CONFIG_ADFS_FS
+            [bfs]=CONFIG_BFS_FS
+            [efs]=CONFIG_EFS_FS
+            [minix]=CONFIG_MINIX_FS
+            [omfs]=CONFIG_OMFS_FS
+            [qnx4]=CONFIG_QNX4FS_FS
+            [qnx6]=CONFIG_QNX6FS_FS
+            [sysv]=CONFIG_SYSV_FS
+          )
+          failures=0
+          count=0
+          for filesystem in adfs bfs efs minix omfs qnx4 qnx6 sysv; do
+            directory="$GITHUB_WORKSPACE/native/filesystems/$filesystem/linux"
+            log="$RUNNER_TEMP/$filesystem-debian-build.log"
+            echo "=== DEBIAN REAL SYMBOL BUILD: $filesystem ==="
+            if make -C "$DEBIAN_HEADERS" M="$directory" \
+                 "${config[$filesystem]}=m" modules >"$log" 2>&1 &&
+               test -s "$directory/$filesystem.ko" &&
+               [[ $(modinfo -F name "$directory/$filesystem.ko") == "$filesystem" ]]; then
+              echo "SYMBOL-RESOLVED: $filesystem"
+              count=$((count + 1))
+            else
+              echo "::error title=Module symbols unresolved::$filesystem cannot yet link against distribution exports"
+              failures=$((failures + 1))
+              tail -n 80 "$log" || true
+            fi
+            printf '%s: %s\n' "$filesystem" \
+              "$([[ -s "$directory/$filesystem.ko" ]] && echo 'created (symbol link gate applies)' || echo 'not created')" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "Debian symbol-resolved modules: $count / 8" >> "$GITHUB_STEP_SUMMARY"
+          test "$failures" -eq 0
