@@ -55,7 +55,7 @@ inline const std::vector<LinuxSupportPolicy>& linux_support_policies()
         {"hfs", {"hfs"}, {"hfsprogs"}, AccessMode::Mixed, SupportProvider::KernelWithUserspace},
         {"hfsplus", {"hfsplus"}, {"hfsprogs"}, AccessMode::Mixed, SupportProvider::KernelWithUserspace},
         {"apfs", {"apfs"}, {"apfs-dkms", "apfsprogs"}, AccessMode::Experimental, SupportProvider::Dkms},
-        {"udf", {"udf"}, {"udftools"}, AccessMode::ReadWrite, SupportProvider::KernelWithUserspace},
+        {"udf", {}, {}, AccessMode::ReadWrite, SupportProvider::Kernel},
         {"vmfs", {}, {"vmfs-tools"}, AccessMode::ReadOnly, SupportProvider::Userspace},
         {"vmfs6", {}, {"vmfs6-tools"}, AccessMode::ReadOnly, SupportProvider::Userspace},
         {"cpm", {}, {"cpmtools"}, AccessMode::ToolsOnly, SupportProvider::ToolsOnly},

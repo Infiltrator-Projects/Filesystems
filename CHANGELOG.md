@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.72 — 2026-10-23
+
+- Promote the actual original UDF implementation as managed native `udf.ko`
+  after Debian symbol-resolved builds and successful Linux 6.12 QEMU
+  UDF 2.01 write/remount and independent host-kernel readback (run 39932498942).
+- Keep the driver independent, installing and removing through existing
+  native module source-freshness, signing, selection and rollback logic.
+- Remove udftools as a mandatory runtime mount-provider package, while
+  leaving formatter, alternative UDF revisions and EFI/root qualification
+  explicitly separate and unclaimed.
+
+
 ## 0.5.71 — 2026-10-23
 
 - Promote the independent original exFAT VFS implementation to managed

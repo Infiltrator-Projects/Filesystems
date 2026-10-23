@@ -1,29 +1,28 @@
 # Filesystem source availability
 
-**41 catalogue formats**, of which **37** have editable implementation
-source in this repository:
+Of the **41 catalogue formats**, **37** currently have implementation
+source available in this repository:
 
-- **12** project-managed native Linux drivers: EXT2, EXT3, EXT4, OFS, FFS,
-  SFS, SFS2, PFS3, Minix, BFS, NTFS3 (single NTFS identity) and exFAT.
-  These are independently deployed according to `data/native-filesystems.tsv`.
-- **23** additional copied Linux filesystem implementations, directly editable
-  under their `native/filesystems/<id>/linux/` paths.
-  They are not yet part of the managed installer.
-- **2** actual userspace-origin implementations for CP/M and Smaky/Fosfat,
-  editable under `native/filesystems/<id>/userspace/`. Neither has a native
-  Linux VFS module yet.
-- **4** complete code baselines not yet copied into this repository:
-  InfiltratorFS (original separately maintained driver), VMFS3/VMFS5,
-  VMFS6 and ZFS.
+- **13** project-managed independent native Linux drivers: EXT2, EXT3,
+  EXT4, OFS, FFS, SFS, SFS2, PFS3, Minix, BFS, NTFS3 (NTFS format identity),
+  exFAT and UDF. Deployment authority: `data/native-filesystems.tsv`.
+- **22** further editable original Linux source trees in
+  `native/filesystems/<id>/linux/`, not yet managed.
+- **2** editable original userspace implementations for CP/M and
+  Smaky/Fosfat, requiring a proper native Linux VFS adapter.
+- **4** source baselines not yet imported into this repository:
+  InfiltratorFS (maintained independently), VMFS3/VMFS5, VMFS6 and ZFS.
 
-Source availability, independent native runtime qualification, portable
-EFI reader qualification and InfiltratorOS root installation are separate.
+Actual filesystem source, an independently qualified native `.ko`,
+a read-only EFI reader and safe bootable InfiltratorOS root semantics are
+four distinct engineering milestones.
 
-Minix and BFS passed Linux 6.12 QEMU write/remount; NTFS3 passed write/remount
-plus independent ntfscat; exFAT passed write/remount plus independent
-fsck.exfat. UDF still has an independent QEMU qualification workflow pending.
-These tests do not certify the entire format feature set or physical media.
+Minix/BFS, NTFS3, exFAT and UDF have passed focused Linux 6.12 native
+QEMU mount/write/remount tests. NTFS3 passed independent ntfscat cross-check,
+exFAT independent fsck.exfat, and UDF independent host-kernel readback.
+These tests do not certify untested format revisions, hardware failures,
+journal recovery, removable media or system-root suitability.
 
-Original SFS/SFS2/PFS3 source snapshots remain in per-format `original/`
-directories. No old reference-only quarantines remain. Source copyrights
-and licensing are retained in the actual copied code.
+The original SFS, SFS2 and PFS3 snapshots also remain under per-format
+`original/` directories. Code attribution is retained. No discarded
+reference-only filesystem source quarantine remains.

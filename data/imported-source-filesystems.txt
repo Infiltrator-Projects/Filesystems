@@ -21,6 +21,5 @@ qnx4
 qnx6
 reiserfs
 sysv
-udf
 ufs
 xfs
