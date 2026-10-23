@@ -7,14 +7,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/imported-linux-driver-probe.yml"
-      - "native/filesystems/adfs/linux/**"
-      - "native/filesystems/bfs/linux/**"
-      - "native/filesystems/efs/linux/**"
-      - "native/filesystems/minix/linux/**"
-      - "native/filesystems/omfs/linux/**"
-      - "native/filesystems/qnx4/linux/**"
-      - "native/filesystems/qnx6/linux/**"
-      - "native/filesystems/sysv/linux/**"
+      - "native/filesystems/**/linux/**"
   workflow_dispatch:
 
 permissions:

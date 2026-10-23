@@ -8,7 +8,7 @@
 
 #include <linux/slab.h>
 #include <asm/byteorder.h>
-#include "../nls/nls_ucs2_data.h"
+#include "nls_ucs2_data.h"
 #include "jfs_types.h"
 
 extern int get_UCSname(struct component_name *, struct dentry *);

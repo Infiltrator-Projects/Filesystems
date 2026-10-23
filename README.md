@@ -13,7 +13,7 @@ The baseline Linux distribution is **Debian stable**. As of September 2026 that 
 ## Actual copied filesystem implementations
 
 The 41-format catalogue is distinct from the source inventory. **The original
-Linux implementation code for 26 additional formats is checked in under
+Linux implementation code for 27 additional formats is checked in under
 `native/filesystems/<id>/linux/` as editable working source**, including NTFS
 recovered from the historical NTFS3 source tree. These are not frozen references
 and an automated upstream refresh is not permitted to overwrite modifications.

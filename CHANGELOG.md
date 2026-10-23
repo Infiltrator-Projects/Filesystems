@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.59 — 2026-10-23
+
+- Repair two concrete original-driver out-of-tree integration failures:
+  match upstream Linux 6.12.113 by removing F2FS's obsolete
+  `fsverity_prepare_setattr()` call, and restore the JFS Unicode
+  declaration header from the pinned upstream Linux source into the
+  original JFS adapter with an explicitly local include.
+- Run Debian Module.symvers-backed linking checks on all 27 imported
+  Linux formats, with separate diagnostics for still-unqualified modules.
+- Exercise the imported Minix module's actual VFS behaviour in a QEMU
+  boot with Minix absent from the built-in kernel.
+- These build and runtime qualification experiments do not silently
+  add imported modules to the installable native manifest.
+
+
 ## 0.5.58 — 2026-10-23
 
 - Restore the exact 38-file original Linux APFS out-of-tree module source
