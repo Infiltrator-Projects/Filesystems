@@ -208,6 +208,7 @@ jobs:
             -drive file=/tmp/sfs2-4k.img,format=raw,if=virtio \
             2>&1 | tee /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-EXEC-PASS' /tmp/amiga-runtime.log
+          grep -Fq 'AMIGA-OFS-MULTIEXT-REMOUNT-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-READONLY-STATFS-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-LARGE-READONLY-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-LARGE-BATCHED-IO-PASS' /tmp/amiga-runtime.log
