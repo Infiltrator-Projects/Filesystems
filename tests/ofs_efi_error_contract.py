@@ -65,8 +65,9 @@ assert "ctx->last_block_status = result;" in read_sector
 assert "ctx->last_read_error = result == EFI_VOLUME_CORRUPTED" in read_sector
 assert "ctx->last_read_error = EFI_NO_MEDIA;" in read_sector
 assert "ctx->last_read_error = EFI_VOLUME_CORRUPTED;" in read_sector
-assert "prefetch" not in source
-assert "cached_sector" not in source
+assert "try_cached_sector" in source
+assert "ctx->cache_disabled = TRUE;" in source
+assert "ctx->cache_valid = FALSE;" in source
 assert "ReadDisk(" not in read_sector  # Cache attempts are isolated and optional.
 assert "return EFI_ERROR(result) ? -1 : 0;" not in read_sector
 
