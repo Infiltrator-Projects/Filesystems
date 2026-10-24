@@ -65,7 +65,9 @@ for mode in supported unsupported; do
     if [[ $mode == supported ]]; then
         grep -Fq "OFS_VM_PASS nested read and Stop/rebind" "$serial"
         if [[ $profile == diagnostic ]]; then
-            grep -Fq "OFS ReadBlocks complete" "$serial"
+            # DiskIo is now the primary path; require firmware to exercise it.
+            grep -Fq "OFS ReadDisk sector begin" "$serial"
+            grep -Fq "OFS sector read complete" "$serial"
         fi
     else
         grep -Fq "OFS_VM_PASS unsupported media rejected" "$serial"
