@@ -168,8 +168,45 @@ int main(void)
     REQUIRE(result == -1);
     REQUIRE(entries == IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES);
     REQUIRE(read_calls <= 2U * (IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES + 1U));
+    /* DOS\2 uses international Latin-1 case folding when hashing and
+     * matching names; plain DOS\0 must not apply this transformation. */
+    fixture();
+    put(media[0], 0, 0x444f5302U);
+    media[5][432] = 1U;
+    media[5][433] = 0xe4U;
+    checksum(media[5]);
+    memset(media[4] + 6U * 4U, 0, 72U * 4U);
+    {
+        const uint8_t lower[] = { 0xe4U };
+        const uint8_t upper[] = { 0xc4U };
+        const uint32_t bucket = ifs_ofs_directory_hash(lower, 1U, 72U, 1);
+        put(media[4], 6U + bucket, 5U);
+        checksum(media[4]);
+        REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == 0);
+        REQUIRE((v.variant_flags & 0x02U) != 0U);
+        root = ifs_ofs_efi_root(&v);
+        REQUIRE(ifs_ofs_efi_lookup(&v, &root,
+                                  (const uint8_t *)"boot", 4, &directory) == 0);
+        REQUIRE(ifs_ofs_efi_lookup(&v, &directory, upper, 1, &file) == 0);
+        REQUIRE(ifs_ofs_efi_read(&v, &file, 0, buf, 5, NULL) == 0);
+        REQUIRE(memcmp(buf, "HELLO", 5) == 0);
+    }
+    /* DOS\4 directory-cache media still has the canonical directory hash
+     * chain; the EFI reader must not write or use its optional cache blocks. */
+    fixture();
+    put(media[0], 0, 0x444f5304U);
+    REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == 0);
+    root = ifs_ofs_efi_root(&v);
+    REQUIRE(ifs_ofs_efi_lookup(&v, &root,
+                              (const uint8_t *)"BOOT", 4, &directory) == 0);
+    REQUIRE(ifs_ofs_efi_lookup(&v, &directory,
+                              (const uint8_t *)"kernel.efi", 10, &file) == 0);
     fixture();
     put(media[0], 0, 0x444f5301U); /* FFS must not bind as OFS. */
+    REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
+    put(media[0], 0, 0x444f5303U);
+    REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
+    put(media[0], 0, 0x444f5305U);
     REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
     /* The reader's address space is an unsigned 32-bit block count, not an
      * arbitrary INT32_MAX ceiling inherited from the Linux AFFS adapter. */
