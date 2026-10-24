@@ -4,8 +4,7 @@ Status: **open / incomplete**, audited 24 October 2026.
 
 ## Authority and separation
 
-AmigaDOS **OFS** (DOS\\0, DOS\\2, DOS\\4) and **FFS**
-(DOS\\1, DOS\\3, DOS\\5) are distinct on-media formats. Linux
+AmigaDOS **OFS** includes DOS\\0, DOS\\2, DOS\\4 and DOS\\6. FFS is a separate on-media family, with its identifiers specified only in [the FFS document](../native/filesystems/ffs/FFS_SPECIFICATION.md). The authoritative OFS format is [OFS_SPECIFICATION.md](../native/filesystems/ofs/OFS_SPECIFICATION.md). The [DOS0-specific completion matrix](OFS_DOS0_COMPLETION_MATRIX.md) holds the initial feature-completeness gate. Linux
 `affs` is a combined adapter, **not** proof that the OFS and FFS data
 layouts or feature limits are interchangeable. The Linux kernel explicitly
 distinguishes the DOS types, and documents a 512–32768-byte format block-size
