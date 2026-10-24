@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.78 — 2026-10-24 (candidate; not released)
+
+- Canonical OFS specification now covers all four real DOS0, DOS2, DOS4 and **DOS6 LNFS** profiles, with original-source LNFS NaC, overflow-comment and root fields. Migrate explicit FFS variant identifiers to `native/filesystems/ffs/FFS_SPECIFICATION.md`.
+- Disposable OFS image formatter now accepts `--variant dos6` and writes/validates the LNFS root DOSType and bitmap-derived used-block count, with seven-size regression and damage tests. Earlier DOS0/2/4 output defaults and physical safety gates stay intact.
+- **Not complete DOS6 support:** Linux OFS and EFI classic-name readers remain unable to read LNFS entry names. Physical DOS6 formatting is deliberately refused until those readers, native read/write namespace operations, comment blocks and external compatibility tests are implemented and qualified.
+
 ## 0.5.77 — 2026-10-24 (candidate; not yet released)
 
 - Record the OFS specification audit before source changes in `docs/OFS_CORRECTNESS_REMEDIATION_2026-10-24.md`, including unresolved Linux large-block and capacity support.

@@ -55,7 +55,7 @@ def test(tool, root):
     # Each actual on-disk variant must be independently identifiable and
     # structurally complete, not a signature-only re-label of DOS0.
     for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
-        for selector, suffix in (("dos0", 0), ("dos2", 2), ("dos4", 4)):
+        for selector, suffix in (("dos0", 0), ("dos2", 2), ("dos4", 4), ("dos6", 6)):
             image = root / f"ofs-{selector}-block-{block}.img"
             opts = ("--variant", selector, "--block-size", block) if suffix == 4 \
                 else ("--block-size", block, "--variant", selector)
@@ -69,6 +69,18 @@ def test(tool, root):
                 header = fh.read(block)
                 words = block // 4
                 cache = struct.unpack_from(">I", header, block - 8)[0]
+                if suffix == 6:
+                    used = struct.unpack_from(">I", header, block - 44)[0]
+                    dostype = struct.unpack_from(">I", header, block - 16)[0]
+                    bitmap_count = ((total - 2) + (8 * block - 32) - 1) // (8 * block - 32)
+                    extra = (max(0, bitmap_count - 25) + (block // 4 - 1) - 1) // (block // 4 - 1)
+                    assert used == 1 + bitmap_count + extra, (block, used)
+                    assert dostype == 0x444F5306
+                    assert header[block - 80] == len("VARIANT")
+                    assert sum(struct.unpack(f">{words}I", header)) % (1 << 32) == 0
+                else:
+                    assert struct.unpack_from(">I", header, block - 44)[0] == 0
+                    assert struct.unpack_from(">I", header, block - 16)[0] == 0
                 if suffix != 4:
                     assert cache == 0, (selector, block, cache)
                 else:
@@ -84,6 +96,13 @@ def test(tool, root):
                     fh.seek(bitmap * block + 4 + 4 * (relative // 32))
                     bitmap_word = struct.unpack(">I", fh.read(4))[0]
                     assert bitmap_word & (1 << (relative % 32)) == 0
+            if suffix == 6:
+                # Either LNFS-specific root field must invalidate the volume.
+                for field in (block - 44, block - 16):
+                    victim = root / f"bad-dos6-root-{block}-{field}.img"
+                    shutil.copyfile(image, victim)
+                    damage(victim, key * block + field)
+                    command(tool, "--verify", victim, success=False)
             if suffix == 4:
                 # Cache integrity and ownership must be verified; rejecting
                 # mutated media proves DOS4 isn't only a different DOS byte.
@@ -92,7 +111,7 @@ def test(tool, root):
                 damage(victim, cache * block + 8)
                 command(tool, "--verify", victim, success=False)
 
-    for bad_variant in ("dos1", "dos3", "dos5", "dos6", "DOS2", ""):
+    for bad_variant in ("dos1", "dos3", "dos5", "dos7", "DOS2", ""):
         invalid_image = root / ("bad-variant-" + (bad_variant or "empty") + ".img")
         command(tool, "--create", invalid_image, 4, "INVALID",
                 "--variant", bad_variant, success=False)

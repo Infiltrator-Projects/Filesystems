@@ -63,6 +63,8 @@ static int select_variant(const char *argument)
         format_variant = 2U;
     else if (strcmp(argument, "dos4") == 0)
         format_variant = 4U;
+    else if (strcmp(argument, "dos6") == 0)
+        format_variant = 6U;
     else
         return -1;
     return 0;
@@ -183,7 +185,8 @@ static int verify_one_size(int fd)
 
     if (block_io(fd, 0, boot, 0) != 0 ||
         memcmp(boot, "DOS", 3) != 0 ||
-        (boot[3] != 0U && boot[3] != 2U && boot[3] != 4U) ||
+        (boot[3] != 0U && boot[3] != 2U &&
+         boot[3] != 4U && boot[3] != 6U) ||
         block_io(fd, 1, data, 0) != 0 ||
         block_io(fd, root, root_data, 0) != 0 ||
         word(root_data, 0) != 2U || word(root_data, 3) != block_words() - 56U ||
@@ -199,6 +202,21 @@ static int verify_one_size(int fd)
             goto out;
 
     variant = boot[3];
+    /* LNFS root repeats the volume DOSType and counts the blocks marked
+     * occupied in the bitmap. Other classic roots reserve these positions. */
+    if (variant == 6U) {
+        const uint32_t expected_used = 1U + bitmaps +
+            (bitmaps > ROOT_BMAP_COUNT
+                ? (bitmaps - ROOT_BMAP_COUNT + extension_pointers() - 1U)
+                    / extension_pointers()
+                : 0U);
+        if (word(root_data, block_words() - 4U) != UINT32_C(0x444F5306) ||
+            word(root_data, block_words() - 11U) != expected_used)
+            goto out;
+    } else if (word(root_data, block_words() - 4U) != 0U ||
+               word(root_data, block_words() - 11U) != 0U) {
+        goto out;
+    }
     cache = word(root_data, block_words() - 2U);
     if (variant == 4U) {
         /* DOS4's blank root owns a real, allocated, empty cache block. */
@@ -373,6 +391,12 @@ static int create(int fd, const char *label)
     for (i = 0; i < bitmaps && i < ROOT_BMAP_COUNT; ++i)
         put_word(data, bitmap_pointer_start() + i, bmap[i]);
     put_word(data, bitmap_extension_pointer(), extras ? ext[0] : 0U);
+    if (format_variant == 6U) {
+        /* Real LNFS root metadata: no directory cache and a root-level
+         * allocated-block counter, excluding the two reserved boot blocks. */
+        put_word(data, block_words() - 11U, 1U + bitmaps + extras);
+        put_word(data, block_words() - 4U, UINT32_C(0x444F5306));
+    }
     put_word(data, block_words() - 2U, cache);
     data[disk_name_offset()] = (unsigned char)strlen(label);
     memcpy(data + disk_name_offset() + 1U, label, strlen(label));
@@ -445,6 +469,14 @@ static int operate_partition(const char *path, const char *label, int formatting
     /* Keep physical-media writes at the previous qualified geometry.
      * Larger geometry must first pass independent EFI/Linux reader gates. */
     block_size = MIN_BLOCK;
+    /* A DOS6 root can be created on an image, but real devices remain
+     * gated until Linux/EFI understand LNFS entry metadata as well. */
+    if (formatting && format_variant == 6U) {
+        fprintf(stderr, "DOS6 physical formatting is not yet runtime-qualified; "
+                        "create and test a disposable image first.\n");
+        close(fd);
+        return 1;
+    }
     if (formatting) {
         uint64_t bytes = 0;
         if (ioctl(fd, BLKGETSIZE64, &bytes) != 0 ||
@@ -471,13 +503,13 @@ static int operate_partition(const char *path, const char *label, int formatting
 static void usage(const char *name)
 {
     fprintf(stderr,
-            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
-            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
+            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4|dos6]\n"
+            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4|dos6]\n"
             "       %s --verify FILE\n"
-            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART [--variant dos0|dos2|dos4]\n"
+            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART [--variant dos0|dos2|dos4|dos6]\n"
             "       %s --verify-partition /dev/PART\n"
             "Image blocks: 512, 1024, 2048, 4096, 8192, 16384, 32768 bytes.\n"
-            "Default dos0; dos4 creates a real empty root directory cache.\n"
+            "Default dos0; dos4 creates a root cache; dos6 creates LNFS root metadata.\n"
             "Partition mode: Linux only; 512-byte OFS blocks and\n"
             "unmounted, exclusive media; refuse above 1 TiB.\n"
             "The confirmation must repeat the exact partition path.\n",
