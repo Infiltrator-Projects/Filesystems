@@ -741,7 +741,7 @@ static bool ifs_ofs_extension_valid(
     const struct affs_tail *tail;
 
     if (!bh || bh->b_blocknr > U32_MAX ||
-        !affs_validblock(sb, (int)bh->b_blocknr))
+        !affs_validblock(sb, (u32)bh->b_blocknr))
         return false;
 
     head = AFFS_HEAD(bh);
@@ -836,7 +836,7 @@ static struct buffer_head *ifs_ofs_read_extension(
             be32_to_cpu(AFFS_TAIL(sb, bh)->extension);
         struct buffer_head *next_bh;
 
-        if (next == 0U || !affs_validblock(sb, (int)next)) {
+        if (next == 0U || !affs_validblock(sb, next)) {
             affs_brelse(bh);
             return ERR_PTR(-EUCLEAN);
         }
@@ -960,7 +960,7 @@ static int ifs_ofs_map_existing_block(
     affs_brelse(extension);
 
     if (physical == 0U ||
-        !affs_validblock(sb, (int)physical))
+        !affs_validblock(sb, physical))
         return -EUCLEAN;
 
     map_bh(result, sb, physical);
@@ -1706,7 +1706,7 @@ static int ifs_ofs_shrink_file(
             be32_to_cpu(AFFS_TAIL(sb, kept_extension)->extension);
         struct buffer_head *next_bh;
 
-        if (next == 0U || !affs_validblock(sb, (int)next)) {
+        if (next == 0U || !affs_validblock(sb, next)) {
             affs_brelse(kept_extension);
             result = -EUCLEAN;
             goto out_unlock;
@@ -1756,7 +1756,7 @@ static int ifs_ofs_shrink_file(
                 AFFS_BLOCK(sb, kept_extension, entry));
 
             if (physical == 0U ||
-                !affs_validblock(sb, (int)physical)) {
+                !affs_validblock(sb, physical)) {
                 affs_brelse(kept_extension);
                 result = -EUCLEAN;
                 goto out_unlock;
@@ -1783,7 +1783,7 @@ static int ifs_ofs_shrink_file(
         struct buffer_head *bh;
         u32 following;
 
-        if (!affs_validblock(sb, (int)next_extension)) {
+        if (!affs_validblock(sb, next_extension)) {
             result = -EUCLEAN;
             goto out_unlock;
         }
@@ -1825,7 +1825,7 @@ static int ifs_ofs_shrink_file(
                     be32_to_cpu(AFFS_BLOCK(sb, bh, entry));
 
                 if (physical == 0U ||
-                    !affs_validblock(sb, (int)physical)) {
+                    !affs_validblock(sb, physical)) {
                     affs_brelse(bh);
                     result = -EUCLEAN;
                     goto out_unlock;
@@ -1990,7 +1990,7 @@ struct inode *affs_iget(struct super_block *sb, unsigned long inode_number)
     time64_t timestamp;
 
     if (inode_number > U32_MAX ||
-        !affs_validblock(sb, (int)inode_number))
+        !affs_validblock(sb, (u32)inode_number))
         return ERR_PTR(-ESTALE);
 
     inode = iget_locked(sb, inode_number);
