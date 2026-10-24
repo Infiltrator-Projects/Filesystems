@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.79 — 2026-10-24 (candidate; not yet published)
+
+- Establish a standalone [DOS0 OFS feature-completeness contract](docs/OFS_DOS0_FEATURE_COMPLETENESS.md) requiring qualified Linux/EFI/formatter read/write, format authenticity, large logical blocks, root boot, and independent Amiga interoperability. DOS0 is **not yet feature-complete**.
+- Change Linux OFS partition-size and metadata buffer keys to unsigned 32-bit on-disk keys, avoid inherited INT_MAX partition/root ceilings and signed root override parsing, and calculate printed root position through the canonical overflow-safe helper. This removes a source-level assumption only; >1-TiB kernel I/O remains unqualified and physical formatter limits are unchanged.
+- Strengthen QEMU DOS0 qualification by copying a static ELF spanning multiple 72-entry data pointer tables, sync/unmount/remount, byte-compare the recovered contents and execute that file directly from OFS. Require an explicit CI pass marker.
+- No change to DOS2/4/6 format signatures, physical partition safety or Linux/EFI 8–32 KiB block-size/actual root-boot qualification.
+
 ## 0.5.78 — 2026-10-24 (candidate; not released)
 
 - Canonical OFS specification now covers all four real DOS0, DOS2, DOS4 and **DOS6 LNFS** profiles, with original-source LNFS NaC, overflow-comment and root fields. Migrate explicit FFS variant identifiers to `native/filesystems/ffs/FFS_SPECIFICATION.md`.
