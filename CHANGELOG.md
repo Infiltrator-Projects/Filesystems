@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.79 — 2026-10-24 (development candidate; not feature complete)
+
+- Begin DOS0-first completion drive with a dedicated evidence-gated acceptance matrix: `docs/OFS_DOS0_COMPLETION_MATRIX.md`.
+- Extend the image verifier to traverse populated DOS0/2 directory hash trees, validate 488-byte OFS file-data blocks, extension pointer tables, owner/sequence/next-data consistency, names and bitmap occupancy. This is a verification tool, not an independent on-disk repair utility.
+- Extend the real Linux QEMU runtime with DOS0 casefold, large binary file extension-chain, hardlink-promote, nonzero truncation, remount, and post-QEMU host-level populated image-verifier acceptance checks.
+- **Not DOS0 feature complete:** legacy root/boot compatibility, 8192..32768-byte Linux mount, unsigned >INT_MAX block addressing, full EFI large-block reading/boot, original Amiga cross-OS interoperability and Windows implementation remain unqualified.
+- Keep all physical media formatting and Boot configuration limits unchanged.
+
 ## 0.5.78 — 2026-10-24 (candidate; not released)
 
 - Canonical OFS specification now covers all four real DOS0, DOS2, DOS4 and **DOS6 LNFS** profiles, with original-source LNFS NaC, overflow-comment and root fields. Migrate explicit FFS variant identifiers to `native/filesystems/ffs/FFS_SPECIFICATION.md`.
