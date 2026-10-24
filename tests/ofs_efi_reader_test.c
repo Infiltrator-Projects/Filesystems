@@ -48,7 +48,7 @@ static void label(uint8_t *b, const char *s)
 /* Synthetic unsigned-address test: never allocate a multi-terabyte image.
  * The callback models a valid root and directory above signed 31-bit block
  * addresses, and rejects every unrecognised sector. */
-enum { LARGE_DIR = 0x80000020U };
+static const uint32_t LARGE_DIR = UINT32_C(0x80000020);
 static int rd_large(void *opaque, uint32_t block, uint8_t out[512])
 {
     const uint32_t blocks = *(const uint32_t *)opaque;
