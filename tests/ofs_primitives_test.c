@@ -35,6 +35,19 @@ int main(void)
     if (ifs_ofs_directory_hash(normal, 6U, 72U, 0) >= 72U)
         return fail("directory hash escaped hash table");
 
+    {
+        ifs_ofs_u32 root = 0U;
+        if (ifs_ofs_root_block(2U, 2048U, &root) != 0 ||
+            root != 1024U ||
+            ifs_ofs_root_block(2U, 2049U, &root) != 0 ||
+            root != 1025U ||
+            ifs_ofs_root_block(2U, UINT32_MAX, &root) != 0 ||
+            root != UINT32_C(0x80000000) ||
+            ifs_ofs_root_block(2U, 2U, &root) == 0 ||
+            ifs_ofs_root_block(2U, 2049U, NULL) == 0)
+            return fail("canonical Amiga root block placement is wrong");
+    }
+
     block[3] = 1U;
     block[7] = 2U;
     block[11] = 3U;
