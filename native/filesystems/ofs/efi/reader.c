@@ -90,7 +90,8 @@ int ifs_ofs_efi_mount(IfsOfsEfiVolume *v, uint32_t blocks,
     v->read_block = callback;
     v->opaque = opaque;
     v->blocks = blocks;
-    v->root = blocks / 2U;
+    if (ifs_ofs_root_block(2U, blocks, &v->root) != 0)
+        return -1;
     if (callback(opaque, 0U, b) != 0 ||
         ifs_ofs_classify_dostype(word(b, 0), &flags) != 0 ||
         flags != 0U || directory(v, &(IfsOfsEfiEntry){v->root, 0U,
