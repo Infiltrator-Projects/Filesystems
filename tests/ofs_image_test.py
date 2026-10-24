@@ -92,7 +92,7 @@ def test(tool, root):
     assert existing.read_bytes() == b"USER DATA MUST NOT CHANGE"
 
     for args in [
-        ("0",), ("1048576",), ("18446744073709551616",),
+        ("0",), ("2097152",), ("18446744073709551616",),
         ("1.5",), ("-1",),
     ]:
         command(tool, "--create", root / ("bad-" + args[0]), *args,
