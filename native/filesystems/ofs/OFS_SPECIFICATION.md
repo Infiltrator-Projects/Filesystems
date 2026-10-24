@@ -38,6 +38,16 @@ For `DOS\4`, directory-cache mode also **implies international folding** althoug
 
 **[VARIANT]** muFS DOSTypes (`muF\0`, `muF\2`, `muF\4`) and other later variants exist. They are **not automatically identical** to plain `DOS\0/2/4`; document their own UID/GID, protection and format requirements before adding them to a claimed OFS compatibility profile.
 
+### Formatting profile selection — a required writer interface
+
+**[POLICY]** The OFS formatter MUST accept an explicit **--variant dos0|dos2|dos4** choice for new volumes, with **dos0 as the default** when no variant is provided. This is a *format profile*, not a software release/version string, and must be independent of block size, label, and whether a target is a disposable image or an explicitly confirmed physical partition.
+
+- **dos0** must write DOS\0, classic OFS 24-byte data headers and ASCII-style name hashing.
+- **dos2** must write DOS\2, the same OFS block layout and international Latin-1 name rules for all subsequent create/lookup/rename operations.
+- **dos4** must write DOS\4, the same OFS data format and international names **and** an initial valid T_DIRCACHE=33 block for the root (even if there are zero entries), linked through the root's directory-cache pointer and marked allocated in the bitmap. Every later writable directory mutation must keep the cache consistent.
+
+Selecting dos4 must **never** be implemented by changing the four-byte identifier alone. Creation must fail closed if required cache metadata cannot be created and verified. A reader/verifier must discover and validate the actual stored variant, not silently assume the formatter's default. A tool must reject unknown variants, avoid converting existing volumes implicitly, and preserve all physical-target confirmation, geometry and capacity safety gates. Variant selection alone must not waive an unqualified physical disk or boot configuration limit.
+
 ## 3. Terminology, encoding, units and geometry
 
 | Symbol | Definition |
