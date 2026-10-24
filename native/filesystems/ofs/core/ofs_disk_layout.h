@@ -129,6 +129,53 @@ struct affs_tail {
     ifs_ofs_disk_be32 stype;
 };
 
+/* Long Name OFS (DOS\\6): this tail replaces the classic affs_tail.
+ * Its length is exactly 200 bytes, anchored to the END of each header.
+ * NaC (Name and Comment) is 112 bytes: [nameLen][name][commentLen][comment].
+ * On-disk encoding and offset source: Olaf Barthel's LNFS structures,
+ * https://wiki.amigaos.net/wiki/DCFS_and_LNFS_Low_Level_Data_Structures
+ *
+ * Do not use affs_tail for DOS6: its classic name field has moved. */
+struct ifs_ofs_lnfs_tail {
+    ifs_ofs_disk_be32 reserved0;
+    ifs_ofs_disk_be16 uid;
+    ifs_ofs_disk_be16 gid;
+    ifs_ofs_disk_be32 protect;
+    ifs_ofs_disk_be32 size;
+    ifs_ofs_disk_u8 name_and_comment[112];
+    ifs_ofs_disk_be32 comment_block;
+    ifs_ofs_disk_be32 reserved1[2];
+    struct affs_date change;
+    ifs_ofs_disk_be32 reserved2[2];
+    ifs_ofs_disk_be32 link_chain;
+    ifs_ofs_disk_be32 reserved3[5];
+    ifs_ofs_disk_be32 hash_chain;
+    ifs_ofs_disk_be32 parent;
+    ifs_ofs_disk_be32 extension;
+    ifs_ofs_disk_be32 stype;
+};
+
+/* LNFS external comment: type 64, block checksum at byte 20,
+ * comment string at byte 24; remainder of filesystem block reserved. */
+#define IFS_OFS_T_COMMENT 64U
+struct ifs_ofs_lnfs_comment_head {
+    ifs_ofs_disk_be32 ptype;
+    ifs_ofs_disk_be32 key;
+    ifs_ofs_disk_be32 header_key;
+    ifs_ofs_disk_be32 reserved0[2];
+    ifs_ofs_disk_be32 checksum;
+    ifs_ofs_disk_u8 comment[80];
+};
+
+/* LNFS root reuses the classic root tail, assigning new purposes to
+ * relative longwords -11 and -4. Use B-44 and B-16 respectively. */
+#define IFS_OFS_LNFS_ROOT_USED_BLOCKS_FROM_END 44U
+#define IFS_OFS_LNFS_ROOT_DOSTYPE_FROM_END 16U
+#define IFS_OFS_LNFS_NAC_FROM_END 184U
+#define IFS_OFS_LNFS_NAC_BYTES 112U
+#define IFS_OFS_LNFS_COMMENT_KEY_FROM_END 72U
+#define IFS_OFS_LNFS_DATE_FROM_END 60U
+
 struct slink_front {
     ifs_ofs_disk_be32 ptype;
     ifs_ofs_disk_be32 key;
