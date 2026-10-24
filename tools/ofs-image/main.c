@@ -314,7 +314,12 @@ static int verify_classic_namespace(int fd, uint32_t root, uint32_t total,
             if (verify_file_blocks(fd, key, node, total, occupied) != 0)
                 goto done;
         } else if (entry_type == 2U) {
-            if (word(node, 3U) != buckets)
+            /* ST_USERDIR is not ST_ROOT.  Words 2, 3 and 4 in a
+             * classic user-directory header are reserved and must be
+             * zero.  Only the root stores its hash-table size in
+             * word 3; its children still contain the same H buckets. */
+            if (word(node, 2U) != 0U || word(node, 3U) != 0U ||
+                word(node, 4U) != 0U)
                 goto done;
             if (depth == capacity) {
                 OfsVerifyDirectory *grown;
