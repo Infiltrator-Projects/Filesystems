@@ -156,7 +156,8 @@ static int verify_one_size(int fd)
 
     if (volume_geometry(fd, &blocks, &bitmaps) != 0)
         return -1;
-    root = blocks / 2U;
+    if (ifs_ofs_root_block(RESERVED, blocks, &root) != 0)
+        goto out;
     occupied = calloc(((size_t)blocks + 7U) / 8U, 1U);
     pointers = calloc(bitmaps, sizeof(*pointers));
     if (!occupied || !pointers)
@@ -255,7 +256,8 @@ static int create(int fd, const char *label)
                               (uint32_t)strlen(label), 1) !=
                               IFS_OFS_NAME_OK || label[0] == '\0')
         return -1;
-    root = blocks / 2U;
+    if (ifs_ofs_root_block(RESERVED, blocks, &root) != 0)
+        goto out;
     extras = bitmaps > ROOT_BMAP_COUNT
         ? (bitmaps - ROOT_BMAP_COUNT + extension_pointers() - 1U) / extension_pointers() : 0U;
     bmap = calloc(bitmaps, sizeof(*bmap));
