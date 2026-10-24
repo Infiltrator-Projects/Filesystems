@@ -171,7 +171,7 @@ A valid bitmap checksum means its bit contents are internally checksum-consisten
 
 The tail positions and 30-byte name field in this section apply to **DOS0/2/4** only. DOS6 uses the replacement nonroot NaC layout in §13A.
 
-**[FORMAT]** A regular directory block is `T_HEADER=2` with secondary `ST_USERDIR=+2`. Its head has the same 24-byte common prefix as a file header: own key at `4`, checksum at `20`, and a table of `H` BE32 **hash-bucket** keys at `24..B-201`. The standard tail is:
+**[FORMAT]** A regular directory block is `T_HEADER=2` with secondary `ST_USERDIR=+2`. Its head has the same 24-byte common prefix as a file header: own key at `4`, checksum at `20`, and a table of `H` BE32 **hash-bucket** keys at `24..B-201`. **Unlike a root block**, its three BE32 fields at offsets `8`, `12` and `16` are reserved and **must all be zero**; in particular, offset `12` is **not** the hash-table size. A verifier that demands `H` at offset `12` in every user directory rejects valid original AmigaDOS media. This distinction is specified by the original AmigaOS UserDirectoryBlock structure and ADFlib's DOS0 layout. The standard tail is:
 
 | Offset | Size | Directory tail |
 | --- | --- | --- |
