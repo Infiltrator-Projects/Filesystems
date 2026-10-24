@@ -46,6 +46,7 @@ struct OfsController {
     UINTN cache_allocation_pages;
     VOID *cache_buffer;
     UINT32 cache_first_sector;
+    UINT32 cache_media_id; /* Never reuse data after removable media change. */
     UINTN cache_sector_count;
     BOOLEAN cache_valid;
     BOOLEAN cache_disabled; /* One failure permanently disables prefetch. */
@@ -211,6 +212,7 @@ static int try_cached_sector(OfsController *ctx, UINT32 number, uint8_t data[512
     UINT64 available;
     UINTN blocks;
     if (ctx->cache_valid &&
+        ctx->cache_media_id == ctx->block->Media->MediaId &&
         number >= ctx->cache_first_sector &&
         (UINT64)number < (UINT64)ctx->cache_first_sector +
                          (UINT64)ctx->cache_sector_count) {
@@ -218,6 +220,10 @@ static int try_cached_sector(OfsController *ctx, UINT32 number, uint8_t data[512
         BS->CopyMem(data, (UINT8 *)ctx->cache_buffer + offset, 512U);
         return 1;
     }
+    /* A changed MediaId invalidates all prior cached partition data. */
+    if (ctx->cache_valid &&
+        ctx->cache_media_id != ctx->block->Media->MediaId)
+        ctx->cache_valid = FALSE;
     if (ctx->cache_disabled || !ctx->disk ||
         !ctx->have_previous_sector ||
         (UINT64)ctx->previous_sector + 1ULL != (UINT64)number)
@@ -246,6 +252,7 @@ static int try_cached_sector(OfsController *ctx, UINT32 number, uint8_t data[512
         return 0;
     }
     ctx->cache_first_sector = number;
+    ctx->cache_media_id = ctx->block->Media->MediaId;
     ctx->cache_sector_count = blocks;
     ctx->cache_valid = TRUE;
     BS->CopyMem(data, ctx->cache_buffer, 512U);
