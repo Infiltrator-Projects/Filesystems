@@ -3,7 +3,7 @@
 **Revision:** 1.0 (24 October 2026)  
 **Location and ownership:** `native/filesystems/ofs/OFS_SPECIFICATION.md`  
 **Purpose:** Define the OFS **on-disk format, algorithms, semantics and compatibility requirements** independently of any current implementation. This document is the source-level conformance target for the formatter, Linux `ofs.ko`, Windows drivers, the UEFI `OFS_x64.efi` reader and test fixtures.  
-**Profiles:** original OFS `DOS\0`; international OFS `DOS\2`; international directory-cache OFS `DOS\4`. All three **are OFS**, not FFS.  
+**Profiles:** original OFS `DOS\0`; international OFS `DOS\2`; directory-cache OFS `DOS\4`; and long-name OFS `DOS\6` (LNFS). **All four are OFS**, not FFS. LNFS uses distinct on-disk entry and root metadata defined in §13A.  
 **Certification status:** The format is externally documented; **the project implementation is not yet fully certified against this specification**. Track implementation status elsewhere.
 
 ## 1. Source authority and interpretation
@@ -19,34 +19,33 @@ Original format descriptions and cross-checks:
 
 **MUST** and **MUST NOT** govern a conforming implementation of the selected profile. A reader MAY support a declared read-only subset but MUST reject unsupported input without silently misidentifying it. A **writer** must preserve every invariant required for the profile it creates. When code and this contract disagree, resolve the question using original sources and independent fixtures; never redefine the format to suit the code. An implementation's current limitations are **not** format limits.
 
-## 2. OFS, not FFS: the exact DOS identifiers
+## 2. Canonical OFS identifiers
 
 A filesystem volume begins with the four-byte DOSType; bytes 0..2 are ASCII `D`, `O`, `S` and byte 3 is a binary version byte, **not** the printable character '0'.
 
-| Hex BE32 / bytes | Format | OFS? | Names and caches |
-| --- | --- | --- | --- |
-| `0x444F5300` / `DOS\0` | Original Old File System | **Yes** | Original ASCII-style case folding; no directory cache |
-| `0x444F5301` / `DOS\1` | Fast File System | **No** | FFS raw file-data blocks |
-| `0x444F5302` / `DOS\2` | International Old File System | **Yes** | International Latin-1 name folding |
-| `0x444F5303` / `DOS\3` | International FFS | **No** | FFS raw file-data blocks |
-| `0x444F5304` / `DOS\4` | Directory-cache OFS | **Yes** | International folding **and** directory-cache records |
-| `0x444F5305` / `DOS\5` | Directory-cache FFS | **No** | FFS raw file-data blocks |
-| `0x444F5306` / `DOS\6` | Later long-filename OFS | **Separate extension** | Different name/comment representation; not covered by this 30-character canonical profile |
-| `0x444F5307` / `DOS\7` | Later long-filename FFS | **No** | Different FFS profile |
+| DOSType (BE32) | OFS format | Name and on-disk extension |
+| --- | --- | --- |
+| `0x444F5300` / `DOS\0` | Original OFS | Original 30-byte names and OFS data blocks |
+| `0x444F5302` / `DOS\2` | International OFS | International Latin-1 folding; classic metadata layout |
+| `0x444F5304` / `DOS\4` | Directory-cache OFS | International folding, classic metadata, additional directory-cache blocks |
+| `0x444F5306` / `DOS\6` | Long-name OFS (LNFS) | International folding; new 112-byte NaC name/comment field, comment overflow blocks and root accounting fields |
 
-For `DOS\4`, directory-cache mode also **implies international folding** although the `DOS\2` bit need not be set in the identifier. The most important invariant is that **every OFS regular-file data block has a 24-byte OFS header**; FFS instead stores raw bytes in its data blocks. An OFS reader MUST reject the FFS DOSTypes even if another metadata field superficially matches.
+All **four** are bona fide OFS on-disk profiles. No FFS identifiers belong in the OFS profile table; those live in [FFS_SPECIFICATION.md](../ffs/FFS_SPECIFICATION.md). A DOS-type value not listed above must not be silently mounted as one of these four formats.
 
-**[VARIANT]** muFS DOSTypes (`muF\0`, `muF\2`, `muF\4`) and other later variants exist. They are **not automatically identical** to plain `DOS\0/2/4`; document their own UID/GID, protection and format requirements before adding them to a claimed OFS compatibility profile.
+**`DOS\4`** always uses international name handling and directory-cache metadata. **`DOS\6`** uses international name handling **without** a directory cache (LNFS and DCFS are separate alternatives, not stackable flags). All OFS versions retain OFS's 24-byte regular-file data-block header and `B-24` byte payload. The on-disk name/comment and root metadata must be decoded according to the variant; the classic 30-byte entry-name layout is **not valid** for `DOS\6`. Source: Olaf Barthel, [DCFS and LNFS Low Level Data Structures](https://wiki.amigaos.net/wiki/DCFS_and_LNFS_Low_Level_Data_Structures).
+
+**[VARIANT]** muFS types are distinct later compatibility modes with additional ownership semantics and their own DOSTypes. They should not be accepted by applying the plain DOS0/2/4/6 profile blindly.
 
 ### Formatting profile selection — a required writer interface
 
-**[POLICY]** The OFS formatter MUST accept an explicit **--variant dos0|dos2|dos4** choice for new volumes, with **dos0 as the default** when no variant is provided. This is a *format profile*, not a software release/version string, and must be independent of block size, label, and whether a target is a disposable image or an explicitly confirmed physical partition.
+**[POLICY]** The OFS formatter MUST accept an explicit **--variant dos0|dos2|dos4|dos6** choice for new volumes, with **dos0 as the default** when no variant is provided. This is a *format profile*, not a software release/version string, and must be independent of block size, label, and whether a target is a disposable image or an explicitly confirmed physical partition.
 
 - **dos0** must write DOS\0, classic OFS 24-byte data headers and ASCII-style name hashing.
 - **dos2** must write DOS\2, the same OFS block layout and international Latin-1 name rules for all subsequent create/lookup/rename operations.
 - **dos4** must write DOS\4, the same OFS data format and international names **and** an initial valid T_DIRCACHE=33 block for the root (even if there are zero entries), linked through the root's directory-cache pointer and marked allocated in the bitmap. Every later writable directory mutation must keep the cache consistent.
+- **dos6** must write DOS\6 with **LNFS root type confirmation and used-block counter**, the international name hash and the distinct NaC/comment metadata shape detailed in §13A. A new empty root still has a 30-byte volume label and does **not** acquire a DOS4 directory-cache block. Any subsequent writable entry creation, rename, lookup, enumeration, unlink or comment update must use the LNFS metadata fields; a writer that only knows the classic fields MUST decline writable DOS6 mounts.
 
-Selecting dos4 must **never** be implemented by changing the four-byte identifier alone. Creation must fail closed if required cache metadata cannot be created and verified. A reader/verifier must discover and validate the actual stored variant, not silently assume the formatter's default. A tool must reject unknown variants, avoid converting existing volumes implicitly, and preserve all physical-target confirmation, geometry and capacity safety gates. Variant selection alone must not waive an unqualified physical disk or boot configuration limit.
+Selecting dos4 **or dos6** must **never** be implemented by changing the four-byte identifier alone. Creation must fail closed if required cache metadata cannot be created and verified. A reader/verifier must discover and validate the actual stored variant, not silently assume the formatter's default. A tool must reject unknown variants, avoid converting existing volumes implicitly, and preserve all physical-target confirmation, geometry and capacity safety gates. Variant selection alone must not waive an unqualified physical disk or boot configuration limit.
 
 ## 3. Terminology, encoding, units and geometry
 
@@ -63,7 +62,7 @@ Selecting dos4 must **never** be implemented by changing the four-byte identifie
 
 **[FORMAT]** All numeric multibyte disk fields are **big-endian**. Standard longword is four bytes and word is two bytes. A negative block secondary type uses a signed, two's-complement 32-bit field. On-disk pointers (keys) are *zero-based, partition-relative* unsigned 32-bit values, and **zero denotes a null pointer**. The host's 512-byte logical sectors, UEFI Block I/O LBAs, Linux pages, DMA buffers and OFS logical filesystem blocks are not interchangeable.
 
-**[FORMAT]** The recognized classic family permits filesystem block sizes **512, 1024, 2048, 4096, 8192, 16384 and 32768 bytes**. In this project these seven are the block-size **format-conformance targets**. A formatter must honor the logical block size when writing root/hash/bitmap/tail structures, checksums and data payloads; it must never just write a 512-byte block padded to `B`. Determine `B` from an authoritative partition environment where available or by independently verifying candidate geometries; the classic `DOS` ID alone **does not encode `B`**.
+**[FORMAT]** The recognized OFS family permits filesystem block sizes **512, 1024, 2048, 4096, 8192, 16384 and 32768 bytes**. In this project these seven are the block-size **format-conformance targets**. A formatter must honor the logical block size when writing root/hash/bitmap/tail structures, checksums and data payloads; it must never just write a 512-byte block padded to `B`. Determine `B` from an authoritative partition environment where available or by independently verifying candidate geometries; the classic `DOS` ID alone **does not encode `B`**.
 
 `w[i]` denotes the BE32 stored at byte `4*i` from the **start** of the current block. Expressions of the form `B-200`, `B-80` and `B-4` are **byte offsets relative to that block's end**, and move with `B`. At `B=512`, `H=72`, `P=488` and `Q=4064`. At `B=32768`, `H=8136`, `P=32744` and `Q=262112`.
 
@@ -107,6 +106,8 @@ All metadata parsers must distinguish these two algorithms, validate the block's
 The classic `DateStamp` is **three BE32 fields**: days since **1 January 1978**, minutes since local midnight (normally `0..1439`), and ticks in **1/50 seconds** (normally `0..2999`). DateStamp uses no stored timezone. The root has separate **root change**, **volume change** and **volume creation** timestamps; these must not be accidentally collapsed into one.
 
 ## 6. Root block: canonical byte layout
+
+This table is the classic root. In **DOS6**, two reserved positions acquire mandated values: the used-block counter at `B-44` and root DOSType at `B-16` (§13A.2). All other root geometry remains OFS.
 
 All offset expressions are relative to a single `B`-byte filesystem block. `H = B/4 - 56`.
 
@@ -168,6 +169,8 @@ A valid bitmap checksum means its bit contents are internally checksum-consisten
 
 ## 8. Directory header, hash tables, name rules and lookup
 
+The tail positions and 30-byte name field in this section apply to **DOS0/2/4** only. DOS6 uses the replacement nonroot NaC layout in §13A.
+
 **[FORMAT]** A regular directory block is `T_HEADER=2` with secondary `ST_USERDIR=+2`. Its head has the same 24-byte common prefix as a file header: own key at `4`, checksum at `20`, and a table of `H` BE32 **hash-bucket** keys at `24..B-201`. The standard tail is:
 
 | Offset | Size | Directory tail |
@@ -193,7 +196,7 @@ A valid bitmap checksum means its bit contents are internally checksum-consisten
 
 The root and user directory **share the name-hash algorithm**; their **tails differ**, notably in bitmap versus file metadata.
 
-**[FORMAT]** Names in this classic family are length-prefixed **single-byte** strings, usually Amiga Latin-1; maximum **30 bytes**. A name is *not* an arbitrary UTF-8 sequence. `:` and `/` are not legal literal filename/volume-name characters; a reader must validate length before reading or folding and not assume a NUL terminator. International OFS is still the same 30-byte structural profile, not a long-filename extension.
+**[FORMAT]** Names are length-prefixed **single-byte** strings, usually Amiga Latin-1. For DOS0/2/4, maximum **30 bytes** per entry; for DOS6 use the NaC layout of §13A and a 106-byte interoperable writer limit. A name is *not* an arbitrary UTF-8 sequence. `:` and `/` are not legal literal filename/volume-name characters; a reader must validate length before reading or folding and not assume a NUL terminator. International OFS is still the same 30-byte structural profile, not a long-filename extension.
 
 Directory hash:
 
@@ -210,6 +213,8 @@ Directory hash:
 **[POLICY]** Directory enumeration must cap work for a damaged hash chain without globally inventing a limit on **valid** directory size: apply bounded traversal/visited-key cycle detection and a controlled error. A 512-entry limit is a particular EFI-reader policy, **not** an OFS filesystem format limit. Search and readdir must agree on the same bucket representation and hash case rules.
 
 ## 9. Regular file header and extension blocks
+
+The traditional file-header tail/name/date fields here apply to **DOS0/2/4**. DOS6 replaces them with the NaC and long-name timestamp/comment metadata (§13A); file data block sequence and extension-pointer storage remain OFS.
 
 A file begins with a header block `T_HEADER=2` and `ST_FILE=-3`. It is a metadata object, not the payload itself.
 
@@ -335,6 +340,63 @@ A directory-cache reader must validate every record's length, alignment, ownersh
 - File/directory comments are length-prefixed: up to **79 bytes** in the main header. DOS\4` cached comments are shorter and must not be mistaken for authoritative full comments.
 - Root timestamp fields distinguish creation, root change and entire-volume change; file/directory DateStamps record changes. Never change creation time when simply renaming a file; document consistency policy for crash/recovery.
 
+## 13A. DOS\6 — canonical OFS Long Name File System (LNFS)
+
+**[FORMAT]** LNFS is an OFS variant added by Olaf Barthel during the later Amiga filesystem redevelopment. Its original 2001 low-level definition is independently described in the official AmigaOS documentation: [DCFS and LNFS Low Level Data Structures — Long Name File System](https://wiki.amigaos.net/wiki/DCFS_and_LNFS_Low_Level_Data_Structures#Long_Name_File_System_.28LNFS.29). It is **not** a directory-cache mode, and it is **not** FFS. Only the metadata **changes below**; OFS data header, data checksum, file sequence and allocation bitmap semantics remain mandatory.
+
+### 13A.1 Name and comment layout — file, directory and links
+
+For **all nonroot directory entries** (regular file header, directory header, soft link, hard link), the classic **separate** comment/date/name fields are replaced. Offsets are from the end of a `B`-byte block:
+
+| Offset | Length | Meaning in DOS6 |
+| --- | --- | --- |
+| `B-184` (`w[W-46]`) | 112 | `NaC`: name and comment, two back-to-back **BCPL length-prefixed** byte strings |
+| `B-72` (`w[W-18]`) | 4 | `CommentBlock`: pointer to an optional overflow-comment block, or zero |
+| `B-68..B-61` | 8 | Reserved; must be zero on new media |
+| `B-60..B-49` (`w[W-15..W-13]`) | 12 | DateStamp (days, minutes, ticks): **moved** from the classic position |
+| `B-48..B-17` | 32 | Existing hard-link fields/reserved positions, same logical meaning as applicable |
+| `B-16`, `B-12`, `B-8`, `B-4` | 4 each | Hash chain, parent, file extension/directory pointer, secondary type, same as classic |
+
+`NaC` begins with the name length byte `n`, then `n` Latin-1 name bytes, then a comment length byte `c`, followed by `c` comment bytes **if space permits**. The contents may occupy no more than 112 bytes in total; overflow comments use a separate block. International case folding and name hashing apply to the **actual NaC name** and are unchanged by LNFS. The AmigaOS API can carry 107 name characters; Hyperion's AmigaOS 3.1.4 format guidance specifies a conservative **106-character interoperable writer limit**. Our format reader should safely handle up to 107 if independently verified, while the writer must cap at **106 bytes** until cross-implementation qualification. Volume/root names remain **30 bytes**.
+
+If the name and full comment cannot both fit, store the comment in a separately allocated and checksum-valid block:
+
+| Comment block field | Offset | Meaning |
+| --- | --- | --- |
+| Type | 0 | `T_COMMENT = 64` |
+| OwnKey | 4 | This comment block's own key |
+| HeaderKey | 8 | The directory entry header owning the comment |
+| Reserved | 12..19 | Zero |
+| Checksum | 20 | Whole-block metadata checksum |
+| Comment | 24..103 | 80-byte BCPL comment area: length byte + up to 79 bytes |
+| Reserved | 104..B-1 | Zero on new images |
+
+The comment-block key is stored at `B-72` in the owning entry and must be allocated in the normal OFS bitmap. This separate block is **never** a file data block. On rename, comment replacement, deletion and recovery, update/free it consistently. A root directory has **no LNFS NaC field**, only the usual classic 30-byte volume label.
+
+### 13A.2 LNFS root extensions
+
+The DOS6 root uses the classic root layout **except** these two extra fields:
+
+| Offset | Length | LNFS root field |
+| --- | --- | --- |
+| `B-44` (`w[W-11]`) | 4 | `NumBlocksUsed`: count of allocated blocks recorded in the filesystem bitmap |
+| `B-16` (`w[W-4]`) | 4 | `FileSystemType` = BE32 `0x444F5306`; must match the bootblock DOSType |
+
+`NumBlocksUsed` is meaningful only when the bitmap-valid root flag says the bitmap is valid. **Zero** is a sentinel meaning the count must be recalculated, not necessarily that no blocks are allocated. Writes that allocate or free blocks must keep this counter in sync with the bitmap; validation must restore it after bitmap reconstruction. A newly formatted empty volume must record the actual occupied **nonreserved** blocks (root, bitmap pages and bitmap extensions, etc.), not a guessed zero or a device-sector count. An absent or mismatched root `FileSystemType` on a supposed DOS6 volume is a format error, not permission to reinterpret it as DOS0.
+
+### 13A.3 Invariants and conformance tests
+
+- The boot signature is `DOS\6`; the root echo equals `DOS\6`; the metadata checksum validates **including** the two nonzero LNFS root fields.
+- The root volume label stays at `B-80` and uses classic 30-byte semantics. Nonroot names use **NaC**, not the old `B-80` 30-byte field.
+- The international name hash is identical to DOS2; no DOS4 directory cache is required or permitted by the LNFS mode.
+- A short filename and a 79-byte comment may require a separate `T_COMMENT=64` block; test the exact NaC boundary, overflows, allocation, cleanup and corruption.
+- Independently create and read 30-, 31-, 106-, and where supported 107-byte names, ensure folded hashes and lookups agree, and refuse embedded colon/slash or invalid lengths.
+- Read/write/remount/rename/delete and bitmap-counter change/recovery must be tested with genuine LNFS fixtures, not a re-labelled DOS2 image.
+- Implementations without an LNFS-capable namespace reader or writer MUST fail closed for DOS6 rather than report all names as empty or write to the old classic offsets.
+
+These requirements are drawn from the original low-level LNFS author documentation, not guessed from FFS behavior. They must be independently validated on real Amiga-created LNFS media before a product claims full interoperability.
+
+
 ## 14. Required read, write and namespace behaviour
 
 A conforming implementation must preserve this sequence of semantics; storage system calls or UI callbacks are not the format:
@@ -379,7 +441,7 @@ Each newly supported profile/geometry must pass the following **independent** te
 | Files | Empty, 1 byte, `P-1`, `P`, `P+1`, `H*P` and `(H+1)*P`; check reversed pointers and OFS `nextData` chain independently |
 | Data integrity | Every data header owner/sequence/size/checksum; large kernel/initramfs-sized files; random seek, read-after-write, remount |
 | Metadata/namespace | Create, mkdir, collisions, rename across parents, unlink, truncate, symlink/hardlink when claimed, valid protection and timestamps |
-| DOS variants | `DOS\0`, `DOS\2`, `DOS\4` (including cache consistency); **reject** `DOS\1/3/5` and unqualified later identifiers |
+| DOS variants | `DOS\0`, `DOS\2`, `DOS\4` and `DOS\6` (NaC, comment blocks and root accounting); reject any identifiers not listed in §2 |
 | Large addressing | Boundary around `2^31` and `UINT32_MAX` on sparse disposable media, without signed or byte-offset overflow; reject impossible volume length |
 | Errors/recovery | Invalid checksums, swapped BE fields, cycles, torn metadata, simulated I/O failure and corruption on writable media |
 | Independent implementations | Test real externally generated Amiga-compatible images; preserve fixture provenance and hashes; independent reader **and** writer checks where supported |
@@ -391,9 +453,9 @@ Each newly supported profile/geometry must pass the following **independent** te
 
 This Markdown is the **canonical OFS target contract**. The existing `DESIGN.md` defines source ownership and layering; `core/ofs_disk_layout.h` and `core/ofs_primitives.*` implement format primitives; `tools/ofs-image/main.c` is the formatter; `linux/` and `efi/` contain adapters. **They are not normative replacements for the independently sourced filesystem format.**
 
-All changes to code or this document must cite the affected numbered section, state which of `DOS\0/2/4` and `B` values it implements, and add a failing-before/passing-after golden test. Do not copy FFS behavior merely because Linux's upstream `affs` source handles both. Track remaining unsigned-capacity, large-block, root-boot and independent Amiga qualification in [issue #27](https://github.com/Infiltrator-Projects/Filesystems/issues/27) and [the separate implementation compliance matrix](../../../docs/OFS_SPECIFICATION_COMPLIANCE.md).
+All changes to code or this document must cite the affected numbered section, state which of `DOS\0/2/4/6` and `B` values it implements, and add a failing-before/passing-after golden test. Do not copy FFS behavior merely because Linux's upstream `affs` source handles both. Track remaining unsigned-capacity, large-block, root-boot and independent Amiga qualification in [issue #27](https://github.com/Infiltrator-Projects/Filesystems/issues/27) and [the separate implementation compliance matrix](../../../docs/OFS_SPECIFICATION_COMPLIANCE.md).
 
-**Known intentional boundary:** This classic profile does not pretend to canonically specify `DOS\6` long names, muFS-specific owner semantics, alternative recovery formats, third-party partition management or EFI/GRUB boot files. Those require their own documented extension profiles. The OFS on-disk format is not an EFI driver interface, Linux VFS ABI or bootloader API.
+**Known intentional boundary:** This OFS profile does not pretend to canonically specify muFS-specific owner semantics, alternative recovery formats, third-party partition management or EFI/GRUB boot files. Those require their own documented extension profiles. The OFS on-disk format is not an EFI driver interface, Linux VFS ABI or bootloader API.
 
 ---
 
@@ -406,3 +468,5 @@ All changes to code or this document must cite the affected numbered section, st
 - [ADFlib FAQ `6](https://adflib.github.io/FAQ/adf_info.html): RDB partition separation and logical pointer relativity.
 - [Linux AFFS documentation](https://www.kernel.org/doc/html/v6.7/filesystems/affs.html): DOS\0 through DOS\5 identities and historical driver limitations.
 - [AmigaDOS technical reference](https://developer.amigaos3.net/sites/default/files/downloads/2024-10/Amiga_ROM_Kernel_Reference_Manual_DOS.pdf): original AmigaDOS interpretation and later variant caveats.
+
+- [Olaf Barthel, official DCFS/LNFS structure specification](https://wiki.amigaos.net/wiki/DCFS_and_LNFS_Low_Level_Data_Structures): authentic DOS6 NaC fields, comment blocks, root used-block count and type echo.
