@@ -7,6 +7,8 @@
 - Extend the experimental 512-byte EFI reader to identify DOS\\2 international case folding and read-only DOS\\4 directory-cache media using authoritative directory hashes, while rejecting FFS DOS types.
 - Qualify the project's custom OFS folio-backed executable mapping by requiring real ELF execution from disposable OFS in QEMU before removing the former automatic SB_NOEXEC restriction. This does not qualify Linux-root booting.
 - Keep physical media formatting restrictions, storage-driver diagnostics and full 8/16/32 KiB EFI/Linux support gates unchanged; do not claim full-specification qualification.
+- Extend OFS formatter and image verifier with explicit --variant dos0|dos2|dos4. DOS4 creates a real empty root cache block and reserves its allocation bit; add seven-block-size per-variant and corruption tests. DOS0 remains the default and no physical geometry safety gate is relaxed.
+- Add a comprehensive source-independent canonical format specification to native/filesystems/ofs/OFS_SPECIFICATION.md, describing root, boot, bitmap, directory, links, OFS data and variants.
 
 ## 0.5.76 — 2026-10-24
 
