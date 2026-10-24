@@ -160,6 +160,44 @@ sync
 umount /mnt/ofs || fail "unmount OFS ELF probe"
 echo "AMIGA-OFS-EXEC-PASS" > /dev/ttyS0
 
+# DOS0 high-coverage integration: exercise both OFS 488-byte payload
+# boundaries and the file-header/extension-pointer boundary (>72 blocks).
+# A real executable provides deterministic binary content much larger than
+# a single OFS extension; it is not synthetic all-zero data.
+mount -t ofs /dev/vda /mnt/ofs || fail "DOS0 extended mount"
+cp /bin/busybox /mnt/ofs/Dos0Mixed.bin || fail "DOS0 extended binary copy"
+cmp /bin/busybox /mnt/ofs/Dos0Mixed.bin || fail "DOS0 extended byte integrity"
+test "$(stat -c '%s' /mnt/ofs/Dos0Mixed.bin)" -gt 35136 ||
+    fail "DOS0 fixture too short for file-extension exercise"
+mv /mnt/ofs/Dos0Mixed.bin /mnt/ofs/RenamedMixed.bin ||
+    fail "DOS0 rename across casefold"
+cmp /bin/busybox /mnt/ofs/renamedmixed.bin ||
+    fail "DOS0 ASCII casefold lookup"
+ln /mnt/ofs/RenamedMixed.bin /mnt/ofs/HardAlias ||
+    fail "DOS0 large-file hardlink"
+rm /mnt/ofs/RenamedMixed.bin || fail "DOS0 original hardlink unlink"
+cmp /bin/busybox /mnt/ofs/hardalias ||
+    fail "DOS0 promote shared data after original unlink"
+mv /mnt/ofs/HardAlias /mnt/ofs/ofs-persist.bin ||
+    fail "DOS0 rename surviving hardlink"
+cp /bin/busybox /mnt/ofs/truncate.bin || fail "DOS0 truncate source copy"
+dd if=/bin/busybox of=/mnt/ofs/truncate.bin bs=512 count=3 2>/dev/null ||
+    fail "DOS0 nonzero truncate write"
+test "$(stat -c '%s' /mnt/ofs/truncate.bin)" = 1536 ||
+    fail "DOS0 nonzero truncate size"
+dd if=/bin/busybox bs=512 count=3 2>/dev/null |
+    cmp - /mnt/ofs/truncate.bin || fail "DOS0 truncated byte integrity"
+: > /mnt/ofs/truncate.bin || fail "DOS0 truncate to zero"
+test ! -s /mnt/ofs/truncate.bin || fail "DOS0 empty-file size"
+rm /mnt/ofs/truncate.bin || fail "DOS0 truncate unlink"
+sync || fail "DOS0 extended sync"
+umount /mnt/ofs || fail "DOS0 extended unmount"
+mount -t ofs /dev/vda /mnt/ofs || fail "DOS0 extended remount"
+cmp /bin/busybox /mnt/ofs/ofs-persist.bin ||
+    fail "DOS0 extended remount data integrity"
+umount /mnt/ofs || fail "DOS0 extended final unmount"
+echo "AMIGA-OFS-DOS0-EXTENDED-PASS" > /dev/ttyS0
+
 qualify_rw ofs /dev/vda
 qualify_rw ffs /dev/vdb
 qualify_sfs_rw sfs /dev/vdc
