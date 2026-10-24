@@ -443,6 +443,16 @@ static int verify_one_size(int fd)
         if (mark(occupied, pointers[i]) != 0)
             goto out;
     }
+    /* DOS0/2 on-disk hash trees and OFS data-block chains are now
+     * included in the allocation check, not just the freshly formatted
+     * metadata. DOS4 caches and DOS6 NaC directories are separate
+     * extensions and must never be parsed as ordinary DOS0 entries. */
+    if (variant == 0U || variant == 2U) {
+        if (verify_classic_namespace(
+                fd, root, blocks, occupied, variant == 2U) != 0)
+            goto out;
+    }
+
     for (i = 0; i < bitmaps; ++i) {
         if (block_io(fd, pointers[i], data, 0) != 0 ||
             ifs_ofs_block_checksum(data, block_size) != 0U)
