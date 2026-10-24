@@ -401,7 +401,7 @@ These requirements are drawn from the original low-level LNFS author documentati
 
 A conforming implementation must preserve this sequence of semantics; storage system calls or UI callbacks are not the format:
 
-**Mount (read-only):** validate partition bounds and geometry, DOS identity, canonical root, root checksum/type/hash size and bitmap metadata as appropriate. A partially degraded volume can be exposed only by an explicit recovery mode with clear diagnostics. Never accept a `DOS\1/3/5` FFS volume as OFS.
+**Mount (read-only):** validate partition bounds and geometry, DOS identity, canonical root, root checksum/type/hash size and bitmap metadata as appropriate. A partially degraded volume can be exposed only by an explicit recovery mode with clear diagnostics. Reject every DOSType outside the four OFS identifiers listed in §2, even if its metadata has common AmigaDOS features.
 
 **Lookup / readdir:** follow the exact hash function, variant folding and bucket chains. Enumerate files, directories, recognized links and other supported entries, with deterministic cycle detection. All reported entry sizes and types must reflect metadata and not a cached guess.
 
@@ -466,7 +466,7 @@ All changes to code or this document must cite the affected numbered section, st
 - [ADFlib FAQ `4.4–4.6](https://adflib.github.io/FAQ/adf_info.html): files, reversed pointers, OFS data blocks, directories and links.
 - [ADFlib FAQ `4.7, `5.3–5.4](https://adflib.github.io/FAQ/adf_info.html): directory caches, cache record shape and international case folding.
 - [ADFlib FAQ `6](https://adflib.github.io/FAQ/adf_info.html): RDB partition separation and logical pointer relativity.
-- [Linux AFFS documentation](https://www.kernel.org/doc/html/v6.7/filesystems/affs.html): DOS\0 through DOS\5 identities and historical driver limitations.
+- [Linux AFFS documentation](https://www.kernel.org/doc/html/v6.7/filesystems/affs.html): historical filesystem identities and driver limitations.
 - [AmigaDOS technical reference](https://developer.amigaos3.net/sites/default/files/downloads/2024-10/Amiga_ROM_Kernel_Reference_Manual_DOS.pdf): original AmigaDOS interpretation and later variant caveats.
 
 - [Olaf Barthel, official DCFS/LNFS structure specification](https://wiki.amigaos.net/wiki/DCFS_and_LNFS_Low_Level_Data_Structures): authentic DOS6 NaC fields, comment blocks, root used-block count and type echo.
