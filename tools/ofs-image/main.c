@@ -419,6 +419,7 @@ static void usage(const char *name)
 {
     fprintf(stderr,
             "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES]\n"
+            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES]\n"
             "       %s --verify FILE\n"
             "       %s --format-partition /dev/PART LABEL --confirm /dev/PART\n"
             "       %s --verify-partition /dev/PART\n"
@@ -426,7 +427,7 @@ static void usage(const char *name)
             "Partition mode: Linux only; 512-byte OFS blocks and\n"
             "unmounted, exclusive media; refuse above 1 TiB.\n"
             "The confirmation must repeat the exact partition path.\n",
-            name, name, name, name);
+            name, name, name, name, name);
 }
 
 int main(int argc, char **argv)
@@ -471,10 +472,14 @@ int main(int argc, char **argv)
         printf("Validated AmigaDOS OFS image: %s\n", argv[2]);
         return 0;
     }
-    if (argc >= 4 && argc <= 7 && strcmp(argv[1], "--create") == 0) {
+    if (argc >= 4 && argc <= 7 &&
+        (strcmp(argv[1], "--create") == 0 ||
+         strcmp(argv[1], "--create-blocks") == 0)) {
+        const int blocks_mode = strcmp(argv[1], "--create-blocks") == 0;
         char *end = NULL;
         int positional = argc;
-        unsigned long long mib;
+        unsigned long long units;
+        uint64_t size_bytes;
         const char *label;
         if (argc >= 6 && strcmp(argv[argc - 2], "--block-size") == 0) {
             if (select_block_size(argv[argc - 1]) != 0) {
@@ -490,21 +495,27 @@ int main(int argc, char **argv)
         label = positional == 5 ? argv[4] : "InfiltratorOFS";
         struct stat st;
         errno = 0;
-        mib = strtoull(argv[3], &end, 10);
+        units = strtoull(argv[3], &end, 10);
         if (errno || end == argv[3] || *end != '\0' ||
-            mib < 1ULL || mib > (unsigned long long)(max_image_bytes() / (1024ULL * 1024ULL)) ||
+            units < 1ULL ||
+            (blocks_mode ?
+                 (units > UINT32_MAX ||
+                  units < (1024ULL * 1024ULL + block_size - 1U) / block_size) :
+                 (units > max_image_bytes() / (1024ULL * 1024ULL))) ||
             ifs_ofs_validate_name((const unsigned char *)label,
                                   (uint32_t)strlen(label), 1) !=
                                   IFS_OFS_NAME_OK || label[0] == '\0') {
             usage(argv[0]);
             return 2;
         }
+        size_bytes = blocks_mode ? (uint64_t)units * block_size :
+                                   (uint64_t)units * 1024ULL * 1024ULL;
         fd = open(argv[2], O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW |
                             O_CLOEXEC, 0600);
         if (fd < 0)
             return perror("exclusive image creation"), 1;
         if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) ||
-            ftruncate(fd, (off_t)mib * 1024 * 1024) != 0) {
+            ftruncate(fd, (off_t)size_bytes) != 0) {
             fprintf(stderr, "Cannot create a regular-file image.\n");
             close(fd);
             unlink(argv[2]);
@@ -518,8 +529,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "OFS image creation or verification failed.\n");
             return 1;
         }
-        printf("Created and verified AmigaDOS OFS image: %s (%llu MiB)\n",
-               argv[2], mib);
+        printf("Created and verified AmigaDOS OFS image: %s (%llu %s)\n",
+               argv[2], units, blocks_mode ? "blocks" : "MiB");
         return 0;
     }
     usage(argv[0]);
