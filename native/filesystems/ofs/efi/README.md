@@ -21,6 +21,16 @@ The sole firmware payload is `dist-ofs-efi/OFS_x64.efi`, verified as a PE32+ x86
 
 **Firmware probe boundary:** only UEFI logical-partition BlockIo handles are eligible. Whole-disk handles and incompatible logical blocks are rejected before firmware disk reads. Each format probe reads at most two 512-byte sectors (boot block and root block); the start path repeats validation and may also read the volume label. A synchronous firmware `ReadDisk()` cannot be interrupted by this driver, so the I/O count is bounded but firmware latency is not. Directory lookup and enumeration stop after 512 entries, rejecting cyclic or overlong chains instead of walking a volume-sized chain. This is a boot-reader limit, not a filesystem format limit.
 
+**Unsigned block addressing audit:** The parser and UEFI partition probe no
+longer impose the Linux AFFS adapter's signed 31-bit block-count ceiling on
+512-byte OFS media. The accepted **unsigned 32-bit** count remains checked
+against the firmware's 64-bit LastBlock before narrowing; standalone
+reader tests exercise synthetic metadata pointers above 2^31. This is
+**not** a real >1-TiB kernel-file transfer test, a larger block-size
+reader, or physical-media qualification. The EFI reader still accepts only
+512-byte OFS filesystem blocks; the Linux driver and physical formatter
+retain their separate safety gates. See docs/OFS_SPECIFICATION_COMPLIANCE.md.
+
 **Initial scope:** partition-relative DOS\\0, 512-byte logical sectors, names up to 30 Latin-1 bytes, case-insensitive OFS directory lookup, linked 488-byte OFS data blocks, files at most 4 GiB. No Amiga RDB whole-disk partition extraction, links, writable EFI operations or general Linux root qualification. EFI-stage readers and Linux `ofs.ko` have different ABIs; Linux requires its own kernel module (often inside the initramfs) to mount OFS after EFI handoff.
 
 ## Physical-media, read-only firmware-reader reproduction

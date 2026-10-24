@@ -409,7 +409,7 @@ static EFI_STATUS ofs_probe(OfsController *ctx, EFI_HANDLE controller)
     if (!block->Media->MediaPresent || !block->Media->LogicalPartition ||
         block->Media->BlockSize != 512U ||
         block->Media->LastBlock < 15ULL ||
-        block->Media->LastBlock >= 0x7fffffffULL)
+        block->Media->LastBlock >= 0xffffffffULL)
         return EFI_UNSUPPORTED;
     status = BS->HandleProtocol(controller, &g_disk_guid, (VOID **)&disk);
     if (EFI_ERROR(status) || !disk)

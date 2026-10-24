@@ -45,6 +45,41 @@ static void label(uint8_t *b, const char *s)
     b[432] = (uint8_t)n;
     memcpy(b + 433, s, n);
 }
+/* Synthetic unsigned-address test: never allocate a multi-terabyte image.
+ * The callback models a valid root and directory above signed 31-bit block
+ * addresses, and rejects every unrecognised sector. */
+enum { LARGE_DIR = 0x80000020U };
+static int rd_large(void *opaque, uint32_t block, uint8_t out[512])
+{
+    const uint32_t blocks = *(const uint32_t *)opaque;
+    uint32_t bucket;
+    memset(out, 0, BLOCK);
+    if (block == 0U) {
+        put(out, 0, 0x444f5300U);
+        return 0;
+    }
+    if (block == blocks / 2U) {
+        put(out, 0, 2U);
+        put(out, 3, 72U);
+        put(out, 127, 1U);
+        label(out, "LARGE_OFS");
+        bucket = ifs_ofs_directory_hash((const uint8_t *)"boot", 4U, 72U, 0);
+        put(out, 6U + bucket, LARGE_DIR);
+        checksum(out);
+        return 0;
+    }
+    if (block == LARGE_DIR) {
+        put(out, 0, 2U);
+        put(out, 1, LARGE_DIR);
+        put(out, 125, blocks / 2U);
+        put(out, 127, 2U);
+        label(out, "boot");
+        checksum(out);
+        return 0;
+    }
+    return -1;
+}
+
 static void fixture(void)
 {
     uint8_t *root = media[COUNT / 2], *dir = media[4];
@@ -136,6 +171,25 @@ int main(void)
     fixture();
     put(media[0], 0, 0x444f5301U); /* FFS must not bind as OFS. */
     REQUIRE(ifs_ofs_efi_mount(&v, COUNT, rd, NULL) == -1);
+    /* The reader's address space is an unsigned 32-bit block count, not an
+     * arbitrary INT32_MAX ceiling inherited from the Linux AFFS adapter. */
+    {
+        static const uint32_t sizes[] = { UINT32_C(0x80000100), UINT32_MAX };
+        size_t i;
+        for (i = 0U; i < sizeof(sizes) / sizeof(sizes[0]); ++i) {
+            IfsOfsEfiVolume big = {0};
+            const uint32_t sectors = sizes[i];
+            IfsOfsEfiEntry root_large, dir_large;
+            REQUIRE(ifs_ofs_efi_mount(&big, sectors, rd_large,
+                                      (void *)&sectors) == 0);
+            REQUIRE(big.blocks == sectors);
+            root_large = ifs_ofs_efi_root(&big);
+            REQUIRE(ifs_ofs_efi_lookup(&big, &root_large,
+                                      (const uint8_t *)"boot", 4U,
+                                      &dir_large) == 0);
+            REQUIRE(dir_large.block == LARGE_DIR);
+        }
+    }
     puts("OFS freestanding reader tests passed");
     return 0;
 }
