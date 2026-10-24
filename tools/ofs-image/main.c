@@ -30,6 +30,7 @@
  * Root metadata tail offsets are relative to the filesystem block's end. */
 enum { MIN_BLOCK = 512, MAX_BLOCK = 32768, RESERVED = 2, ROOT_BMAP_COUNT = 25 };
 static uint32_t block_size = MIN_BLOCK;
+static uint8_t format_variant = 0U; /* classic DOS0 by default */
 static uint32_t block_words(void) { return block_size / 4U; }
 static uint32_t bitmap_bits(void) { return block_size * 8U - 32U; }
 static uint32_t extension_pointers(void) { return block_words() - 1U; }
@@ -53,6 +54,19 @@ static int select_block_size(const char *argument)
     return 0;
 }
 
+
+static int select_variant(const char *argument)
+{
+    if (strcmp(argument, "dos0") == 0)
+        format_variant = 0U;
+    else if (strcmp(argument, "dos2") == 0)
+        format_variant = 2U;
+    else if (strcmp(argument, "dos4") == 0)
+        format_variant = 4U;
+    else
+        return -1;
+    return 0;
+}
 
 /* One allocation bit per disk block, rather than one whole byte. */
 static int marked(const unsigned char *bitmap, uint32_t number)
@@ -147,11 +161,12 @@ static int volume_geometry(int fd, uint32_t *total, uint32_t *bitmap_count)
 
 static int verify_one_size(int fd)
 {
-    uint32_t blocks, bitmaps, root, extension, seen = 0;
+    uint32_t blocks, bitmaps, root, extension, cache, seen = 0;
     uint32_t *pointers = NULL;
     unsigned char *occupied = NULL;
     unsigned char boot[MAX_BLOCK], root_data[MAX_BLOCK], data[MAX_BLOCK];
     uint32_t i, j, extensions = 0;
+    uint8_t variant;
     int result = -1;
 
     if (volume_geometry(fd, &blocks, &bitmaps) != 0)
@@ -167,7 +182,8 @@ static int verify_one_size(int fd)
         goto out;
 
     if (block_io(fd, 0, boot, 0) != 0 ||
-        memcmp(boot, "DOS\0", 4) != 0 ||
+        memcmp(boot, "DOS", 3) != 0 ||
+        (boot[3] != 0U && boot[3] != 2U && boot[3] != 4U) ||
         block_io(fd, 1, data, 0) != 0 ||
         block_io(fd, root, root_data, 0) != 0 ||
         word(root_data, 0) != 2U || word(root_data, 3) != block_words() - 56U ||
@@ -181,6 +197,23 @@ static int verify_one_size(int fd)
     for (i = 0; i < block_size; ++i)
         if (data[i] != 0)
             goto out;
+
+    variant = boot[3];
+    cache = word(root_data, block_words() - 2U);
+    if (variant == 4U) {
+        /* DOS4's blank root owns a real, allocated, empty cache block. */
+        if (cache < RESERVED || cache >= blocks ||
+            marked(occupied, cache) ||
+            block_io(fd, cache, data, 0) != 0 ||
+            word(data, 0) != 33U || word(data, 1) != cache ||
+            word(data, 2) != root || word(data, 3) != 0U ||
+            word(data, 4) != 0U ||
+            ifs_ofs_block_checksum(data, block_size) != 0U ||
+            mark(occupied, cache) != 0)
+            goto out;
+    } else if (cache != 0U) {
+        goto out;
+    }
 
     for (i = 0; i < ROOT_BMAP_COUNT && seen < bitmaps; ++i)
         pointers[seen++] = word(root_data, bitmap_pointer_start() + i);
@@ -227,7 +260,7 @@ out:
     return result;
 }
 
-/* DOS/0 has no independent block-size field; accept a candidate only
+/* DOS0/2/4 have no independent block-size field; accept a candidate only
  * after validating its actual root, allocation bitmap and checksums. */
 static int verify_any_size(int fd, int physical)
 {
@@ -244,7 +277,7 @@ static int verify_any_size(int fd, int physical)
 
 static int create(int fd, const char *label)
 {
-    uint32_t blocks, bitmaps, root, extras, cursor = RESERVED;
+    uint32_t blocks, bitmaps, root, extras, cache = 0U, cursor = RESERVED;
     uint32_t *bmap = NULL, *ext = NULL;
     unsigned char *occupied = NULL;
     unsigned char data[MAX_BLOCK];
@@ -281,8 +314,17 @@ static int create(int fd, const char *label)
             goto out;
     }
 
+    if (format_variant == 4U) {
+        if (cursor == root)
+            ++cursor;
+        if (cursor >= blocks || mark(occupied, cursor) != 0)
+            goto out;
+        cache = cursor++;
+    }
+
     memset(data, 0, sizeof(data));
-    memcpy(data, "DOS\0", 4);
+    memcpy(data, "DOS", 3);
+    data[3] = format_variant;
     if (block_io(fd, 0, data, 1) != 0)
         goto out;
     memset(data, 0, sizeof(data));
@@ -314,6 +356,16 @@ static int create(int fd, const char *label)
         if (block_io(fd, ext[i], data, 1) != 0)
             goto out;
     }
+    if (cache != 0U) {
+        memset(data, 0, sizeof(data));
+        put_word(data, 0, 33U); /* T_DIRCACHE */
+        put_word(data, 1, cache); /* own block key */
+        put_word(data, 2, root);  /* owning root */
+        /* Zero records and no next cache block. */
+        put_word(data, 5, ifs_ofs_checksum_word_value(data, block_size, 5));
+        if (block_io(fd, cache, data, 1) != 0)
+            goto out;
+    }
     memset(data, 0, sizeof(data));
     put_word(data, 0, 2U);
     put_word(data, 3, block_words() - 56U);
@@ -321,6 +373,7 @@ static int create(int fd, const char *label)
     for (i = 0; i < bitmaps && i < ROOT_BMAP_COUNT; ++i)
         put_word(data, bitmap_pointer_start() + i, bmap[i]);
     put_word(data, bitmap_extension_pointer(), extras ? ext[0] : 0U);
+    put_word(data, block_words() - 2U, cache);
     data[disk_name_offset()] = (unsigned char)strlen(label);
     memcpy(data + disk_name_offset() + 1U, label, strlen(label));
     put_word(data, block_words() - 1U, 1U);
