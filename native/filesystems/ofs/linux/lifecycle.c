@@ -44,7 +44,8 @@ struct ifs_ofs_mount_config {
     kgid_t gid;
     umode_t mode;
     int reserved;
-    s32 root_block;
+    u32 root_block;
+    bool root_specified;
     int blocksize;
     char *prefix;
     char volume[32];
@@ -240,7 +241,8 @@ static void ifs_ofs_mount_config_defaults(
     config->uid = current_uid();
     config->gid = current_gid();
     config->reserved = 2;
-    config->root_block = -1;
+    config->root_block = 0U;
+    config->root_specified = false;
     config->blocksize = -1;
     config->volume[0] = ':';
     config->volume[1] = '\0';
@@ -256,7 +258,8 @@ static int ifs_ofs_mount_config_from_super(
     config->gid = sbi->s_gid;
     config->mode = sbi->s_mode;
     config->reserved = sbi->s_reserved;
-    config->root_block = (s32)sbi->s_root_block;
+    config->root_block = sbi->s_root_block;
+    config->root_specified = true;
     config->blocksize = (int)sb->s_blocksize;
     config->flags = sbi->s_flags;
     memcpy(config->volume, sbi->s_volume, sizeof(config->volume));
@@ -331,11 +334,15 @@ static int ifs_ofs_parse_options(
             config->reserved = value;
             break;
 
-        case IFS_OPT_ROOT:
-            if (match_int(&arguments[0], &value) != 0 || value < 0)
+        case IFS_OPT_ROOT: {
+            u32 root_key;
+            /* match_int() rejects the valid unsigned upper half of BE32. */
+            if (match_u32(&arguments[0], &root_key) != 0)
                 return -EINVAL;
-            config->root_block = value;
+            config->root_block = root_key;
+            config->root_specified = true;
             break;
+        }
 
         case IFS_OPT_SETGID:
             if (match_int(&arguments[0], &value) != 0 || value < 0)
@@ -400,9 +407,15 @@ static int affs_show_options(struct seq_file *output, struct dentry *root)
         seq_puts(output, ",protect");
     if (sbi->s_reserved != 2)
         seq_printf(output, ",reserved=%u", sbi->s_reserved);
-    if (sbi->s_root_block !=
-        (u32)(sbi->s_reserved + sbi->s_partition_size - 1) / 2U)
-        seq_printf(output, ",root=%u", sbi->s_root_block);
+    {
+        u32 expected_root = 0U;
+        if (sbi->s_reserved < 0 ||
+            ifs_ofs_root_block((u32)sbi->s_reserved,
+                               sbi->s_partition_size,
+                               &expected_root) != 0 ||
+            sbi->s_root_block != expected_root)
+            seq_printf(output, ",root=%u", sbi->s_root_block);
+    }
     if (affs_test_opt(sbi->s_flags, SF_SETGID))
         seq_printf(output, ",setgid=%u",
                    from_kgid_munged(&init_user_ns, sbi->s_gid));
@@ -443,32 +456,33 @@ static int ifs_ofs_find_root(
         u32 standard_root;
         unsigned int attempt;
 
-        if (block_count <= (u64)config->reserved ||
-            block_count > INT_MAX)
+        if (config->reserved < 0 ||
+            block_count <= (u64)config->reserved ||
+            block_count > UINT32_MAX)
             continue;
 
         if (!sb_set_blocksize(sb, blocksize))
             continue;
 
-        sbi->s_partition_size = (int)block_count;
+        sbi->s_partition_size = (u32)block_count;
         if (config->reserved < 0 ||
             ifs_ofs_root_block((u32)config->reserved,
                                (u32)block_count, &standard_root) != 0)
             continue;
-        root = config->root_block >= 0 ?
+        root = config->root_specified ?
                (u64)config->root_block : (u64)standard_root;
 
         for (attempt = 0U; attempt < 2U; ++attempt) {
             struct buffer_head *candidate;
             const u64 candidate_block = root + attempt;
 
-            if (candidate_block > INT_MAX ||
+            if (candidate_block > UINT32_MAX ||
                 candidate_block >= block_count ||
                 candidate_block < (u64)config->reserved)
                 continue;
 
             sbi->s_root_block = (u32)candidate_block;
-            candidate = affs_bread(sb, (int)candidate_block);
+            candidate = affs_bread(sb, (u32)candidate_block);
             if (!candidate)
                 continue;
 
@@ -722,7 +736,7 @@ static int affs_remount(struct super_block *sb, int *flags, char *data)
         goto out;
 
     if (config.reserved != sbi->s_reserved ||
-        config.root_block != (s32)sbi->s_root_block ||
+        config.root_block != sbi->s_root_block ||
         config.blocksize != (int)sb->s_blocksize) {
         result = -EINVAL;
         goto out;
@@ -786,7 +800,7 @@ static int affs_reconfigure(struct fs_context *fc)
     int result = 0;
 
     if (config->reserved != sbi->s_reserved ||
-        config->root_block != (s32)sbi->s_root_block ||
+        config->root_block != sbi->s_root_block ||
         config->blocksize != (int)sb->s_blocksize)
         return -EINVAL;
 
