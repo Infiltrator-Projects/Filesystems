@@ -1,5 +1,9 @@
 # OFS format completeness and implementation qualification
 
+**DOS0-specific acceptance contract:** [native/filesystems/ofs/DOS0_COMPLETION.md](../native/filesystems/ofs/DOS0_COMPLETION.md) tracks feature completion of the original DOS0 format independently of the other OFS variants.
+
+**0.5.79 candidate update:** the Linux OFS signed `int s_partition_size`, signed buffer-head block arguments, and `INT_MAX` root-geometry gates are being replaced with unsigned 32-bit filesystem key handling in this branch. The >1-TiB runtime and independent Amiga interoperability gates stay **open** until proven; do not assume this change alone certifies high-capacity mounting.
+
 Status: **open / incomplete**, audited 24 October 2026.
 
 ## Authority and separation
