@@ -1,6 +1,6 @@
 # Amiga OFS canonical implementation
 
-**Normative disk format and behavioral contract:** [OFS_SPECIFICATION.md](OFS_SPECIFICATION.md). The source must be evaluated against that external-source-backed specification; implementation details do not redefine classic DOS0/DOS2/DOS4 on-disk rules.
+**Normative disk format and behavioral contract:** [OFS_SPECIFICATION.md](OFS_SPECIFICATION.md). The source must be evaluated against that external-source-backed specification; implementation details do not redefine DOS0/DOS2/DOS4/DOS6 on-disk rules. The original DOS0 completion contract and current test gaps are tracked in [the DOS0 acceptance matrix](../../../docs/OFS_DOS0_COMPLETION_MATRIX.md).
 
 OFS in this repository is the canonical Infiltrator Projects OFS implementation. The source tree is authoritative.
 
