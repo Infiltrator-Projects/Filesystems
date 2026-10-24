@@ -1,11 +1,12 @@
 # OFS format completeness and implementation qualification
 
+**Current DOS0 completion contract:** [OFS_DOS0_FEATURE_COMPLETENESS.md](OFS_DOS0_FEATURE_COMPLETENESS.md). The per-variant acceptance table is authoritative for any claim that original DOS0 is *feature complete*. As of 0.5.79 candidate: **NOT feature-complete**; unsigned Linux block-key plumbing and durable ELF/multi-extension tests are in progress, but all >INT_MAX Linux media, >PAGE_SIZE block sizes, general EFI sizes and end-to-end OFS root boot remain unqualified. This historical audit below describes what was known before later fixes and must not be presented as a current feature matrix.
+
 Status: **open / incomplete**, audited 24 October 2026.
 
 ## Authority and separation
 
-AmigaDOS **OFS** (DOS\\0, DOS\\2, DOS\\4) and **FFS**
-(DOS\\1, DOS\\3, DOS\\5) are distinct on-media formats. Linux
+AmigaDOS **OFS** (DOS\\0, DOS\\2, DOS\\4, DOS\\6) and FFS (its own separately documented family) are distinct on-media formats. The canonical [OFS spec](../native/filesystems/ofs/OFS_SPECIFICATION.md) and [FFS spec](../native/filesystems/ffs/FFS_SPECIFICATION.md) own their identifiers independently. Linux
 `affs` is a combined adapter, **not** proof that the OFS and FFS data
 layouts or feature limits are interchangeable. The Linux kernel explicitly
 distinguishes the DOS types, and documents a 512–32768-byte format block-size
