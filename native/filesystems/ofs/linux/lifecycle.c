@@ -335,11 +335,13 @@ static int ifs_ofs_parse_options(
             break;
 
         case IFS_OPT_ROOT: {
-            u32 root_key;
-            /* match_int() rejects the valid unsigned upper half of BE32. */
-            if (match_u32(&arguments[0], &root_key) != 0)
+            u64 root_key;
+            /* Older kernels have match_u64, not match_u32: validate the
+             * entire 32-bit disk-key range without narrowing or wrapping. */
+            if (match_u64(&arguments[0], &root_key) != 0 ||
+                root_key > 0xffffffffULL)
                 return -EINVAL;
-            config->root_block = root_key;
+            config->root_block = (u32)root_key;
             config->root_specified = true;
             break;
         }
@@ -458,7 +460,7 @@ static int ifs_ofs_find_root(
 
         if (config->reserved < 0 ||
             block_count <= (u64)config->reserved ||
-            block_count > UINT32_MAX)
+            block_count > 0xffffffffULL)
             continue;
 
         if (!sb_set_blocksize(sb, blocksize))
@@ -476,7 +478,7 @@ static int ifs_ofs_find_root(
             struct buffer_head *candidate;
             const u64 candidate_block = root + attempt;
 
-            if (candidate_block > UINT32_MAX ||
+            if (candidate_block > 0xffffffffULL ||
                 candidate_block >= block_count ||
                 candidate_block < (u64)config->reserved)
                 continue;
