@@ -519,7 +519,10 @@ static int ifs_ofs_apply_format_identity(
 
 #if IFS_OFS_IS_OFS
     affs_set_opt(sbi->s_flags, SF_OFS);
-    sb->s_flags |= SB_NOEXEC;
+    /* Unlike upstream AFFS, our OFS implementation reconstructs the
+     * 488-byte block payloads into normal Linux page-cache folios and
+     * implements generic_file_mmap.  Do not enforce SB_NOEXEC here:
+     * qualification must execute an ELF from disposable OFS media. */
 #endif
 
     return 0;
