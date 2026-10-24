@@ -161,6 +161,193 @@ static int volume_geometry(int fd, uint32_t *total, uint32_t *bitmap_count)
         bits == bitmap_bits() ? 0 : -1;
 }
 
+
+/* This verifier is intentionally stronger than the original empty-volume
+ * format check. DOS0 and DOS2 can contain an arbitrarily deep hierarchy,
+ * and files carry BOTH a reversed pointer table and a nextData chain.
+ * Account for each block exactly once and compare the reconstructed
+ * allocation graph with every bitmap bit. No recursion or per-file
+ * allocation proportional to the advertised (possibly corrupt) file size.
+ * DOS4 cache mutation and DOS6 NaC parsing need their own qualified
+ * walkers; never interpret those formats as classic populated DOS0. */
+typedef struct {
+    uint32_t key;
+    uint32_t bucket;
+    uint32_t next;
+} OfsVerifyDirectory;
+
+static int verify_file_blocks(int fd, uint32_t owner,
+                              const unsigned char *header,
+                              uint32_t total, unsigned char *occupied)
+{
+    unsigned char block[MAX_BLOCK], data[MAX_BLOCK];
+    const uint32_t pointers_per_block = block_words() - 56U;
+    const uint32_t bytes_per_block = block_size - 24U;
+    const uint32_t size = word(header, block_words() - 47U);
+    const uint32_t expected_blocks = (uint32_t)(
+        ((uint64_t)size + bytes_per_block - 1U) / bytes_per_block);
+    uint32_t remaining = expected_blocks, seq = 0U;
+    uint32_t next_data = word(header, 4U);
+    uint32_t next_ext = word(header, block_words() - 2U);
+    int first = 1;
+
+    memcpy(block, header, block_size);
+    if ((size == 0U && next_data != 0U) ||
+        (size != 0U && next_data == 0U))
+        return -1;
+
+    do {
+        uint32_t i, count, extension;
+        if (!first) {
+            extension = next_ext;
+            if (extension < RESERVED || extension >= total ||
+                mark(occupied, extension) != 0 ||
+                block_io(fd, extension, block, 0) != 0 ||
+                word(block, 0) != 16U || word(block, 1) != extension ||
+                word(block, block_words() - 3U) != owner ||
+                word(block, block_words() - 1U) != UINT32_MAX - 2U ||
+                ifs_ofs_block_checksum(block, block_size) != 0U)
+                return -1;
+            next_ext = word(block, block_words() - 2U);
+        }
+        first = 0;
+        count = word(block, 2U);
+        if (count != (remaining > pointers_per_block
+                        ? pointers_per_block : remaining))
+            return -1;
+        for (i = 0U; i < count; ++i) {
+            uint32_t key, expected_bytes, next, byte_index;
+            key = word(block, 6U + pointers_per_block - 1U - i);
+            if (key < RESERVED || key >= total || key != next_data ||
+                mark(occupied, key) != 0 ||
+                block_io(fd, key, data, 0) != 0)
+                return -1;
+
+            byte_index = seq * (uint64_t)bytes_per_block > UINT32_MAX
+                ? UINT32_MAX : (uint32_t)((uint64_t)seq * bytes_per_block);
+            expected_bytes = size - byte_index;
+            if (expected_bytes > bytes_per_block)
+                expected_bytes = bytes_per_block;
+            if (word(data, 0) != 8U ||
+                word(data, 1) != owner ||
+                word(data, 2) != seq + 1U ||
+                word(data, 3) != expected_bytes ||
+                ifs_ofs_block_checksum(data, block_size) != 0U)
+                return -1;
+            next = word(data, 4U);
+            ++seq;
+            next_data = next;
+            if (seq == expected_blocks && next_data != 0U)
+                return -1;
+        }
+        remaining -= count;
+        if ((remaining == 0U && next_ext != 0U) ||
+            (remaining != 0U && next_ext == 0U))
+            return -1;
+    } while (remaining != 0U);
+    return seq == expected_blocks && next_data == 0U ? 0 : -1;
+}
+
+static int verify_classic_namespace(int fd, uint32_t root, uint32_t total,
+                                    unsigned char *occupied,
+                                    unsigned int international)
+{
+    const uint32_t buckets = block_words() - 56U;
+    OfsVerifyDirectory *frames = NULL;
+    size_t depth = 0U, capacity = 0U;
+    unsigned char node[MAX_BLOCK], directory[MAX_BLOCK];
+    int success = -1;
+
+    capacity = 16U;
+    frames = calloc(capacity, sizeof(*frames));
+    if (!frames)
+        return -1;
+    frames[depth++] = (OfsVerifyDirectory){root, 0U, 0U};
+
+    while (depth != 0U) {
+        OfsVerifyDirectory *frame = &frames[depth - 1U];
+        uint32_t key, parent = frame->key, next;
+        uint32_t length, entry_type, actual_bucket;
+
+        if (frame->bucket == buckets) {
+            --depth;
+            continue;
+        }
+        if (block_io(fd, parent, directory, 0) != 0)
+            goto done;
+        key = frame->next != 0U ? frame->next :
+              word(directory, 6U + frame->bucket);
+        if (key == 0U) {
+            ++frame->bucket;
+            frame->next = 0U;
+            continue;
+        }
+        if (key < RESERVED || key >= total ||
+            mark(occupied, key) != 0 ||
+            block_io(fd, key, node, 0) != 0 ||
+            word(node, 0U) != 2U || word(node, 1U) != key ||
+            word(node, block_words() - 3U) != parent ||
+            ifs_ofs_block_checksum(node, block_size) != 0U)
+            goto done;
+
+        entry_type = word(node, block_words() - 1U);
+        if (entry_type != 2U && entry_type != 3U &&
+            entry_type != 4U && entry_type != UINT32_MAX - 2U &&
+            entry_type != UINT32_MAX - 3U)
+            goto done;
+        length = node[disk_name_offset()];
+        if (length == 0U || length > 30U ||
+            ifs_ofs_validate_name(node + disk_name_offset() + 1U,
+                                  length, 1) != IFS_OFS_NAME_OK)
+            goto done;
+        actual_bucket = ifs_ofs_directory_hash(
+            node + disk_name_offset() + 1U, length,
+            buckets, (int)international);
+        if (actual_bucket != frame->bucket)
+            goto done;
+        next = word(node, block_words() - 4U);
+        frame->next = next;
+        if (next == 0U)
+            ++frame->bucket;
+
+        if (entry_type == UINT32_MAX - 2U) {
+            if (verify_file_blocks(fd, key, node, total, occupied) != 0)
+                goto done;
+        } else if (entry_type == 2U) {
+            if (word(node, 3U) != buckets)
+                goto done;
+            if (depth == capacity) {
+                OfsVerifyDirectory *grown;
+                if (capacity > SIZE_MAX / 2U / sizeof(*frames))
+                    goto done;
+                grown = realloc(frames, capacity * 2U * sizeof(*frames));
+                if (!grown)
+                    goto done;
+                frames = grown;
+                capacity *= 2U;
+            }
+            frames[depth++] = (OfsVerifyDirectory){key, 0U, 0U};
+        } else if (entry_type == 4U ||
+                   entry_type == UINT32_MAX - 3U) {
+            /* Hard-link stypes +4 and -4 must not be treated as
+             * independently allocated file-data owners. */
+            const uint32_t target = word(node, block_words() - 11U);
+            if (target < RESERVED || target >= total || target == key)
+                goto done;
+        } else {
+            /* ST_SOFTLINK: NUL-terminated pathname in the header,
+             * not a data-block pointer or directory hash key. */
+            const size_t capacity_bytes = block_size - 200U - 24U;
+            if (memchr(node + 24U, 0, capacity_bytes) == NULL)
+                goto done;
+        }
+    }
+    success = 0;
+done:
+    free(frames);
+    return success;
+}
+
 static int verify_one_size(int fd)
 {
     uint32_t blocks, bitmaps, root, extension, cache, seen = 0;
