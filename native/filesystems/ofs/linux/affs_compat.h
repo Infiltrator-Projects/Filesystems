@@ -72,7 +72,7 @@ struct affs_bm_info {
 };
 
 struct affs_sb_info {
-    int s_partition_size;
+    u32 s_partition_size; /* OFS block keys are unsigned on disk. */
     int s_reserved;
     u32 s_data_blksize;
     u32 s_root_block;
@@ -134,7 +134,7 @@ static inline u32 ifs_amiga_chain_budget(struct super_block *sb)
     if (!sbi || sbi->s_partition_size <= sbi->s_reserved)
         return 1U;
 
-    return (u32)(sbi->s_partition_size - sbi->s_reserved);
+    return sbi->s_partition_size - (u32)sbi->s_reserved;
 }
 
 void affs_mark_sb_dirty(struct super_block *sb);
@@ -211,11 +211,9 @@ extern const struct address_space_operations affs_aops;
 extern const struct dentry_operations affs_dentry_operations;
 extern const struct dentry_operations affs_intl_dentry_operations;
 
-static inline bool affs_validblock(struct super_block *sb, int block)
+static inline bool affs_validblock(struct super_block *sb, u32 block)
 {
-    if (block < 0)
-        return false;
-
+    /* On-disk keys are unsigned BE32, never signed int. */
     return IFS_AMIGA_BLOCK_VALID(sb, block);
 }
 
@@ -225,7 +223,7 @@ static inline void affs_set_blocksize(struct super_block *sb, int size)
 }
 
 static inline struct buffer_head *affs_bread(
-    struct super_block *sb, int block)
+    struct super_block *sb, u32 block)
 {
     if (!affs_validblock(sb, block))
         return NULL;
@@ -233,7 +231,7 @@ static inline struct buffer_head *affs_bread(
 }
 
 static inline struct buffer_head *affs_getblk(
-    struct super_block *sb, int block)
+    struct super_block *sb, u32 block)
 {
     if (!affs_validblock(sb, block))
         return NULL;
@@ -241,7 +239,7 @@ static inline struct buffer_head *affs_getblk(
 }
 
 static inline struct buffer_head *affs_getzeroblk(
-    struct super_block *sb, int block)
+    struct super_block *sb, u32 block)
 {
     struct buffer_head *bh;
 
@@ -260,7 +258,7 @@ static inline struct buffer_head *affs_getzeroblk(
 }
 
 static inline struct buffer_head *affs_getemptyblk(
-    struct super_block *sb, int block)
+    struct super_block *sb, u32 block)
 {
     struct buffer_head *bh;
 
