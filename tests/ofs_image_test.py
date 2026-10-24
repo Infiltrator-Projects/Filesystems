@@ -52,6 +52,56 @@ def test(tool, root):
         assert contents[block - 80] == len("BLOCK_TEST")
         command(tool, "--create", image, 8, "BLOCK_TEST",
                 "--block-size", block, success=False)
+    # Each actual on-disk variant must be independently identifiable and
+    # structurally complete, not a signature-only re-label of DOS0.
+    for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
+        for selector, suffix in (("dos0", 0), ("dos2", 2), ("dos4", 4)):
+            image = root / f"ofs-{selector}-block-{block}.img"
+            opts = ("--variant", selector, "--block-size", block) if suffix == 4 \
+                else ("--block-size", block, "--variant", selector)
+            command(tool, "--create", image, 4, "VARIANT", *opts)
+            command(tool, "--verify", image)
+            with image.open("rb") as fh:
+                assert fh.read(4) == b"DOS" + bytes([suffix])
+                total = image.stat().st_size // block
+                key = (2 + total - 1) // 2
+                fh.seek(key * block)
+                header = fh.read(block)
+                words = block // 4
+                cache = struct.unpack_from(">I", header, block - 8)[0]
+                if suffix != 4:
+                    assert cache == 0, (selector, block, cache)
+                else:
+                    assert 2 <= cache < total and cache != key
+                    fh.seek(cache * block)
+                    record = fh.read(block)
+                    assert struct.unpack_from(">5I", record, 0) == (
+                        33, cache, key, 0, 0)
+                    assert sum(struct.unpack(f">{words}I", record)) % (1 << 32) == 0
+                    bitmap = struct.unpack_from(">I", header, block - 196)[0]
+                    assert bitmap not in (0, cache, key)
+                    relative = cache - 2
+                    fh.seek(bitmap * block + 4 + 4 * (relative // 32))
+                    bitmap_word = struct.unpack(">I", fh.read(4))[0]
+                    assert bitmap_word & (1 << (relative % 32)) == 0
+            if suffix == 4:
+                # Cache integrity and ownership must be verified; rejecting
+                # mutated media proves DOS4 isn't only a different DOS byte.
+                victim = root / f"bad-dos4-cache-{block}.img"
+                shutil.copyfile(image, victim)
+                damage(victim, cache * block + 8)
+                command(tool, "--verify", victim, success=False)
+
+    for bad_variant in ("dos1", "dos3", "dos5", "dos6", "DOS2", ""):
+        invalid_image = root / ("bad-variant-" + (bad_variant or "empty") + ".img")
+        command(tool, "--create", invalid_image, 4, "INVALID",
+                "--variant", bad_variant, success=False)
+        assert not invalid_image.exists()
+    # Old CLI remains DOS0 by default, with no silent variant conversion.
+    default_image = root / "ofs-1.img"
+    with default_image.open("rb") as fh:
+        assert fh.read(4) == b"DOS\x00"
+
     # Authentic Amiga root placement differs from floor(total/2) for
     # odd total-block counts. Exercise every block size with an independent
     # raw-byte inspection, not just the formatter's built-in verifier.
