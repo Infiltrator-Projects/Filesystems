@@ -52,6 +52,41 @@ def test(tool, root):
         assert contents[block - 80] == len("BLOCK_TEST")
         command(tool, "--create", image, 8, "BLOCK_TEST",
                 "--block-size", block, success=False)
+    # Authentic Amiga root placement differs from floor(total/2) for
+    # odd total-block counts. Exercise every block size with an independent
+    # raw-byte inspection, not just the formatter's built-in verifier.
+    for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
+        total_blocks = (1024 * 1024 // block) + 1
+        assert total_blocks % 2 == 1
+        expected_root = (2 + total_blocks - 1) // 2
+        image = root / f"ofs-odd-{block}.img"
+        command(tool, "--create-blocks", image, total_blocks, "ODD_OFS",
+                "--block-size", block)
+        command(tool, "--verify", image)
+        assert image.stat().st_size == total_blocks * block
+        with image.open("rb") as fh:
+            fh.seek(expected_root * block)
+            correct = fh.read(block)
+            fh.seek((total_blocks // 2) * block)
+            old_position = fh.read(block)
+        assert struct.unpack_from(">I", correct, 0)[0] == 2
+        assert struct.unpack_from(">I", correct, 12)[0] == block // 4 - 56
+        assert struct.unpack_from(">I", correct, block - 4)[0] == 1
+        assert struct.unpack_from(">I", correct, block - 200)[0] == 0xffffffff
+        assert correct[block - 80] == len("ODD_OFS")
+        assert sum(struct.unpack(f">{block // 4}I", correct)) % (1 << 32) == 0
+        assert struct.unpack_from(">I", old_position, 0)[0] != 2
+        # A checksum-valid root at the former floor(N/2) location must
+        # never make a malformed odd-block image look fully compliant.
+        legacy = root / f"ofs-odd-legacy-{block}.img"
+        shutil.copyfile(image, legacy)
+        with legacy.open("r+b") as fh:
+            fh.seek((total_blocks // 2) * block)
+            fh.write(correct)
+            fh.seek(expected_root * block)
+            fh.write(bytes(block))
+        command(tool, "--verify", legacy, success=False)
+
     for bad_block in (256, 1000, 65536, 0, -1):
         command(tool, "--create", root / f"bad-block-{bad_block}.img",
                 4, "BAD_BLOCK", "--block-size", bad_block, success=False)
