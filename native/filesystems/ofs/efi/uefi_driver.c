@@ -20,6 +20,8 @@
 #define OFS_DMA_PAGE_ALIGNMENT 4096U
 #define OFS_DMA_MAX_ADDRESS 0xffffffffULL /* Conservative 32-bit firmware DMA window. */
 #define OFS_SLOW_READ_REPORT_LIMIT 12U
+#define OFS_READ_CACHE_BYTES (128U * 1024U)
+#define OFS_READ_CACHE_SECTORS (OFS_READ_CACHE_BYTES / 512U)
 
 typedef struct OfsController OfsController;
 typedef struct OfsFile OfsFile;
@@ -40,6 +42,15 @@ struct OfsController {
     UINTN sector_allocation_pages; /* Exact count for FreePages. */
     VOID *sector_buffer; /* DMA-safe, suitably aligned sector pointer. */
     UINTN slow_read_reports; /* Bounded, per-controller firmware diagnostics. */
+    EFI_PHYSICAL_ADDRESS cache_allocation; /* Separately bounded DiskIo buffer. */
+    UINTN cache_allocation_pages;
+    VOID *cache_buffer;
+    UINT32 cache_first_sector;
+    UINTN cache_sector_count;
+    BOOLEAN cache_valid;
+    BOOLEAN cache_disabled; /* One failure permanently disables prefetch. */
+    BOOLEAN have_previous_sector;
+    UINT32 previous_sector;
 };
 
 struct OfsFile {
@@ -151,6 +162,96 @@ static EFI_STATUS ensure_sector_buffer(OfsController *ctx)
     return EFI_SUCCESS;
 }
 
+/* The existing EFI filesystem framework uses a 128 KiB DiskIo read cache
+ * rather than sending every file-data sector separately through BlockIo.
+ * OFS keeps its canonical 512-byte parser but can opportunistically prefetch
+ * ONLY after two consecutive successful sector requests. A single rejected
+ * DiskIo prefetch disables this path for the controller and falls back to the
+ * previously qualified one-sector BlockIo path; never retry bulk reads. */
+static EFI_STATUS ensure_read_cache(OfsController *ctx)
+{
+    EFI_PHYSICAL_ADDRESS address = OFS_DMA_MAX_ADDRESS;
+    EFI_STATUS status;
+    UINTN alignment, pages, aligned;
+    if (ctx->cache_buffer)
+        return EFI_SUCCESS;
+    alignment = (UINTN)ctx->block->Media->IoAlign;
+    if (alignment == 0U)
+        alignment = 1U;
+    if ((alignment & (alignment - 1U)) != 0U ||
+        alignment > OFS_MAX_IO_ALIGNMENT)
+        return EFI_UNSUPPORTED;
+    if (alignment < OFS_DMA_PAGE_ALIGNMENT)
+        alignment = OFS_DMA_PAGE_ALIGNMENT;
+    pages = (OFS_READ_CACHE_BYTES + alignment - 1U +
+             OFS_DMA_PAGE_ALIGNMENT - 1U) / OFS_DMA_PAGE_ALIGNMENT;
+    status = BS->AllocatePages(AllocateMaxAddress, EfiBootServicesData,
+                               pages, &address);
+    if (EFI_ERROR(status))
+        return status;
+    aligned = ((UINTN)address + alignment - 1U) & ~(alignment - 1U);
+    if (aligned < (UINTN)address ||
+        (UINT64)aligned + OFS_READ_CACHE_BYTES - 1ULL >
+        OFS_DMA_MAX_ADDRESS) {
+        BS->FreePages(address, pages);
+        return EFI_UNSUPPORTED;
+    }
+    ctx->cache_allocation = address;
+    ctx->cache_allocation_pages = pages;
+    ctx->cache_buffer = (VOID *)aligned;
+    return EFI_SUCCESS;
+}
+
+/* 1 = sector supplied from a verified in-memory DiskIo cache, 0 = fallback
+ * to existing single-sector BlockIo. Cache I/O is strictly read-only, inside
+ * the partition, and never suppresses canonical OFS checksum validation. */
+static int try_cached_sector(OfsController *ctx, UINT32 number, uint8_t data[512])
+{
+    EFI_STATUS status;
+    UINT64 available;
+    UINTN blocks;
+    if (ctx->cache_valid &&
+        number >= ctx->cache_first_sector &&
+        (UINT64)number < (UINT64)ctx->cache_first_sector +
+                         (UINT64)ctx->cache_sector_count) {
+        UINTN offset = (UINTN)(number - ctx->cache_first_sector) * 512U;
+        BS->CopyMem(data, (UINT8 *)ctx->cache_buffer + offset, 512U);
+        return 1;
+    }
+    if (ctx->cache_disabled || !ctx->disk ||
+        !ctx->have_previous_sector ||
+        (UINT64)ctx->previous_sector + 1ULL != (UINT64)number)
+        return 0;
+    status = ensure_read_cache(ctx);
+    if (EFI_ERROR(status)) {
+        ctx->cache_disabled = TRUE;
+        return 0;
+    }
+    available = ctx->block->Media->LastBlock - (UINT64)number + 1ULL;
+    blocks = available > OFS_READ_CACHE_SECTORS
+        ? OFS_READ_CACHE_SECTORS : (UINTN)available;
+    if (blocks < 2U)
+        return 0;
+    /* DiskIo addresses bytes, unlike partition-relative BlockIo sectors. */
+    status = ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId,
+                                 (UINT64)number * 512ULL,
+                                 blocks * 512U, ctx->cache_buffer);
+    if (EFI_ERROR(status)) {
+        /* Dell firmware rejected earlier speculative multi-sector BlockIo.
+         * Disable this independent DiskIo experiment after ONE failure. */
+        ctx->cache_disabled = TRUE;
+        ctx->cache_valid = FALSE;
+        Print(L"OFS EFI: DiskIo cache rejected at sector %u: %r; single-sector fallback\n",
+              number, status);
+        return 0;
+    }
+    ctx->cache_first_sector = number;
+    ctx->cache_sector_count = blocks;
+    ctx->cache_valid = TRUE;
+    BS->CopyMem(data, ctx->cache_buffer, 512U);
+    return 1;
+}
+
 static VOID release_sector_buffer(OfsController *ctx)
 {
     if (ctx && ctx->sector_allocation_pages != 0U) {
@@ -158,6 +259,13 @@ static VOID release_sector_buffer(OfsController *ctx)
         ctx->sector_allocation = 0U;
         ctx->sector_allocation_pages = 0U;
         ctx->sector_buffer = NULL;
+    }
+    if (ctx && ctx->cache_allocation_pages != 0U) {
+        BS->FreePages(ctx->cache_allocation, ctx->cache_allocation_pages);
+        ctx->cache_allocation = 0U;
+        ctx->cache_allocation_pages = 0U;
+        ctx->cache_buffer = NULL;
+        ctx->cache_valid = FALSE;
     }
 }
 
@@ -222,8 +330,13 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         ctx->last_read_error = result;
         return -1;
     }
+    if (try_cached_sector(ctx, number, data)) {
+        ctx->previous_sector = number;
+        ctx->have_previous_sector = TRUE;
+        return 0;
+    }
     /* Keep retries limited to one actual 512-byte block request.
-     * No speculative neighbouring sectors, controller resets or writes. */
+     * A failed cache-prefetch never changes the ordinary BlockIo fallback. */
     for (attempt = 0U; attempt < 2U; ++attempt) {
         result = read_one_block(ctx, number, attempt);
         if (result != EFI_DEVICE_ERROR ||
@@ -240,6 +353,8 @@ static int read_sector(void *opaque, uint32_t number, uint8_t data[512])
         return -1;
     }
     BS->CopyMem(data, ctx->sector_buffer, 512U);
+    ctx->previous_sector = number;
+    ctx->have_previous_sector = TRUE;
     return 0;
 }
 

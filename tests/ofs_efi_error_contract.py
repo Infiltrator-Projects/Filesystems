@@ -34,6 +34,16 @@ assert "result != EFI_DEVICE_ERROR" in read_sector
 assert "!ctx->block->Media->MediaPresent || attempt != 0U" in read_sector
 assert "BS->Stall(1000U);" in read_sector
 assert "ctx->sector_buffer" in source
+assert "#define OFS_READ_CACHE_BYTES (128U * 1024U)" in source
+assert "ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId," in source
+assert "(UINT64)number * 512ULL" in source
+assert "blocks * 512U, ctx->cache_buffer" in source
+assert "(UINT64)ctx->previous_sector + 1ULL != (UINT64)number" in source
+assert "ctx->cache_disabled = TRUE;" in source
+assert "available = ctx->block->Media->LastBlock -" in source
+assert "if (blocks < 2U)" in source
+assert "BS->FreePages(ctx->cache_allocation, ctx->cache_allocation_pages)" in source
+assert "if (try_cached_sector(ctx, number, data))" in source
 assert "OFS_MAX_IO_ALIGNMENT" in source
 assert "OFS_DMA_PAGE_ALIGNMENT 4096U" in source
 assert "#define OFS_DMA_MAX_ADDRESS 0xffffffffULL" in source
@@ -57,7 +67,7 @@ assert "ctx->last_read_error = EFI_NO_MEDIA;" in read_sector
 assert "ctx->last_read_error = EFI_VOLUME_CORRUPTED;" in read_sector
 assert "prefetch" not in source
 assert "cached_sector" not in source
-assert "ReadDisk(" not in read_sector
+assert "ReadDisk(" not in read_sector  # Cache attempts are isolated and optional.
 assert "return EFI_ERROR(result) ? -1 : 0;" not in read_sector
 
 start = source.index("static EFI_STATUS reader_error(")

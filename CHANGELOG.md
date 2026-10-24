@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.75 — 2026-10-24
+
+- Investigate the filesystem-driver differential rather than assuming the Dell RTS525A storage controller is defective. The existing EFI filesystem framework (`fsw_efi.c`) successfully supports 128 KiB cached `EFI_DISK_IO.ReadDisk` requests; OFS previously used only 512-byte uncached `EFI_BLOCK_IO.ReadBlocks`.
+- Add a bounded, read-only OFS DiskIo cache experiment that activates only for consecutive sector reads. Limit each prefetch to 128 KiB and partition boundaries, allocate a low-address aligned DMA buffer, and use a verified in-memory cache without altering the canonical OFS parser.
+- A single failed multi-sector DiskIo call permanently disables prefetch for that controller and falls back to unchanged single-sector BlockIo with the existing retry bound. Never issue repeated speculative bulk reads after firmware rejection.
+- Protect with source regression checks and separate OFS EFI/OVMF CI. No claim that XFS's actual EFI driver is the same as the repository's FSW framework, nor that the physical Dell boot is resolved until tested.
+
 ## 0.5.74 — 2026-10-23
 
 - Remove the experimentally unsuccessful Dell RTS525A PCIe ASPM mutation from the OFS filesystem driver's EFI entry point. OFS is format-only; no hardware vendor matching or PCI configuration writes occur in production OFS.

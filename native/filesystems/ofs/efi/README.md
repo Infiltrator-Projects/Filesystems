@@ -294,3 +294,26 @@ unresolved**. Boot can now load an independently qualified native
 storage provider from `storage_x64/` before normal filesystem drivers
 from `drivers_x64/`; the provider must publish standard BlockIo
 handles. No qualifying native Realtek RTS525A provider exists yet.
+
+## Bounded DiskIo cache comparison — 0.5.75 (experimental)
+
+The established EFI FSW filesystem implementation caches 128 KiB via
+`EFI_DISK_IO.ReadDisk`, whereas the original OFS firmware adapter called
+`EFI_BLOCK_IO.ReadBlocks` for every 512-byte block. XFS's Linux source is
+present in the repository, but this is **not** a claim that the XFS EFI
+boot path uses FSW. A successful XFS boot on the same media undermines a
+controller-wide failure diagnosis and prioritizes an OFS-specific comparison.
+
+The new OFS experiment preserves exact 512-byte canonical OFS parser input
+and checksum validation. After observing consecutive requested sectors, it
+makes one partition-bounded, read-only 128 KiB DiskIo request and caches
+successful results. A rejected bulk read disables all future prefetch on
+that controller and immediately returns to the original bounded 512-byte
+BlockIo path. It does not attempt another speculative size, retry the bulk
+operation, write to the card or change platform PCI settings.
+
+The cache is backed by page-aligned physical memory below 4 GiB and is freed
+at probe teardown, controller stop or driver startup failure. Neither a
+passing EFI build nor virtual OVMF proves performance or compatibility on
+the Dell. Do not call this fix physically qualified until a successful OFS
+kernel and initrd boot has been observed.
