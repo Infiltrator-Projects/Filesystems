@@ -85,7 +85,7 @@ int ifs_ofs_efi_mount(IfsOfsEfiVolume *v, uint32_t blocks,
 {
     uint8_t b[OFS_BLOCK];
     uint32_t flags = 0;
-    if (!v || !callback || blocks < 16U || blocks > 0x7fffffffU)
+    if (!v || !callback || blocks < 16U)
         return -1;
     v->read_block = callback;
     v->opaque = opaque;

@@ -22,6 +22,13 @@
 #include "exfat_raw.h"
 #include "exfat_fs.h"
 
+/* Standalone external-module builds do not evaluate this driver's Kconfig.
+ * Honour a configured charset when available, otherwise use its Kconfig
+ * default instead of failing on an undefined CONFIG_ string symbol. */
+#ifndef CONFIG_EXFAT_DEFAULT_IOCHARSET
+#define CONFIG_EXFAT_DEFAULT_IOCHARSET "utf8"
+#endif
+
 static char exfat_default_iocharset[] = CONFIG_EXFAT_DEFAULT_IOCHARSET;
 static struct kmem_cache *exfat_inode_cachep;
 
