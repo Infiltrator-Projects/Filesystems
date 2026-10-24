@@ -471,12 +471,13 @@ static int operate_partition(const char *path, const char *label, int formatting
 static void usage(const char *name)
 {
     fprintf(stderr,
-            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES]\n"
-            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES]\n"
+            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
+            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
             "       %s --verify FILE\n"
-            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART\n"
+            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART [--variant dos0|dos2|dos4]\n"
             "       %s --verify-partition /dev/PART\n"
             "Image blocks: 512, 1024, 2048, 4096, 8192, 16384, 32768 bytes.\n"
+            "Default dos0; dos4 creates a real empty root directory cache.\n"
             "Partition mode: Linux only; 512-byte OFS blocks and\n"
             "unmounted, exclusive media; refuse above 1 TiB.\n"
             "The confirmation must repeat the exact partition path.\n",
@@ -487,9 +488,12 @@ int main(int argc, char **argv)
 {
     int fd, result;
 #ifdef __linux__
-    if (argc == 6 && strcmp(argv[1], "--format-partition") == 0) {
+    if ((argc == 6 || argc == 8) && strcmp(argv[1], "--format-partition") == 0) {
         const char *label = argv[3];
-        if (strcmp(argv[4], "--confirm") != 0 ||
+        if ((argc == 8 &&
+             (strcmp(argv[6], "--variant") != 0 ||
+              select_variant(argv[7]) != 0)) ||
+            strcmp(argv[4], "--confirm") != 0 ||
             strcmp(argv[2], argv[5]) != 0 ||
             strncmp(argv[2], "/dev/", 5) != 0 ||
             label[0] == '\0' ||
@@ -525,27 +529,44 @@ int main(int argc, char **argv)
         printf("Validated AmigaDOS OFS image: %s\n", argv[2]);
         return 0;
     }
-    if (argc >= 4 && argc <= 7 &&
+    if (argc >= 4 && argc <= 9 &&
         (strcmp(argv[1], "--create") == 0 ||
          strcmp(argv[1], "--create-blocks") == 0)) {
         const int blocks_mode = strcmp(argv[1], "--create-blocks") == 0;
         char *end = NULL;
-        int positional = argc;
+        int option_index = 4;
+        int had_block_size = 0, had_variant = 0;
         unsigned long long units;
         uint64_t size_bytes;
         const char *label;
-        if (argc >= 6 && strcmp(argv[argc - 2], "--block-size") == 0) {
-            if (select_block_size(argv[argc - 1]) != 0) {
+        label = "InfiltratorOFS";
+        if (option_index < argc && argv[option_index][0] != '-')
+            label = argv[option_index++];
+        while (option_index < argc) {
+            if (option_index + 1 >= argc) {
                 usage(argv[0]);
                 return 2;
             }
-            positional -= 2;
+            if (strcmp(argv[option_index], "--block-size") == 0 &&
+                !had_block_size) {
+                if (select_block_size(argv[option_index + 1]) != 0) {
+                    usage(argv[0]);
+                    return 2;
+                }
+                had_block_size = 1;
+            } else if (strcmp(argv[option_index], "--variant") == 0 &&
+                       !had_variant) {
+                if (select_variant(argv[option_index + 1]) != 0) {
+                    usage(argv[0]);
+                    return 2;
+                }
+                had_variant = 1;
+            } else {
+                usage(argv[0]);
+                return 2;
+            }
+            option_index += 2;
         }
-        if (positional != 4 && positional != 5) {
-            usage(argv[0]);
-            return 2;
-        }
-        label = positional == 5 ? argv[4] : "InfiltratorOFS";
         struct stat st;
         errno = 0;
         units = strtoull(argv[3], &end, 10);
