@@ -208,6 +208,8 @@ jobs:
             -drive file=/tmp/sfs2-4k.img,format=raw,if=virtio \
             2>&1 | tee /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-EXEC-PASS' /tmp/amiga-runtime.log
+          grep -Fq 'AMIGA-OFS-MULTIEXT-REMOUNT-PASS' /tmp/amiga-runtime.log
+          grep -Fq 'AMIGA-OFS-DOS0-EXTENDED-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-READONLY-STATFS-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-LARGE-READONLY-PASS' /tmp/amiga-runtime.log
           grep -Fq 'AMIGA-OFS-LARGE-BATCHED-IO-PASS' /tmp/amiga-runtime.log
@@ -217,6 +219,10 @@ jobs:
           done
           grep -Fq 'AMIGA-RUNTIME-PASS' /tmp/amiga-runtime.log
           ! grep -Fq 'AMIGA-RUNTIME-FAIL' /tmp/amiga-runtime.log
+          # The runtime deliberately keeps one populated DOS0 file. Verify
+          # its complete hash graph, file extensions, data chain and bitmap
+          # from the host after QEMU has unmounted/finished recovery.
+          /tmp/filesystems-ofs-build/filesystems-ofs-image --verify /tmp/ofs.img
 
       - name: Preserve Amiga runtime log
         if: always()

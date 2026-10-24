@@ -132,6 +132,31 @@ int main(void)
                 512U, 2U, 10000U, &bits, &count) != 0 ||
             bits != 4064U || count != 3U)
             return fail("AmigaDOS bitmap geometry is wrong");
+        /* Physical DOS0 keys with bit 31 set are *unsigned* metadata,
+         * not negative block offsets. Exercise the largest partition and
+         * bitmap address ranges without allocating a terabyte image. */
+        if (!ifs_ofs_data_block_valid(UINT32_C(0x80000000),
+                                      2U, UINT32_MAX) ||
+            !ifs_ofs_data_block_valid(UINT32_MAX - 1U,
+                                      2U, UINT32_MAX) ||
+            ifs_ofs_data_block_valid(UINT32_MAX, 2U, UINT32_MAX))
+            return fail("unsigned DOS0 high block key boundary");
+        if (ifs_ofs_bitmap_geometry(512U, 2U, UINT32_MAX,
+                                    &bits, &count) != 0 ||
+            bits != 4064U || count != 1056833U)
+            return fail("unsigned DOS0 high bitmap geometry");
+
+        {
+            ifs_ofs_u32 bitmap_index = 0U, bit_index = 0U;
+            const ifs_ofs_u32 high = UINT32_MAX - 1U;
+            const ifs_ofs_u32 rel = high - 2U;
+            if (ifs_ofs_bitmap_location(high, 2U, UINT32_MAX, 4064U,
+                                        &bitmap_index, &bit_index) != 0 ||
+                bitmap_index != rel / 4064U ||
+                bit_index != rel % 4064U)
+                return fail("unsigned DOS0 bitmap high-key mapping");
+        }
+
         if (ifs_ofs_bitmap_bit_mask(31U) != 0x80000000U)
             return fail("AmigaDOS bitmap bit mask is wrong");
         if (ifs_ofs_bitmap_scan_mask(4U) != 0xfffffff0U)

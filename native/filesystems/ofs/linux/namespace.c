@@ -1291,7 +1291,7 @@ static struct inode *ifs_ofs_export_inode(
     struct super_block *sb, u64 inode_number, u32 generation)
 {
     if (inode_number > U32_MAX ||
-        !affs_validblock(sb, (int)inode_number))
+        !affs_validblock(sb, (u32)inode_number))
         return ERR_PTR(-ESTALE);
 
     return affs_iget(sb, (unsigned long)inode_number);

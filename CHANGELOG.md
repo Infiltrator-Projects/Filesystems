@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.79 — 2026-10-24 (development candidate; DOS0 NOT feature-complete)
+
+- Add `native/filesystems/ofs/DOS0_COMPLETION.md`: explicit authentic DOS0 format, Linux read/write, EFI read, root boot, hardware, recovery and independent interoperability requirements. Do not conflate this checklist with proof of completion.
+- Correct Linux OFS's inherited signed-31-bit partition and file-block-key restrictions: unsigned filesystem key fields and block-buffer readers, checked root-option parsing and reporting, checked UINT32_MAX partition geometry, and high-block-key primitive tests.
+- **Still gated:** actual >1-TiB Linux mount/data operations on disposable media, Linux filesystem blocks over PAGE_SIZE, EFI blocks over 512 bytes, real OFS Linux-root boot and independent AmigaDOS compatibility. No physical-media or firmware configuration changes.
+- Consolidate the complementary, individually green work of PRs #30, #32 and #34 into one checked Linux DOS0 candidate: unsigned BE32 block-key handling from #32; durable static ELF execution after sync/unmount/remount from #30; populated DOS0/2 namespace and data-chain image verification and extended DOS0 read/write QEMU coverage from #34.
+- Real QEMU now requires `AMIGA-OFS-MULTIEXT-REMOUNT-PASS` and `AMIGA-OFS-DOS0-EXTENDED-PASS` plus host-side populated image allocation-graph verification. Preserve pre-existing crash, large bitmap, desktop-user, FFS and other filesystem gates.
+- Separate canonical DOS0 acceptance contract from current implementation evidence; retain original compatibility and EFI/large-block/root-boot/physical safety restrictions. All combined-code checks must run again before merging.
+
 ## 0.5.78 — 2026-10-24 (candidate; not released)
 
 - Canonical OFS specification now covers all four real DOS0, DOS2, DOS4 and **DOS6 LNFS** profiles, with original-source LNFS NaC, overflow-comment and root fields. Migrate explicit FFS variant identifiers to `native/filesystems/ffs/FFS_SPECIFICATION.md`.

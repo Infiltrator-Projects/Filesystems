@@ -149,9 +149,18 @@ mount -t ofs /dev/vda /mnt/ofs || fail "exec probe mount ofs"
 # the name of a compiled-in applet. The previous arbitrary filename
 # "ifs-elf-probe" incorrectly failed with "applet not found" even when
 # the kernel successfully executed the bytes from the OFS volume.
+# Force an actual first-extension boundary and persist the same executable
+# before checking ELF execution (preserved from qualified PR #30).
+test "$(stat -c '%s' /bin/busybox)" -gt 35136 ||
+    fail "BusyBox ELF too small to qualify OFS extension blocks"
 cp /bin/busybox /mnt/ofs/echo || fail "copy static ELF to OFS"
 chmod 0755 /mnt/ofs/echo || fail "chmod OFS ELF probe"
 cmp /bin/busybox /mnt/ofs/echo || fail "OFS ELF bytes differ"
+sync || fail "sync OFS ELF before remount"
+umount /mnt/ofs || fail "unmount OFS ELF before remount"
+mount -t ofs /dev/vda /mnt/ofs || fail "remount OFS ELF probe"
+cmp /bin/busybox /mnt/ofs/echo || fail "OFS multi-extension ELF corrupted after remount"
+echo "AMIGA-OFS-MULTIEXT-REMOUNT-PASS" > /dev/ttyS0
 test -x /mnt/ofs/echo || fail "OFS ELF is not executable"
 result=$(/mnt/ofs/echo "OFS-EXEC-VERIFIED") || fail "direct ELF execution from OFS"
 test "$result" = "OFS-EXEC-VERIFIED" || fail "wrong output from OFS ELF"
@@ -159,6 +168,44 @@ rm /mnt/ofs/echo || fail "remove OFS ELF probe"
 sync
 umount /mnt/ofs || fail "unmount OFS ELF probe"
 echo "AMIGA-OFS-EXEC-PASS" > /dev/ttyS0
+
+# DOS0 high-coverage integration: exercise both OFS 488-byte payload
+# boundaries and the file-header/extension-pointer boundary (>72 blocks).
+# A real executable provides deterministic binary content much larger than
+# a single OFS extension; it is not synthetic all-zero data.
+mount -t ofs /dev/vda /mnt/ofs || fail "DOS0 extended mount"
+cp /bin/busybox /mnt/ofs/Dos0Mixed.bin || fail "DOS0 extended binary copy"
+cmp /bin/busybox /mnt/ofs/Dos0Mixed.bin || fail "DOS0 extended byte integrity"
+test "$(stat -c '%s' /mnt/ofs/Dos0Mixed.bin)" -gt 35136 ||
+    fail "DOS0 fixture too short for file-extension exercise"
+mv /mnt/ofs/Dos0Mixed.bin /mnt/ofs/RenamedMixed.bin ||
+    fail "DOS0 rename across casefold"
+cmp /bin/busybox /mnt/ofs/renamedmixed.bin ||
+    fail "DOS0 ASCII casefold lookup"
+ln /mnt/ofs/RenamedMixed.bin /mnt/ofs/HardAlias ||
+    fail "DOS0 large-file hardlink"
+rm /mnt/ofs/RenamedMixed.bin || fail "DOS0 original hardlink unlink"
+cmp /bin/busybox /mnt/ofs/hardalias ||
+    fail "DOS0 promote shared data after original unlink"
+mv /mnt/ofs/HardAlias /mnt/ofs/ofs-persist.bin ||
+    fail "DOS0 rename surviving hardlink"
+cp /bin/busybox /mnt/ofs/truncate.bin || fail "DOS0 truncate source copy"
+dd if=/bin/busybox of=/mnt/ofs/truncate.bin bs=512 count=3 2>/dev/null ||
+    fail "DOS0 nonzero truncate write"
+test "$(stat -c '%s' /mnt/ofs/truncate.bin)" = 1536 ||
+    fail "DOS0 nonzero truncate size"
+dd if=/bin/busybox bs=512 count=3 2>/dev/null |
+    cmp - /mnt/ofs/truncate.bin || fail "DOS0 truncated byte integrity"
+: > /mnt/ofs/truncate.bin || fail "DOS0 truncate to zero"
+test ! -s /mnt/ofs/truncate.bin || fail "DOS0 empty-file size"
+rm /mnt/ofs/truncate.bin || fail "DOS0 truncate unlink"
+sync || fail "DOS0 extended sync"
+umount /mnt/ofs || fail "DOS0 extended unmount"
+mount -t ofs /dev/vda /mnt/ofs || fail "DOS0 extended remount"
+cmp /bin/busybox /mnt/ofs/ofs-persist.bin ||
+    fail "DOS0 extended remount data integrity"
+umount /mnt/ofs || fail "DOS0 extended final unmount"
+echo "AMIGA-OFS-DOS0-EXTENDED-PASS" > /dev/ttyS0
 
 qualify_rw ofs /dev/vda
 qualify_rw ffs /dev/vdb
