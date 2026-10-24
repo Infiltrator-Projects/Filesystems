@@ -58,7 +58,7 @@ static int rd_large(void *opaque, uint32_t block, uint8_t out[512])
         put(out, 0, 0x444f5300U);
         return 0;
     }
-    if (block == blocks / 2U) {
+    if (block == (uint32_t)(((uint64_t)blocks + 1U) / 2U)) {
         put(out, 0, 2U);
         put(out, 3, 72U);
         put(out, 127, 1U);
@@ -71,7 +71,7 @@ static int rd_large(void *opaque, uint32_t block, uint8_t out[512])
     if (block == LARGE_DIR) {
         put(out, 0, 2U);
         put(out, 1, LARGE_DIR);
-        put(out, 125, blocks / 2U);
+        put(out, 125, (uint32_t)(((uint64_t)blocks + 1U) / 2U));
         put(out, 127, 2U);
         label(out, "boot");
         checksum(out);
@@ -174,7 +174,7 @@ int main(void)
     /* The reader's address space is an unsigned 32-bit block count, not an
      * arbitrary INT32_MAX ceiling inherited from the Linux AFFS adapter. */
     {
-        static const uint32_t sizes[] = { UINT32_C(0x80000100), UINT32_MAX };
+        static const uint32_t sizes[] = { UINT32_C(0x80000100), UINT32_C(0x80000101), UINT32_MAX };
         size_t i;
         for (i = 0U; i < sizeof(sizes) / sizeof(sizes[0]); ++i) {
             IfsOfsEfiVolume big = {0};
