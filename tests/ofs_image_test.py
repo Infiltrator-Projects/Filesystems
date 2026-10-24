@@ -185,6 +185,73 @@ def test(tool, root):
     # A second, independent verifier pass must accept the complete volume.
     command(tool, "--verify", large)
 
+    # A real DOS0 user directory has three zeroed reserved header words at
+    # offsets 8, 12, and 16.  Unlike ST_ROOT, its word at offset 12 is NOT
+    # the hash-table size (72), even though it contains 72 hash buckets.
+    # Construct a valid populated namespace directly on a disposable image,
+    # including checksummed root/directory and an updated allocation bitmap.
+    populated = root / "ofs-user-directory.img"
+    command(tool, "--create", populated, 1, "USERDIR")
+    directory_key = 3
+    root_key = 1024
+    name = b"boot"
+    bucket = len(name)
+    for ch in name:
+        bucket = (bucket * 13 + (ch - 32 if 97 <= ch <= 122 else ch)) & 0x7ff
+    bucket %= 72
+
+    def set_checksum(data):
+        struct.pack_into(">I", data, 20, 0)
+        total = sum(struct.unpack(">128I", data)) & 0xffffffff
+        struct.pack_into(">I", data, 20, (-total) & 0xffffffff)
+
+    with populated.open("r+b") as fh:
+        fh.seek(root_key * 512)
+        root_data = bytearray(fh.read(512))
+        bitmap_key = struct.unpack_from(">I", root_data, 79 * 4)[0]
+        assert bitmap_key == 2, bitmap_key
+        assert struct.unpack_from(">I", root_data, (6 + bucket) * 4)[0] == 0
+        struct.pack_into(">I", root_data, (6 + bucket) * 4, directory_key)
+        set_checksum(root_data)
+        fh.seek(root_key * 512)
+        fh.write(root_data)
+
+        directory = bytearray(512)
+        struct.pack_into(">I", directory, 0, 2)  # T_HEADER
+        struct.pack_into(">I", directory, 4, directory_key)
+        struct.pack_into(">I", directory, 125 * 4, root_key)  # Parent
+        struct.pack_into(">I", directory, 127 * 4, 2)  # ST_USERDIR
+        directory[432] = len(name)
+        directory[433:433 + len(name)] = name
+        set_checksum(directory)
+        fh.seek(directory_key * 512)
+        fh.write(directory)
+
+        fh.seek(bitmap_key * 512)
+        bitmap = bytearray(fh.read(512))
+        # Bitmap entry zero corresponds to volume block 2, so block 3 is bit 1.
+        bitmap_word = struct.unpack_from(">I", bitmap, 4)[0]
+        assert bitmap_word & 2
+        struct.pack_into(">I", bitmap, 4, bitmap_word & ~2)
+        struct.pack_into(">I", bitmap, 0, 0)
+        total = sum(struct.unpack(">128I", bitmap)) & 0xffffffff
+        struct.pack_into(">I", bitmap, 0, (-total) & 0xffffffff)
+        fh.seek(bitmap_key * 512)
+        fh.write(bitmap)
+
+    command(tool, "--verify", populated)
+    for reserved_word in (2, 3, 4):
+        bad = root / f"ofs-user-directory-reserved-{reserved_word}.img"
+        shutil.copyfile(populated, bad)
+        with bad.open("r+b") as fh:
+            fh.seek(directory_key * 512)
+            data = bytearray(fh.read(512))
+            struct.pack_into(">I", data, reserved_word * 4, 72)
+            set_checksum(data)
+            fh.seek(directory_key * 512)
+            fh.write(data)
+        command(tool, "--verify", bad, success=False)
+
     existing = root / "existing.bin"
     existing.write_bytes(b"USER DATA MUST NOT CHANGE")
     command(tool, "--create", existing, 4, success=False)
