@@ -141,6 +141,25 @@ qualify_sfs_rw()
     umount "$mnt" || fail "final-unmount $fs"
 }
 
+# This project-native OFS adapter assembles per-block 488-byte payloads into
+# page-cache folios. Verify that an executable actually maps and runs from
+# OFS before lifting the upstream AFFS-style SB_NOEXEC restriction.
+mount -t ofs /dev/vda /mnt/ofs || fail "exec probe mount ofs"
+# BusyBox dispatches using argv[0]: the copied executable must bear
+# the name of a compiled-in applet. The previous arbitrary filename
+# "ifs-elf-probe" incorrectly failed with "applet not found" even when
+# the kernel successfully executed the bytes from the OFS volume.
+cp /bin/busybox /mnt/ofs/echo || fail "copy static ELF to OFS"
+chmod 0755 /mnt/ofs/echo || fail "chmod OFS ELF probe"
+cmp /bin/busybox /mnt/ofs/echo || fail "OFS ELF bytes differ"
+test -x /mnt/ofs/echo || fail "OFS ELF is not executable"
+result=$(/mnt/ofs/echo "OFS-EXEC-VERIFIED") || fail "direct ELF execution from OFS"
+test "$result" = "OFS-EXEC-VERIFIED" || fail "wrong output from OFS ELF"
+rm /mnt/ofs/echo || fail "remove OFS ELF probe"
+sync
+umount /mnt/ofs || fail "unmount OFS ELF probe"
+echo "AMIGA-OFS-EXEC-PASS" > /dev/ttyS0
+
 qualify_rw ofs /dev/vda
 qualify_rw ffs /dev/vdb
 qualify_sfs_rw sfs /dev/vdc

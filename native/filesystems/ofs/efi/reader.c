@@ -58,15 +58,16 @@ static int entry(const IfsOfsEfiVolume *v, uint32_t block,
     out->size = out->type == IFS_OFS_EFI_FILE ? word(b, 81) : 0U;
     return 0;
 }
-static int equal_name(const uint8_t b[512],
+static int equal_name(const IfsOfsEfiVolume *v, const uint8_t b[512],
                       const uint8_t *needle, size_t length)
 {
+    const int intl = (v->variant_flags & IFS_OFS_VARIANT_INTL) != 0U;
     size_t i;
     if (b[432] != length)
         return 0;
     for (i = 0U; i < length; ++i)
-        if (ifs_ofs_fold_character(b[433 + i], 0) !=
-            ifs_ofs_fold_character(needle[i], 0))
+        if (ifs_ofs_fold_character(b[433 + i], intl) !=
+            ifs_ofs_fold_character(needle[i], intl))
             return 0;
     return 1;
 }
@@ -90,13 +91,16 @@ int ifs_ofs_efi_mount(IfsOfsEfiVolume *v, uint32_t blocks,
     v->read_block = callback;
     v->opaque = opaque;
     v->blocks = blocks;
-    v->root = blocks / 2U;
+    if (ifs_ofs_root_block(2U, blocks, &v->root) != 0)
+        return -1;
     if (callback(opaque, 0U, b) != 0 ||
         ifs_ofs_classify_dostype(word(b, 0), &flags) != 0 ||
-        flags != 0U || directory(v, &(IfsOfsEfiEntry){v->root, 0U,
+        (flags & IFS_OFS_VARIANT_MUFS) != 0U ||
+        directory(v, &(IfsOfsEfiEntry){v->root, 0U,
                    IFS_OFS_EFI_DIRECTORY}, b) != 0 ||
         b[432] > 30U)
         return -1;
+    v->variant_flags = flags;
     return 0;
 }
 IfsOfsEfiEntry ifs_ofs_efi_root(const IfsOfsEfiVolume *v)
@@ -117,17 +121,19 @@ int ifs_ofs_efi_lookup(const IfsOfsEfiVolume *v,
         ifs_ofs_validate_name(name, (uint32_t)length, 1) != IFS_OFS_NAME_OK ||
         directory(v, dir, b) != 0)
         return -1;
-    bucket = ifs_ofs_directory_hash(name, (uint32_t)length, OFS_HASH, 0);
+    bucket = ifs_ofs_directory_hash(name, (uint32_t)length, OFS_HASH,
+                                    (v->variant_flags & IFS_OFS_VARIANT_INTL) != 0U);
     block = word(b, 6U + bucket);
     while (block != 0U) {
         uint32_t next;
         if (++visited > v->blocks ||
             visited > IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES ||
             entry(v, block, dir->block, b, out) != 0 ||
-            ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH, 0) != bucket)
+            ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH,
+                                       (v->variant_flags & IFS_OFS_VARIANT_INTL) != 0U) != bucket)
             return -1;
         next = word(b, 124U);
-        if (equal_name(b, name, length))
+        if (equal_name(v, b, name, length))
             return 0;
         block = next;
     }
@@ -156,7 +162,8 @@ int ifs_ofs_efi_next(const IfsOfsEfiVolume *v,
         if (++cursor->visited > v->blocks ||
             cursor->visited > IFS_OFS_EFI_MAX_DIRECTORY_ENTRIES ||
             entry(v, block, dir->block, b, out) != 0 ||
-            ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH, 0) !=
+            ifs_ofs_directory_hash(b + 433, b[432], OFS_HASH,
+                                        (v->variant_flags & IFS_OFS_VARIANT_INTL) != 0U) !=
                 cursor->bucket)
             return -1;
         for (i = 0U; i < b[432]; ++i)

@@ -24,6 +24,7 @@ typedef struct {
     void *opaque;
     uint32_t blocks;
     uint32_t root;
+    uint32_t variant_flags; /* DOS\0 / DOS\2 / DOS\4, metadata read-only */
 } IfsOfsEfiVolume;
 
 typedef struct {

@@ -46,6 +46,24 @@ physical formatting before the kernel and EFI reader can read/write the same
 geometry correctly. **Successful formatting does not demonstrate a bootable
 filesystem.**
 
+## 0.5.77 remediation candidate (not released)
+
+Documented **before** the source changes in
+[OFS_CORRECTNESS_REMEDIATION_2026-10-24.md](OFS_CORRECTNESS_REMEDIATION_2026-10-24.md)
+at commit `0d0e0199fea8754ef77d87fdfe3637819b1c52d3`.
+
+| Candidate | Implementation | Qualification |
+| --- | --- | --- |
+| Odd-volume root placement | Shared `ifs_ofs_root_block(reserved, blocks)` used by image formatter/verifier, EFI reader and Linux mount; image creator accepts an explicitly requested total block count for disposable tests | Seven-size odd/even image tests; signed-boundary and UINT32_MAX metadata tests. **CI pending**, independent real Amiga device testing still required |
+| Read-only DOS variants in EFI | 512-byte EFI reader now uses international name folding for DOS\\2 and DOS\\4; DOS\\4 uses hash-chain reads and does not write to or depend on optional directory-cache blocks | Synthetic DOS\\2 Latin-1, DOS\\4 hash and FFS rejection tests; still **not qualified** for 1024..32768-byte OFS filesystem blocks |
+| Linux executable access | Custom OFS folio-backed read implementation and existing `generic_file_mmap` permit a controlled removal of automatic `SB_NOEXEC` on the candidate branch | **Not accepted until** QEMU proves direct execution of a copied/checksummed static ELF on disposable OFS and reports `AMIGA-OFS-EXEC-PASS`. Does not establish actual OFS root boot |
+| Unchanged safety gates | Physical formatter remains capped to 512-byte filesystem blocks and signed INT_MAX block counts; Linux high-address and >PAGE_SIZE work remains open | Do **not** claim large-block boot, physical >1 TiB support, or full specification conformance |
+
+A passing test of one row closes only that row. Full sign-off also requires
+independent layout comparison, error recovery, filesystem root handoff, and
+EFI block-size support. Experimental test artifacts cannot be installed as
+fully qualified providers on physical media.
+
 ## Completion gates (all required)
 
 1. Validate authentic OFS root/tail/hash/bitmap layouts for *each* power-of-two

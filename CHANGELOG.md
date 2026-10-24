@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.77 — 2026-10-24 (candidate; not yet released)
+
+- Record the OFS specification audit before source changes in `docs/OFS_CORRECTNESS_REMEDIATION_2026-10-24.md`, including unresolved Linux large-block and capacity support.
+- Correct the AmigaDOS root key for odd-block OFS volumes using a shared, unsigned overflow-safe primitive in image formatter, Linux driver and EFI reader; add disposable odd-block image creation and all-seven-size regression tests.
+- Extend the experimental 512-byte EFI reader to identify DOS\\2 international case folding and read-only DOS\\4 directory-cache media using authoritative directory hashes, while rejecting FFS DOS types.
+- Qualify the project's custom OFS folio-backed executable mapping by requiring real ELF execution from disposable OFS in QEMU before removing the former automatic SB_NOEXEC restriction. This does not qualify Linux-root booting.
+- Keep physical media formatting restrictions, storage-driver diagnostics and full 8/16/32 KiB EFI/Linux support gates unchanged; do not claim full-specification qualification.
+- Extend OFS formatter and image verifier with explicit --variant dos0|dos2|dos4. DOS4 creates a real empty root cache block and reserves its allocation bit; add seven-block-size per-variant and corruption tests. DOS0 remains the default and no physical geometry safety gate is relaxed.
+- Add a comprehensive source-independent canonical format specification to native/filesystems/ofs/OFS_SPECIFICATION.md, describing root, boot, bitmap, directory, links, OFS data and variants.
+
 ## 0.5.76 — 2026-10-24
 
 - Audit real OFS versus FFS invariants and document the outstanding full-specification qualification gaps, including the artificial signed 31-bit limit and 512-byte hardcoding.

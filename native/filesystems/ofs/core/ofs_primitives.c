@@ -112,6 +112,25 @@ ifs_ofs_u32 ifs_ofs_checksum_word_value(
     return 0U - sum;
 }
 
+int ifs_ofs_root_block(
+    const ifs_ofs_u32 reserved_blocks,
+    const ifs_ofs_u32 partition_blocks,
+    ifs_ofs_u32 *const root_block)
+{
+    ifs_ofs_u64 middle;
+
+    if (!root_block || reserved_blocks >= partition_blocks)
+        return -1;
+
+    middle = ((ifs_ofs_u64)reserved_blocks +
+              (ifs_ofs_u64)partition_blocks - 1U) / 2U;
+    if (middle < reserved_blocks || middle >= partition_blocks)
+        return -1;
+
+    *root_block = (ifs_ofs_u32)middle;
+    return 0;
+}
+
 int ifs_ofs_data_block_valid(
     const ifs_ofs_u32 block,
     const ifs_ofs_u32 reserved_blocks,

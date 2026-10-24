@@ -5,11 +5,19 @@
 #include <linux/types.h>
 typedef u8 ifs_ofs_u8;
 typedef u32 ifs_ofs_u32;
+typedef u64 ifs_ofs_u64;
 #else
 #include <stdint.h>
 typedef uint8_t ifs_ofs_u8;
 typedef uint32_t ifs_ofs_u32;
+typedef uint64_t ifs_ofs_u64;
 #endif
+
+/* Amiga root key: floor((reserved + total_blocks - 1) / 2).
+ * Use a wide intermediate to cover unsigned 32-bit partition geometry. */
+int ifs_ofs_root_block(ifs_ofs_u32 reserved_blocks,
+                       ifs_ofs_u32 partition_blocks,
+                       ifs_ofs_u32 *root_block);
 
 int ifs_ofs_data_block_valid(
     ifs_ofs_u32 block,

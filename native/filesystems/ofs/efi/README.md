@@ -31,7 +31,7 @@ reader, or physical-media qualification. The EFI reader still accepts only
 512-byte OFS filesystem blocks; the Linux driver and physical formatter
 retain their separate safety gates. See docs/OFS_SPECIFICATION_COMPLIANCE.md.
 
-**Initial scope:** partition-relative DOS\\0, 512-byte logical sectors, names up to 30 Latin-1 bytes, case-insensitive OFS directory lookup, linked 488-byte OFS data blocks, files at most 4 GiB. No Amiga RDB whole-disk partition extraction, links, writable EFI operations or general Linux root qualification. EFI-stage readers and Linux `ofs.ko` have different ABIs; Linux requires its own kernel module (often inside the initramfs) to mount OFS after EFI handoff.
+**Initial scope:** partition-relative DOS\\0, DOS\\2 (international), and read-only DOS\\4 (directory-cache ignored in favor of authoritative hash chains); 512-byte logical sectors and 512-byte OFS filesystem blocks; names up to 30 Latin-1 bytes with DOS-type-correct case-insensitive lookup, linked 488-byte OFS data blocks, files at most 4 GiB. No Amiga RDB whole-disk partition extraction, links, writable EFI operations or general Linux root qualification. EFI-stage readers and Linux `ofs.ko` have different ABIs; Linux requires its own kernel module (often inside the initramfs) to mount OFS after EFI handoff.
 
 ## Physical-media, read-only firmware-reader reproduction
 

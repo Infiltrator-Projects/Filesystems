@@ -30,6 +30,7 @@
  * Root metadata tail offsets are relative to the filesystem block's end. */
 enum { MIN_BLOCK = 512, MAX_BLOCK = 32768, RESERVED = 2, ROOT_BMAP_COUNT = 25 };
 static uint32_t block_size = MIN_BLOCK;
+static uint8_t format_variant = 0U; /* classic DOS0 by default */
 static uint32_t block_words(void) { return block_size / 4U; }
 static uint32_t bitmap_bits(void) { return block_size * 8U - 32U; }
 static uint32_t extension_pointers(void) { return block_words() - 1U; }
@@ -53,6 +54,19 @@ static int select_block_size(const char *argument)
     return 0;
 }
 
+
+static int select_variant(const char *argument)
+{
+    if (strcmp(argument, "dos0") == 0)
+        format_variant = 0U;
+    else if (strcmp(argument, "dos2") == 0)
+        format_variant = 2U;
+    else if (strcmp(argument, "dos4") == 0)
+        format_variant = 4U;
+    else
+        return -1;
+    return 0;
+}
 
 /* One allocation bit per disk block, rather than one whole byte. */
 static int marked(const unsigned char *bitmap, uint32_t number)
@@ -147,16 +161,18 @@ static int volume_geometry(int fd, uint32_t *total, uint32_t *bitmap_count)
 
 static int verify_one_size(int fd)
 {
-    uint32_t blocks, bitmaps, root, extension, seen = 0;
+    uint32_t blocks, bitmaps, root, extension, cache, seen = 0;
     uint32_t *pointers = NULL;
     unsigned char *occupied = NULL;
     unsigned char boot[MAX_BLOCK], root_data[MAX_BLOCK], data[MAX_BLOCK];
     uint32_t i, j, extensions = 0;
+    uint8_t variant;
     int result = -1;
 
     if (volume_geometry(fd, &blocks, &bitmaps) != 0)
         return -1;
-    root = blocks / 2U;
+    if (ifs_ofs_root_block(RESERVED, blocks, &root) != 0)
+        goto out;
     occupied = calloc(((size_t)blocks + 7U) / 8U, 1U);
     pointers = calloc(bitmaps, sizeof(*pointers));
     if (!occupied || !pointers)
@@ -166,7 +182,8 @@ static int verify_one_size(int fd)
         goto out;
 
     if (block_io(fd, 0, boot, 0) != 0 ||
-        memcmp(boot, "DOS\0", 4) != 0 ||
+        memcmp(boot, "DOS", 3) != 0 ||
+        (boot[3] != 0U && boot[3] != 2U && boot[3] != 4U) ||
         block_io(fd, 1, data, 0) != 0 ||
         block_io(fd, root, root_data, 0) != 0 ||
         word(root_data, 0) != 2U || word(root_data, 3) != block_words() - 56U ||
@@ -180,6 +197,23 @@ static int verify_one_size(int fd)
     for (i = 0; i < block_size; ++i)
         if (data[i] != 0)
             goto out;
+
+    variant = boot[3];
+    cache = word(root_data, block_words() - 2U);
+    if (variant == 4U) {
+        /* DOS4's blank root owns a real, allocated, empty cache block. */
+        if (cache < RESERVED || cache >= blocks ||
+            marked(occupied, cache) ||
+            block_io(fd, cache, data, 0) != 0 ||
+            word(data, 0) != 33U || word(data, 1) != cache ||
+            word(data, 2) != root || word(data, 3) != 0U ||
+            word(data, 4) != 0U ||
+            ifs_ofs_block_checksum(data, block_size) != 0U ||
+            mark(occupied, cache) != 0)
+            goto out;
+    } else if (cache != 0U) {
+        goto out;
+    }
 
     for (i = 0; i < ROOT_BMAP_COUNT && seen < bitmaps; ++i)
         pointers[seen++] = word(root_data, bitmap_pointer_start() + i);
@@ -226,7 +260,7 @@ out:
     return result;
 }
 
-/* DOS/0 has no independent block-size field; accept a candidate only
+/* DOS0/2/4 have no independent block-size field; accept a candidate only
  * after validating its actual root, allocation bitmap and checksums. */
 static int verify_any_size(int fd, int physical)
 {
@@ -243,7 +277,7 @@ static int verify_any_size(int fd, int physical)
 
 static int create(int fd, const char *label)
 {
-    uint32_t blocks, bitmaps, root, extras, cursor = RESERVED;
+    uint32_t blocks, bitmaps, root, extras, cache = 0U, cursor = RESERVED;
     uint32_t *bmap = NULL, *ext = NULL;
     unsigned char *occupied = NULL;
     unsigned char data[MAX_BLOCK];
@@ -255,7 +289,8 @@ static int create(int fd, const char *label)
                               (uint32_t)strlen(label), 1) !=
                               IFS_OFS_NAME_OK || label[0] == '\0')
         return -1;
-    root = blocks / 2U;
+    if (ifs_ofs_root_block(RESERVED, blocks, &root) != 0)
+        goto out;
     extras = bitmaps > ROOT_BMAP_COUNT
         ? (bitmaps - ROOT_BMAP_COUNT + extension_pointers() - 1U) / extension_pointers() : 0U;
     bmap = calloc(bitmaps, sizeof(*bmap));
@@ -279,8 +314,17 @@ static int create(int fd, const char *label)
             goto out;
     }
 
+    if (format_variant == 4U) {
+        if (cursor == root)
+            ++cursor;
+        if (cursor >= blocks || mark(occupied, cursor) != 0)
+            goto out;
+        cache = cursor++;
+    }
+
     memset(data, 0, sizeof(data));
-    memcpy(data, "DOS\0", 4);
+    memcpy(data, "DOS", 3);
+    data[3] = format_variant;
     if (block_io(fd, 0, data, 1) != 0)
         goto out;
     memset(data, 0, sizeof(data));
@@ -312,6 +356,16 @@ static int create(int fd, const char *label)
         if (block_io(fd, ext[i], data, 1) != 0)
             goto out;
     }
+    if (cache != 0U) {
+        memset(data, 0, sizeof(data));
+        put_word(data, 0, 33U); /* T_DIRCACHE */
+        put_word(data, 1, cache); /* own block key */
+        put_word(data, 2, root);  /* owning root */
+        /* Zero records and no next cache block. */
+        put_word(data, 5, ifs_ofs_checksum_word_value(data, block_size, 5));
+        if (block_io(fd, cache, data, 1) != 0)
+            goto out;
+    }
     memset(data, 0, sizeof(data));
     put_word(data, 0, 2U);
     put_word(data, 3, block_words() - 56U);
@@ -319,6 +373,7 @@ static int create(int fd, const char *label)
     for (i = 0; i < bitmaps && i < ROOT_BMAP_COUNT; ++i)
         put_word(data, bitmap_pointer_start() + i, bmap[i]);
     put_word(data, bitmap_extension_pointer(), extras ? ext[0] : 0U);
+    put_word(data, block_words() - 2U, cache);
     data[disk_name_offset()] = (unsigned char)strlen(label);
     memcpy(data + disk_name_offset() + 1U, label, strlen(label));
     put_word(data, block_words() - 1U, 1U);
@@ -416,24 +471,29 @@ static int operate_partition(const char *path, const char *label, int formatting
 static void usage(const char *name)
 {
     fprintf(stderr,
-            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES]\n"
+            "Usage: %s --create FILE SIZE_MIB [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
+            "       %s --create-blocks FILE TOTAL_BLOCKS [LABEL] [--block-size BYTES] [--variant dos0|dos2|dos4]\n"
             "       %s --verify FILE\n"
-            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART\n"
+            "       %s --format-partition /dev/PART LABEL --confirm /dev/PART [--variant dos0|dos2|dos4]\n"
             "       %s --verify-partition /dev/PART\n"
             "Image blocks: 512, 1024, 2048, 4096, 8192, 16384, 32768 bytes.\n"
+            "Default dos0; dos4 creates a real empty root directory cache.\n"
             "Partition mode: Linux only; 512-byte OFS blocks and\n"
             "unmounted, exclusive media; refuse above 1 TiB.\n"
             "The confirmation must repeat the exact partition path.\n",
-            name, name, name, name);
+            name, name, name, name, name);
 }
 
 int main(int argc, char **argv)
 {
     int fd, result;
 #ifdef __linux__
-    if (argc == 6 && strcmp(argv[1], "--format-partition") == 0) {
+    if ((argc == 6 || argc == 8) && strcmp(argv[1], "--format-partition") == 0) {
         const char *label = argv[3];
-        if (strcmp(argv[4], "--confirm") != 0 ||
+        if ((argc == 8 &&
+             (strcmp(argv[6], "--variant") != 0 ||
+              select_variant(argv[7]) != 0)) ||
+            strcmp(argv[4], "--confirm") != 0 ||
             strcmp(argv[2], argv[5]) != 0 ||
             strncmp(argv[2], "/dev/", 5) != 0 ||
             label[0] == '\0' ||
@@ -469,40 +529,67 @@ int main(int argc, char **argv)
         printf("Validated AmigaDOS OFS image: %s\n", argv[2]);
         return 0;
     }
-    if (argc >= 4 && argc <= 7 && strcmp(argv[1], "--create") == 0) {
+    if (argc >= 4 && argc <= 9 &&
+        (strcmp(argv[1], "--create") == 0 ||
+         strcmp(argv[1], "--create-blocks") == 0)) {
+        const int blocks_mode = strcmp(argv[1], "--create-blocks") == 0;
         char *end = NULL;
-        int positional = argc;
-        unsigned long long mib;
+        int option_index = 4;
+        int had_block_size = 0, had_variant = 0;
+        unsigned long long units;
+        uint64_t size_bytes;
         const char *label;
-        if (argc >= 6 && strcmp(argv[argc - 2], "--block-size") == 0) {
-            if (select_block_size(argv[argc - 1]) != 0) {
+        label = "InfiltratorOFS";
+        if (option_index < argc && argv[option_index][0] != '-')
+            label = argv[option_index++];
+        while (option_index < argc) {
+            if (option_index + 1 >= argc) {
                 usage(argv[0]);
                 return 2;
             }
-            positional -= 2;
+            if (strcmp(argv[option_index], "--block-size") == 0 &&
+                !had_block_size) {
+                if (select_block_size(argv[option_index + 1]) != 0) {
+                    usage(argv[0]);
+                    return 2;
+                }
+                had_block_size = 1;
+            } else if (strcmp(argv[option_index], "--variant") == 0 &&
+                       !had_variant) {
+                if (select_variant(argv[option_index + 1]) != 0) {
+                    usage(argv[0]);
+                    return 2;
+                }
+                had_variant = 1;
+            } else {
+                usage(argv[0]);
+                return 2;
+            }
+            option_index += 2;
         }
-        if (positional != 4 && positional != 5) {
-            usage(argv[0]);
-            return 2;
-        }
-        label = positional == 5 ? argv[4] : "InfiltratorOFS";
         struct stat st;
         errno = 0;
-        mib = strtoull(argv[3], &end, 10);
+        units = strtoull(argv[3], &end, 10);
         if (errno || end == argv[3] || *end != '\0' ||
-            mib < 1ULL || mib > (unsigned long long)(max_image_bytes() / (1024ULL * 1024ULL)) ||
+            units < 1ULL ||
+            (blocks_mode ?
+                 (units > UINT32_MAX ||
+                  units < (1024ULL * 1024ULL + block_size - 1U) / block_size) :
+                 (units > max_image_bytes() / (1024ULL * 1024ULL))) ||
             ifs_ofs_validate_name((const unsigned char *)label,
                                   (uint32_t)strlen(label), 1) !=
                                   IFS_OFS_NAME_OK || label[0] == '\0') {
             usage(argv[0]);
             return 2;
         }
+        size_bytes = blocks_mode ? (uint64_t)units * block_size :
+                                   (uint64_t)units * 1024ULL * 1024ULL;
         fd = open(argv[2], O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW |
                             O_CLOEXEC, 0600);
         if (fd < 0)
             return perror("exclusive image creation"), 1;
         if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) ||
-            ftruncate(fd, (off_t)mib * 1024 * 1024) != 0) {
+            ftruncate(fd, (off_t)size_bytes) != 0) {
             fprintf(stderr, "Cannot create a regular-file image.\n");
             close(fd);
             unlink(argv[2]);
@@ -516,8 +603,8 @@ int main(int argc, char **argv)
             fprintf(stderr, "OFS image creation or verification failed.\n");
             return 1;
         }
-        printf("Created and verified AmigaDOS OFS image: %s (%llu MiB)\n",
-               argv[2], mib);
+        printf("Created and verified AmigaDOS OFS image: %s (%llu %s)\n",
+               argv[2], units, blocks_mode ? "blocks" : "MiB");
         return 0;
     }
     usage(argv[0]);

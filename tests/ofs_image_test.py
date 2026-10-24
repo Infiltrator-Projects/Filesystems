@@ -52,6 +52,91 @@ def test(tool, root):
         assert contents[block - 80] == len("BLOCK_TEST")
         command(tool, "--create", image, 8, "BLOCK_TEST",
                 "--block-size", block, success=False)
+    # Each actual on-disk variant must be independently identifiable and
+    # structurally complete, not a signature-only re-label of DOS0.
+    for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
+        for selector, suffix in (("dos0", 0), ("dos2", 2), ("dos4", 4)):
+            image = root / f"ofs-{selector}-block-{block}.img"
+            opts = ("--variant", selector, "--block-size", block) if suffix == 4 \
+                else ("--block-size", block, "--variant", selector)
+            command(tool, "--create", image, 4, "VARIANT", *opts)
+            command(tool, "--verify", image)
+            with image.open("rb") as fh:
+                assert fh.read(4) == b"DOS" + bytes([suffix])
+                total = image.stat().st_size // block
+                key = (2 + total - 1) // 2
+                fh.seek(key * block)
+                header = fh.read(block)
+                words = block // 4
+                cache = struct.unpack_from(">I", header, block - 8)[0]
+                if suffix != 4:
+                    assert cache == 0, (selector, block, cache)
+                else:
+                    assert 2 <= cache < total and cache != key
+                    fh.seek(cache * block)
+                    record = fh.read(block)
+                    assert struct.unpack_from(">5I", record, 0) == (
+                        33, cache, key, 0, 0)
+                    assert sum(struct.unpack(f">{words}I", record)) % (1 << 32) == 0
+                    bitmap = struct.unpack_from(">I", header, block - 196)[0]
+                    assert bitmap not in (0, cache, key)
+                    relative = cache - 2
+                    fh.seek(bitmap * block + 4 + 4 * (relative // 32))
+                    bitmap_word = struct.unpack(">I", fh.read(4))[0]
+                    assert bitmap_word & (1 << (relative % 32)) == 0
+            if suffix == 4:
+                # Cache integrity and ownership must be verified; rejecting
+                # mutated media proves DOS4 isn't only a different DOS byte.
+                victim = root / f"bad-dos4-cache-{block}.img"
+                shutil.copyfile(image, victim)
+                damage(victim, cache * block + 8)
+                command(tool, "--verify", victim, success=False)
+
+    for bad_variant in ("dos1", "dos3", "dos5", "dos6", "DOS2", ""):
+        invalid_image = root / ("bad-variant-" + (bad_variant or "empty") + ".img")
+        command(tool, "--create", invalid_image, 4, "INVALID",
+                "--variant", bad_variant, success=False)
+        assert not invalid_image.exists()
+    # Old CLI remains DOS0 by default, with no silent variant conversion.
+    default_image = root / "ofs-1.img"
+    with default_image.open("rb") as fh:
+        assert fh.read(4) == b"DOS\x00"
+
+    # Authentic Amiga root placement differs from floor(total/2) for
+    # odd total-block counts. Exercise every block size with an independent
+    # raw-byte inspection, not just the formatter's built-in verifier.
+    for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
+        total_blocks = (1024 * 1024 // block) + 1
+        assert total_blocks % 2 == 1
+        expected_root = (2 + total_blocks - 1) // 2
+        image = root / f"ofs-odd-{block}.img"
+        command(tool, "--create-blocks", image, total_blocks, "ODD_OFS",
+                "--block-size", block)
+        command(tool, "--verify", image)
+        assert image.stat().st_size == total_blocks * block
+        with image.open("rb") as fh:
+            fh.seek(expected_root * block)
+            correct = fh.read(block)
+            fh.seek((total_blocks // 2) * block)
+            old_position = fh.read(block)
+        assert struct.unpack_from(">I", correct, 0)[0] == 2
+        assert struct.unpack_from(">I", correct, 12)[0] == block // 4 - 56
+        assert struct.unpack_from(">I", correct, block - 4)[0] == 1
+        assert struct.unpack_from(">I", correct, block - 200)[0] == 0xffffffff
+        assert correct[block - 80] == len("ODD_OFS")
+        assert sum(struct.unpack(f">{block // 4}I", correct)) % (1 << 32) == 0
+        assert struct.unpack_from(">I", old_position, 0)[0] != 2
+        # A checksum-valid root at the former floor(N/2) location must
+        # never make a malformed odd-block image look fully compliant.
+        legacy = root / f"ofs-odd-legacy-{block}.img"
+        shutil.copyfile(image, legacy)
+        with legacy.open("r+b") as fh:
+            fh.seek((total_blocks // 2) * block)
+            fh.write(correct)
+            fh.seek(expected_root * block)
+            fh.write(bytes(block))
+        command(tool, "--verify", legacy, success=False)
+
     for bad_block in (256, 1000, 65536, 0, -1):
         command(tool, "--create", root / f"bad-block-{bad_block}.img",
                 4, "BAD_BLOCK", "--block-size", bad_block, success=False)
