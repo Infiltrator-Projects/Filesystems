@@ -149,9 +149,19 @@ mount -t ofs /dev/vda /mnt/ofs || fail "exec probe mount ofs"
 # the name of a compiled-in applet. The previous arbitrary filename
 # "ifs-elf-probe" incorrectly failed with "applet not found" even when
 # the kernel successfully executed the bytes from the OFS volume.
+# OFS metadata files contain 72 reverse-order data block pointers when
+# B=512; this ELF must exceed 72*488 bytes to force T_LIST file extensions.
+# Do not confuse copying into the page cache with durable correctness.
+test "$(stat -c '%s' /bin/busybox)" -gt 35136 ||
+    fail "BusyBox ELF too small to qualify OFS extension blocks"
 cp /bin/busybox /mnt/ofs/echo || fail "copy static ELF to OFS"
 chmod 0755 /mnt/ofs/echo || fail "chmod OFS ELF probe"
 cmp /bin/busybox /mnt/ofs/echo || fail "OFS ELF bytes differ"
+sync || fail "sync OFS ELF probe"
+umount /mnt/ofs || fail "unmount OFS ELF before remount"
+mount -t ofs /dev/vda /mnt/ofs || fail "remount OFS ELF probe"
+cmp /bin/busybox /mnt/ofs/echo || fail "OFS multi-extension ELF corrupted after remount"
+echo "AMIGA-OFS-MULTIEXT-REMOUNT-PASS" > /dev/ttyS0
 test -x /mnt/ofs/echo || fail "OFS ELF is not executable"
 result=$(/mnt/ofs/echo "OFS-EXEC-VERIFIED") || fail "direct ELF execution from OFS"
 test "$result" = "OFS-EXEC-VERIFIED" || fail "wrong output from OFS ELF"
