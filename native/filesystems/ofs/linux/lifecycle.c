@@ -440,6 +440,7 @@ static int ifs_ofs_find_root(
         const u64 divisor = (u64)blocksize / 512ULL;
         const u64 block_count = div_u64((u64)sectors, divisor);
         u64 root;
+        u32 standard_root;
         unsigned int attempt;
 
         if (block_count <= (u64)config->reserved ||
@@ -450,9 +451,12 @@ static int ifs_ofs_find_root(
             continue;
 
         sbi->s_partition_size = (int)block_count;
+        if (config->reserved < 0 ||
+            ifs_ofs_root_block((u32)config->reserved,
+                               (u32)block_count, &standard_root) != 0)
+            continue;
         root = config->root_block >= 0 ?
-               (u64)config->root_block :
-               ((u64)config->reserved + block_count - 1ULL) / 2ULL;
+               (u64)config->root_block : (u64)standard_root;
 
         for (attempt = 0U; attempt < 2U; ++attempt) {
             struct buffer_head *candidate;
