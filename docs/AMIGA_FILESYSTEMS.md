@@ -46,9 +46,18 @@ OFS/FFS are continuously checked against the independently maintained Linux
 AFFS behaviour and AmigaDOS disk-format invariants; the project-owned OFS and
 FFS implementations remain separate rather than sharing one semantic engine.
 
+See [OFS specification-completeness audit](OFS_SPECIFICATION_COMPLIANCE.md)
+for block-size, unsigned-capacity and adapter-qualification boundaries.
+
 ## First format-and-mount milestone: OFS
 
-`filesystems-ofs-image` is a deliberately limited, non-destructive
+`filesystems-ofs-image` retains a non-destructive image-creation mode. In
+that mode, experimental 512..32768-byte OFS block sizes and 32-bit block
+address geometry can be exercised on disposable files. These images are
+not automatically qualified for Linux or EFI mounting. The physical-partition
+formatter remains restricted to the former 512-byte/31-bit geometry.
+
+`filesystems-ofs-image` was originally a deliberately limited, non-destructive
 developer-preview creation tool. It exclusively creates previously
 nonexistent **regular image files** (not block devices), builds a genuine
 AmigaDOS DOS\0 OFS root and bitmap layout from the project's canonical OFS

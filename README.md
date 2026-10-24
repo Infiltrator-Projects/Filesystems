@@ -85,6 +85,14 @@ The agreed cross-project separation of **kernel stored on a filesystem** from **
 
 The setup surface exposes only filesystems whose complete install path is qualified. It does not infer support merely because a catalogue entry exists or because a Linux package can be installed.
 
+## OFS specification-completeness audit
+
+The current OFS implementation is **not yet complete** across all documented
+512..32768-byte filesystem block sizes or full unsigned 32-bit addressing.
+The image formatter has experimental block-size/large-volume support; Linux,
+EFI and physical formatting remain separately gated. See
+[OFS specification-completeness audit](docs/OFS_SPECIFICATION_COMPLIANCE.md).
+
 ## AmigaDOS OFS partition formatting (experimental)
 
 A deliberately explicit Linux-only mode can now format an already-created

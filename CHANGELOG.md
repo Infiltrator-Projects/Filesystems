@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.76 — 2026-10-24
+
+- Audit real OFS versus FFS invariants and document the outstanding full-specification qualification gaps, including the artificial signed 31-bit limit and 512-byte hardcoding.
+- Extend the **disposable image-only OFS formatter** to the seven documented 512..32768-byte block sizes and unsigned 32-bit on-media block geometry. Preserve 512-byte default output and independently verify layout under each geometry.
+- Add sparse image tests beyond 1 TiB and malformed geometry inputs. Keep destructive partition formatting deliberately confined to its previous 512-byte, 31-bit domain until the separate Linux and EFI adapters are qualified; no NVMe device or boot configuration changes.
+- Do not claim OFS specification completeness, EFI driver compatibility with new image geometries, or a completed physical boot test.
+
+
 ## 0.5.75 — 2026-10-24
 
 - Use DiskIo for initial uncached 512-byte reads as well as sequential cached reads, matching the existing EFI filesystem framework transport even if the first kernel data sector stalls. A rejected single-sector DiskIo request permanently selects the original BlockIo path; never repeatedly probe DiskIo after an error.

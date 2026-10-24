@@ -35,6 +35,35 @@ def test(tool, root):
         command(tool, "--create", path, size, "LD_AMIGA", success=False)
         command(tool, "--verify", path)
 
+    # All seven documented OFS block sizes have distinct root/hash/tail offsets.
+    # These tests write only disposable regular-file images, never devices.
+    for block in (512, 1024, 2048, 4096, 8192, 16384, 32768):
+        image = root / f"ofs-block-{block}.img"
+        command(tool, "--create", image, 8, "BLOCK_TEST",
+                "--block-size", block)
+        command(tool, "--verify", image)
+        with image.open("rb") as fh:
+            fh.seek((image.stat().st_size // block // 2) * block)
+            contents = fh.read(block)
+        words = block // 4
+        assert struct.unpack_from(">I", contents, 12)[0] == words - 56
+        assert struct.unpack_from(">I", contents, (words - 50) * 4)[0] == 0xffffffff
+        assert struct.unpack_from(">I", contents, (words - 1) * 4)[0] == 1
+        assert contents[block - 80] == len("BLOCK_TEST")
+        command(tool, "--create", image, 8, "BLOCK_TEST",
+                "--block-size", block, success=False)
+    for bad_block in (256, 1000, 65536, 0, -1):
+        command(tool, "--create", root / f"bad-block-{bad_block}.img",
+                4, "BAD_BLOCK", "--block-size", bad_block, success=False)
+
+    # This sparse image crosses the former 1-TiB/INT32_MAX boundary.
+    # It validates formatter geometry only, not Linux or EFI mount support.
+    over_tib = root / "ofs-over-1tib.img"
+    command(tool, "--create", over_tib, 1100 * 1024, "HIGH_BLOCK",
+            "--block-size", 4096)
+    command(tool, "--verify", over_tib)
+    assert over_tib.stat().st_size > (1 << 40)
+
     # Full SD-card-class volume: sparse 120-GiB image with every bitmap
     # extension populated. The formatter allocates only metadata, not 120 GiB
     # of backing storage, and performs its own full-volume verification.
