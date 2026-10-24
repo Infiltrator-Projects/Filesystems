@@ -2,6 +2,8 @@
 
 ## 0.5.75 — 2026-10-24
 
+- Use DiskIo for initial uncached 512-byte reads as well as sequential cached reads, matching the existing EFI filesystem framework transport even if the first kernel data sector stalls. A rejected single-sector DiskIo request permanently selects the original BlockIo path; never repeatedly probe DiskIo after an error.
+
 - Investigate the filesystem-driver differential rather than assuming the Dell RTS525A storage controller is defective. The existing EFI filesystem framework (`fsw_efi.c`) successfully supports 128 KiB cached `EFI_DISK_IO.ReadDisk` requests; OFS previously used only 512-byte uncached `EFI_BLOCK_IO.ReadBlocks`.
 - Add a bounded, read-only OFS DiskIo cache experiment that activates only for consecutive sector reads. Limit each prefetch to 128 KiB and partition boundaries, allocate a low-address aligned DMA buffer, and use a verified in-memory cache without altering the canonical OFS parser.
 - A single failed multi-sector DiskIo call permanently disables prefetch for that controller and falls back to unchanged single-sector BlockIo with the existing retry bound. Never issue repeated speculative bulk reads after firmware rejection.

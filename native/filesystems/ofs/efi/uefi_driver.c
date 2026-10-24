@@ -50,6 +50,7 @@ struct OfsController {
     UINTN cache_sector_count;
     BOOLEAN cache_valid;
     BOOLEAN cache_disabled; /* One failure permanently disables prefetch. */
+    BOOLEAN disk_sector_disabled; /* One failed 512-byte DiskIo selects BlockIo. */
     BOOLEAN have_previous_sector;
     UINT32 previous_sector;
 };
@@ -224,7 +225,7 @@ static int try_cached_sector(OfsController *ctx, UINT32 number, uint8_t data[512
     if (ctx->cache_valid &&
         ctx->cache_media_id != ctx->block->Media->MediaId)
         ctx->cache_valid = FALSE;
-    if (ctx->cache_disabled || !ctx->disk ||
+    if (ctx->cache_disabled || ctx->disk_sector_disabled || !ctx->disk ||
         !ctx->have_previous_sector ||
         (UINT64)ctx->previous_sector + 1ULL != (UINT64)number)
         return 0;
@@ -291,11 +292,33 @@ static EFI_STATUS read_one_block(OfsController *ctx, UINT32 number, UINTN attemp
 
     if (ctx->slow_read_reports < OFS_SLOW_READ_REPORT_LIMIT)
         timed = !EFI_ERROR(RT->GetTime(&before, NULL));
-    ofs_trace("OFS ReadBlocks begin\r\n");
-    status = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
-                                    (EFI_LBA)number, 512U, ctx->sector_buffer);
-    ofs_trace(EFI_ERROR(status) ? "OFS ReadBlocks error\r\n" :
-                                  "OFS ReadBlocks complete\r\n");
+    /* Use the byte-addressed DiskIo protocol used by the established EFI
+     * filesystem framework before sequential cache detection. A rejected
+     * single-sector DiskIo operation is not repeated; preserve the original
+     * BlockIo path as a fallback without altering OFS validation. */
+    if (ctx->disk && !ctx->disk_sector_disabled) {
+        ofs_trace("OFS ReadDisk sector begin\r\n");
+        status = ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId,
+                                     (UINT64)number * 512ULL, 512U,
+                                     ctx->sector_buffer);
+        if (EFI_ERROR(status) && status != EFI_NO_MEDIA &&
+            status != EFI_MEDIA_CHANGED) {
+            ctx->disk_sector_disabled = TRUE;
+            ctx->cache_disabled = TRUE;
+            Print(L"OFS EFI: single-sector DiskIo rejected at %u: %r; using BlockIo\n",
+                  number, status);
+            status = ctx->block->ReadBlocks(ctx->block,
+                        ctx->block->Media->MediaId, (EFI_LBA)number, 512U,
+                        ctx->sector_buffer);
+        }
+    } else {
+        ofs_trace("OFS ReadBlocks begin\r\n");
+        status = ctx->block->ReadBlocks(ctx->block, ctx->block->Media->MediaId,
+                                        (EFI_LBA)number, 512U,
+                                        ctx->sector_buffer);
+    }
+    ofs_trace(EFI_ERROR(status) ? "OFS sector read error\r\n" :
+                                  "OFS sector read complete\r\n");
     if (!timed || EFI_ERROR(RT->GetTime(&after, NULL)))
         return status;
     start = (UINTN)before.Hour * 3600U + (UINTN)before.Minute * 60U +

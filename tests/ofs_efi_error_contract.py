@@ -22,6 +22,10 @@ read_sector = source[source.index("static int read_sector("):
                      source.index("/* Probe at most the boot block")]
 assert "ctx->block->ReadBlocks(" in read_one
 assert "ctx->block->Media->MediaId" in read_one
+assert "ctx->disk->ReadDisk(ctx->disk, ctx->block->Media->MediaId," in read_one
+assert "ctx->disk_sector_disabled = TRUE;" in read_one
+assert "status != EFI_MEDIA_CHANGED" in read_one
+assert "ctx->cache_disabled = TRUE;" in read_one
 assert "RT->GetTime(&before, NULL)" in read_one
 assert "RT->GetTime(&after, NULL)" in read_one
 assert "OFS_SLOW_READ_REPORT_LIMIT 12U" in source
