@@ -44,6 +44,8 @@ assert "available = ctx->block->Media->LastBlock -" in source
 assert "if (blocks < 2U)" in source
 assert "BS->FreePages(ctx->cache_allocation, ctx->cache_allocation_pages)" in source
 assert "if (try_cached_sector(ctx, number, data))" in source
+assert "ctx->cache_media_id == ctx->block->Media->MediaId" in source
+assert "ctx->cache_media_id != ctx->block->Media->MediaId" in source
 assert "OFS_MAX_IO_ALIGNMENT" in source
 assert "OFS_DMA_PAGE_ALIGNMENT 4096U" in source
 assert "#define OFS_DMA_MAX_ADDRESS 0xffffffffULL" in source
