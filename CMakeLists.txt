@@ -472,6 +472,9 @@ if(UNIX)
 
     add_executable(filesystems
         src/main.cpp)
+    # The native program is /Programs/Filesystems/Filesystems; the lowercase
+    # 'filesystems' name is reserved for the Linux /usr/bin launcher.
+    set_target_properties(filesystems PROPERTIES OUTPUT_NAME "Filesystems")
     target_link_libraries(filesystems
         PRIVATE filesystems-actions InfiltratrCommon::Portable PkgConfig::GTK3)
     filesystems_configure(filesystems)
