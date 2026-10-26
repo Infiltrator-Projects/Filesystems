@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.84 — 2026-10-26 (FAT16 drop-in implementation candidate)
+
+- Replace the FAT family `dosfstools`/kernel-provider selector in Filesystems with an independent FAT16 entry whose Install/Remove button compiles/removes only `/System/Filesystems/FAT16.so`, with no APT, DKMS, modprobe or other FAT variant.
+- Add source-packed FAT16 module, adapted from the validated Defragmenter FAT geometry/entry/chain rules and FAT Test Media. The current ABI qualifies read-only detection, 8.3 root file enumeration, raw cluster-chain file reads and root-file fragmentation counting on disposable fixture media only. It does not claim full LFN/nested-directory traversal, formatting, mutation, defrag relocation or EFI Boot compatibility.
+- Package the FAT16 C source and fixed-purpose privileged build helper. Only clicking Install compiles it; package installation never activates/installs the module. Existing working kernel modules and InfiltratorFS partition are unchanged.
+- Add module and selector-policy tests, including noncontiguous file chains and corruption rejection. No raw block-device writer is exposed.
+
 ## 0.5.83 — 2026-10-26 (selector/compiler architecture clarification)
 
 - Specify the exact Filesystems target Install workflow: selecting a filesystem compiles only its existing source to one self-contained `.so` and atomically places only that file in `/System/Filesystems/`.
