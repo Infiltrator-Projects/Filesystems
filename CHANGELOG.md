@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.87 — 2026-10-26 (FAT16 source consolidation begins)
+
+- Copy actual editable FAT volume, directory and Test Media creator sources from our Defragmenter repository into temporary Filesystems consolidation staging, with original code preserved. These are not yet compiled into the .so.
+- Port and compile Defragmenter-derived directory enumeration and VFAT long-filename decoding into the standalone `FAT16.so`; add read-only v2 ABI for nested directories, metadata and file reads while preserving v1 compatibility.
+- Extend independent synthetic FAT16 fixture tests for nested directories, long filenames, short-name fallback on damaged checksums, damaged cluster chains and cyclic directory FAT chains.
+- Update on-demand `/Programs/Filesystems/Helpers/fat16-module-helper` so it compiles both source units and validates both module API symbols.
+- This does **not** claim a complete formatter, write/mutation engine, POSIX mount, EFI Boot reader or complete independent hardware qualification. Those conversions remain scheduled after the read namespace ABI passes.
+
+
 ## 0.5.86 — 2026-10-26 (native application resource layout)
 
 - Install the Filesystems application binary under `/Programs/Filesystems/Filesystems` instead of `/usr/bin/filesystems`, with a tiny Linux-only `/usr/bin/filesystems` launch shim for Mint/Debian desktop compatibility.
