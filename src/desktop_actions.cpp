@@ -128,7 +128,8 @@ DesktopAction prepare_module_desktop_action(
     const ProbeResult& probe)
 {
     DesktopAction action;
-    if (probe.module_name.empty()) {
+    if (probe.module_name.empty() &&
+        descriptor.provider != SupportProvider::DropIn) {
         return action;
     }
 
@@ -136,6 +137,20 @@ DesktopAction prepare_module_desktop_action(
     action.module = probe.module_name;
 
     switch (policy.action) {
+    case ModuleActionKind::InstallDropIn:
+        action.disposition = DesktopActionDisposition::Execute;
+        action.kind = DesktopActionKind::InstallDropIn;
+        action.busy_label = "Compiling FAT16…";
+        action.failure_title = "FAT16 module compilation failed";
+        action.filesystem_id = std::string(descriptor.id);
+        break;
+    case ModuleActionKind::RemoveDropIn:
+        action.disposition = DesktopActionDisposition::Execute;
+        action.kind = DesktopActionKind::RemoveDropIn;
+        action.busy_label = "Removing FAT16…";
+        action.failure_title = "FAT16 removal failed";
+        action.filesystem_id = std::string(descriptor.id);
+        break;
     case ModuleActionKind::InstallNative:
         action.disposition = DesktopActionDisposition::Execute;
         action.kind = DesktopActionKind::InstallNativeModule;
@@ -180,6 +195,16 @@ void execute_desktop_action_async(
     }
 
     switch (action.kind) {
+    case DesktopActionKind::InstallDropIn:
+    case DesktopActionKind::RemoveDropIn:
+        if (action.filesystem_id != "fat16") {
+            fail_invalid_action(std::move(completion));
+            return;
+        }
+        manage_fat16_module_async(
+            action.kind == DesktopActionKind::RemoveDropIn,
+            std::move(completion));
+        return;
     case DesktopActionKind::InstallPackages:
         if (action.packages.empty()) {
             fail_invalid_action(std::move(completion));
