@@ -129,7 +129,8 @@ DesktopAction prepare_module_desktop_action(
 {
     DesktopAction action;
     if (probe.module_name.empty() &&
-        descriptor.provider != SupportProvider::DropIn) {
+        descriptor.provider != SupportProvider::DropIn && 
+        descriptor.id != "ofs") {
         return action;
     }
 
@@ -140,15 +141,15 @@ DesktopAction prepare_module_desktop_action(
     case ModuleActionKind::InstallDropIn:
         action.disposition = DesktopActionDisposition::Execute;
         action.kind = DesktopActionKind::InstallDropIn;
-        action.busy_label = "Compiling FAT16…";
-        action.failure_title = "FAT16 module compilation failed";
+        action.busy_label = std::string("Compiling ") + std::string(descriptor.name) + "…";
+        action.failure_title = std::string(descriptor.name) + " module compilation failed";
         action.filesystem_id = std::string(descriptor.id);
         break;
     case ModuleActionKind::RemoveDropIn:
         action.disposition = DesktopActionDisposition::Execute;
         action.kind = DesktopActionKind::RemoveDropIn;
-        action.busy_label = "Removing FAT16…";
-        action.failure_title = "FAT16 removal failed";
+        action.busy_label = std::string("Removing ") + std::string(descriptor.name) + "…";
+        action.failure_title = std::string(descriptor.name) + " removal failed";
         action.filesystem_id = std::string(descriptor.id);
         break;
     case ModuleActionKind::InstallNative:
@@ -197,13 +198,20 @@ void execute_desktop_action_async(
     switch (action.kind) {
     case DesktopActionKind::InstallDropIn:
     case DesktopActionKind::RemoveDropIn:
-        if (action.filesystem_id != "fat16") {
+        if (action.filesystem_id != "fat16" &&
+            action.filesystem_id != "ofs") {
             fail_invalid_action(std::move(completion));
             return;
         }
-        manage_fat16_module_async(
-            action.kind == DesktopActionKind::RemoveDropIn,
-            std::move(completion));
+        if (action.filesystem_id == "ofs") {
+            manage_ofs_module_async(
+                action.kind == DesktopActionKind::RemoveDropIn,
+                std::move(completion));
+        } else {
+            manage_fat16_module_async(
+                action.kind == DesktopActionKind::RemoveDropIn,
+                std::move(completion));
+        }
         return;
     case DesktopActionKind::InstallPackages:
         if (action.packages.empty()) {
