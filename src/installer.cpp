@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "installer.hpp"
+#include "app_resources.hpp"
 
 #include "catalog.hpp"
 #include "process_runner.hpp"
@@ -584,9 +585,8 @@ void manage_fat16_module_async(const bool remove,
 {
     // This operation is intentionally fixed-purpose. No PATH-derived
     // compiler, arbitrary filesystem ID, APT, DKMS or kernel module command.
-    constexpr const char* helper =
-        "/usr/lib/filesystems/fat16-module-helper";
-    if (!executable_file(helper)) {
+    const std::string helper = application_helper("fat16-module-helper");
+    if (!executable_file(helper.c_str())) {
         completion(false, "The FAT16 module compiler helper is not installed.");
         return;
     }
@@ -600,8 +600,8 @@ void manage_fat16_module_async(const bool remove,
 void manage_ofs_module_async(const bool remove,
                              ActionCompletion completion)
 {
-    constexpr const char* helper = "/usr/lib/filesystems/ofs-module-helper";
-    if (!executable_file(helper)) {
+    const std::string helper = application_helper("ofs-module-helper");
+    if (!executable_file(helper.c_str())) {
         completion(false, "The OFS module compiler helper is not installed.");
         return;
     }
