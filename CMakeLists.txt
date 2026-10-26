@@ -22,6 +22,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(FILESYSTEMS_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
 option(FILESYSTEMS_BUILD_EFI_DRIVERS "Build independent x86-64 EFI filesystem drivers" OFF)
 
+# Application-owned executable and resources live in the native namespace.
+# Linux may keep a minimal /usr/bin launcher and distro-specific integration,
+# but neither the application nor its selected format build sources live
+# under /usr/lib/filesystems. One configure-time root sets all app paths.
+set(FILESYSTEMS_APPLICATION_ROOT "/Programs/Filesystems" CACHE PATH
+    "Native Filesystems application directory")
+
 # Native deployment policy owns only filesystem/module membership. Desktop
 # integration has an independent authority in data/desktop-filesystems.tsv and
 # must never influence which kernel modules are built, packaged or managed.
@@ -384,19 +391,19 @@ if(UNIX)
     install(FILES
         native/filesystems/ofs/module/ofs_module.c
         native/filesystems/ofs/module/ofs_module.h
-        DESTINATION "lib/filesystems/ofs-source/module")
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/module")
     install(FILES
         native/filesystems/ofs/efi/reader.c
         native/filesystems/ofs/efi/reader.h
-        DESTINATION "lib/filesystems/ofs-source/efi")
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/efi")
     install(FILES
         native/filesystems/ofs/core/ofs_core.c
         native/filesystems/ofs/core/ofs_core.h
         native/filesystems/ofs/core/ofs_primitives.c
         native/filesystems/ofs/core/ofs_primitives.h
-        DESTINATION "lib/filesystems/ofs-source/core")
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/core")
     install(PROGRAMS packaging/linux/ofs-module-helper.sh
-        DESTINATION "lib/filesystems"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME ofs-module-helper)
 
     # FAT16 is the first selectable single-file module. Build the exact
@@ -425,9 +432,9 @@ if(UNIX)
     install(FILES
         native/filesystems/fat/module/fat16_module.c
         native/filesystems/fat/module/fat16_module.h
-        DESTINATION "lib/filesystems/fat16-source")
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
     install(PROGRAMS packaging/linux/fat16-module-helper.sh
-        DESTINATION "lib/filesystems"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat16-module-helper)
 
     add_library(filesystems-core STATIC
@@ -437,6 +444,8 @@ if(UNIX)
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_link_libraries(filesystems-core
         PUBLIC filesystems-catalog PkgConfig::GLIB2)
+    target_compile_definitions(filesystems-core PRIVATE
+        FILESYSTEMS_APPLICATION_ROOT="${FILESYSTEMS_APPLICATION_ROOT}")
     filesystems_configure(filesystems-core)
 
     add_library(filesystems-actions STATIC
@@ -447,6 +456,8 @@ if(UNIX)
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_link_libraries(filesystems-actions
         PUBLIC filesystems-core PkgConfig::GIO2)
+    target_compile_definitions(filesystems-actions PRIVATE
+        FILESYSTEMS_APPLICATION_ROOT="${FILESYSTEMS_APPLICATION_ROOT}")
     filesystems_configure(filesystems-actions)
 
     add_executable(filesystems-package-removal-guard
@@ -466,7 +477,13 @@ if(UNIX)
     filesystems_configure(filesystems)
 
     install(TARGETS filesystems
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+        RUNTIME DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}")
+    # Debian/Mint-only entrypoint. The actual application binary stays in
+    # /Programs/Filesystems; this script is not a second installation.
+    configure_file(packaging/linux/filesystems-launcher.sh.in
+        "${CMAKE_CURRENT_BINARY_DIR}/filesystems-launcher.sh" @ONLY)
+    install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/filesystems-launcher.sh"
+        DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME filesystems)
     install(FILES data/org.infiltrator.Filesystems.desktop
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
 
@@ -701,6 +718,9 @@ if(BUILD_TESTING)
 endif()
 
 if(UNIX)
+    # Required so CPack includes native absolute /Programs paths in a
+    # Linux .deb while respecting DESTDIR staging.
+    set(CPACK_SET_DESTDIR ON)
     set(CPACK_GENERATOR "DEB")
     set(CPACK_PACKAGE_NAME "filesystems")
     set(CPACK_PACKAGE_VENDOR "Infiltrator Projects")
