@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "probe.hpp"
+#include "app_resources.hpp"
 #include "process_runner.hpp"
 
 #include <glib.h>
@@ -498,8 +499,8 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     if (descriptor.id == "ofs") {
         // OFS's Filesystems selector is a compile-to-.so operation.
         // The existing ofs.ko and OFS UEFI driver remain untouched.
-        const char* const helper = "/usr/lib/filesystems/ofs-module-helper";
-        if (!g_file_test(helper, G_FILE_TEST_IS_EXECUTABLE)) {
+        const std::string helper = application_helper("ofs-module-helper");
+        if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
             result.state = SupportState::Incomplete;
             result.reliable = false;
             result.detail = "OFS drop-in compiler helper is not installed.";
@@ -524,8 +525,8 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     if (descriptor.id == "fat16") {
         // FAT16's selector checks only the single installed .so. Never
         // probe, load or install stock kernel modules or Debian packages.
-        const char* const helper = "/usr/lib/filesystems/fat16-module-helper";
-        if (!g_file_test(helper, G_FILE_TEST_IS_EXECUTABLE)) {
+        const std::string helper = application_helper("fat16-module-helper");
+        if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
             result.state = SupportState::Incomplete;
             result.detail = "FAT16 module compiler helper is not installed.";
             result.reliable = false;
