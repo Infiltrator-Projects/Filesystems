@@ -40,6 +40,7 @@ jobs:
           ctest --test-dir build-desktop --output-on-failure
           cpack --config build-desktop/CPackConfig.cmake -G DEB -B dist-desktop
           python3 tests/efi_payload_test.py --package dist-desktop/Filesystems-$(cat VERSION)-amd64.deb
+          python3 tests/application_layout_test.py
 
       - name: Prove OFS standalone compile/install and manual drag-in on disposable runner
         run: bash tests/ofs_selector_smoke.sh
@@ -512,6 +513,11 @@ jobs:
           grep -Fq './usr/bin/fsinspect' package-contents.txt
           grep -Fq '/desktop/templates/ofs.so' package-contents.txt
           grep -Fq '/usr/lib/filesystems/native-filesystems.tsv' package-contents.txt
+          grep -Fq './Programs/Filesystems/Filesystems' package-contents.txt
+          grep -Fq './Programs/Filesystems/Helpers/fat16-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Helpers/ofs-module-helper' package-contents.txt
+          ! grep -Fq './usr/lib/filesystems/fat16-source/' package-contents.txt
+          ! grep -Fq './usr/lib/filesystems/ofs-source/' package-contents.txt
           ! grep -Fq '59-infiltrator-filesystems.rules' package-contents.txt
           test "$(find dist -maxdepth 1 -name '*.deb' | wc -l)" = 1
           test "$(find dist -maxdepth 1 -name '*.run' | wc -l)" = 1
