@@ -14,6 +14,8 @@ std::string_view install_label(const FilesystemDescriptor& descriptor)
         return "Install userspace";
     case SupportProvider::ToolsOnly:
         return "Install tools";
+    case SupportProvider::DropIn:
+        return "Install module";
     case SupportProvider::Kernel:
         return "No package";
     }
@@ -30,6 +32,8 @@ std::string_view remove_label(const FilesystemDescriptor& descriptor)
         return "Remove userspace";
     case SupportProvider::ToolsOnly:
         return "Remove tools";
+    case SupportProvider::DropIn:
+        return "Remove module";
     case SupportProvider::Kernel:
         return "No package";
     }
@@ -44,6 +48,11 @@ std::string support_detail_text(const FilesystemDescriptor& descriptor,
     std::string detail =
         std::string("Support path: ") + support_provider_label(descriptor.provider);
 
+    if (descriptor.provider == SupportProvider::DropIn) {
+        detail += "  •  ";
+        detail += probe.detail;
+        return detail;
+    }
     if (!descriptor.modules.empty()) {
         detail += "  •  ";
         if (descriptor.project_native_linux) {
@@ -118,6 +127,25 @@ ModuleActionPolicy module_action_policy(const FilesystemDescriptor& descriptor,
                                         const ProbeResult& probe)
 {
     ModuleActionPolicy policy;
+    if (descriptor.provider == SupportProvider::DropIn) {
+        policy.button.visible = true;
+        if (!probe.reliable) {
+            policy.button.label = "Refresh required";
+        } else if (probe.state == SupportState::Ready) {
+            policy.action = ModuleActionKind::RemoveDropIn;
+            policy.button.enabled = true;
+            policy.button.destructive = true;
+            policy.button.label = "Remove FAT16";
+        } else if (probe.state == SupportState::Installable) {
+            policy.action = ModuleActionKind::InstallDropIn;
+            policy.button.enabled = true;
+            policy.button.primary = true;
+            policy.button.label = "Install FAT16";
+        } else {
+            policy.button.label = "Build unavailable";
+        }
+        return policy;
+    }
     if (descriptor.modules.empty()) {
         return policy;
     }
