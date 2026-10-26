@@ -43,9 +43,12 @@ The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`]
 The intended native installation model is **one drag-and-drop file per on-media
 filesystem identity, directly under `/System/Filesystems/`**, following the
 discoverable Calendar/Clock module model. A compatible and trusted
-`fat.so`, `exfat.so`, `ofs.so` or `ffs.so` advertises capabilities to
+`FAT12.so`, `FAT16.so`, `FAT32.so`, `exfat.so`, `ofs.so` or `ffs.so` advertises capabilities to
 Filesystems, Files, Defragmenter, Test Media and eventually Boot without
-separate per-application registration. FAT12/16/32 are one format family.
+separate per-application registration. **Install FAT12** places only `FAT12.so`
+in the directory. FAT16 and FAT32 have their own independent single-file
+installations; all three reuse common FAT *source code*, not a combined
+`fat.so` binary or a shared runtime dependency.
 
 The filesystem-specific parsing, allocation, formatting, write/verification and
 defragmentation primitives are to be consolidated from the existing Filesystems,
