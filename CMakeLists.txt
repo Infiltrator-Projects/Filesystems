@@ -319,9 +319,9 @@ if(UNIX)
             "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
             "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi")
         install(FILES "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
-            DESTINATION "lib/filesystems/efi/drivers_x64")
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
         install(FILES "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
-            DESTINATION "lib/filesystems/efi/experimental")
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/experimental")
         install(FILES
             firmware/uefi/filesystems/LICENSE.txt
             firmware/uefi/filesystems/LICENSE_GPL.txt
