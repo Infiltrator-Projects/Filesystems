@@ -366,8 +366,12 @@ if(UNIX)
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi"
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        # Match the on-demand compiler helper's -O2 optimization profile.
+        # Higher -O3 optimization triggers a misleading cross-TU array-bound
+        # diagnostic in the independently qualified legacy OFS reader; do
+        # not edit, suppress warnings globally, or fork that reader.
         target_compile_options(filesystems-ofs-dropin PRIVATE
-            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
         if(CMAKE_C_FLAGS MATCHES "fsanitize")
             target_link_options(filesystems-ofs-dropin PRIVATE
                 -Wl,-z,relro -Wl,-z,now)
