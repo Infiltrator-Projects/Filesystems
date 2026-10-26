@@ -91,7 +91,7 @@ not yet integrated into Defragmenter's mutation engine, Linux VFS mounts,
 VFAT long-name traversal or Boot's future freestanding ELF loader. No
 formatting, writable FAT16 support or defragmentation claim is made yet.
 The module source is under
-`native/filesystems/fat16/module/`. A compiler and binutils must already be
+`native/filesystems/fat/module/`. A compiler and binutils must already be
 present; Filesystems will **not** install them automatically.
 
 ## Desktop integration ownership
