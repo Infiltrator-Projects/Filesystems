@@ -74,6 +74,11 @@ The installed application-facing interface is intended to be **one
 self-describing file per filesystem identity**, placed directly in
 `/System/Filesystems/`, discovered without a package-manager install,
 sidecar manifest, manually curated filename list or per-format subdirectory.
+FAT12, FAT16 and FAT32 share reusable format source, but compile into **three
+self-contained, independently installable artifacts** (`FAT12.so`, `FAT16.so`,
+`FAT32.so`). Installing one cannot implicitly install or depend on either of the
+others. The Filesystems Install FAT12 action places only `FAT12.so` in the
+native directory. Source-code families do not define installation units.
 A compatible module exposes a versioned C ABI and independently qualified
 detect, read, write, create, analyse, relocate, verify and recovery capabilities.
 Defragmenter and Test Media are consumers of the *same format semantics*,
