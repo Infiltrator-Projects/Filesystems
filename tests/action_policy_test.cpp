@@ -115,6 +115,27 @@ int main()
         return fail("shared package impact mapping is incorrect");
     }
 
+    const FilesystemDescriptor* ofs = find_entry("ofs");
+    if (!ofs || !ofs->project_native_linux || ofs->modules.size() != 1U ||
+        ofs->modules.front() != "ofs") {
+        return fail("OFS Linux kernel driver generation must remain available");
+    }
+    ProbeResult ofs_missing;
+    ofs_missing.state = SupportState::Installable;
+    if (module_action_policy(*ofs, ofs_missing).action !=
+        ModuleActionKind::InstallDropIn ||
+        module_action_policy(*ofs, ofs_missing).button.label != "Install OFS" ||
+        package_action_policy(*ofs, ofs_missing).button.visible) {
+        return fail("Install OFS must compile only OFS.so");
+    }
+    ProbeResult ofs_installed;
+    ofs_installed.state = SupportState::Ready;
+    if (module_action_policy(*ofs, ofs_installed).action !=
+        ModuleActionKind::RemoveDropIn ||
+        module_action_policy(*ofs, ofs_installed).button.label != "Remove OFS") {
+        return fail("Remove OFS must remove only OFS.so");
+    }
+
     const FilesystemDescriptor* fat16 = find_entry("fat16");
     if (fat16 == nullptr || fat16->provider != SupportProvider::DropIn ||
         !fat16->packages.empty() || !fat16->modules.empty() ||
