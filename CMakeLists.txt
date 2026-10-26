@@ -363,8 +363,15 @@ if(UNIX)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(filesystems-fat16-module PRIVATE
             -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
-        target_link_options(filesystems-fat16-module PRIVATE
-            -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        # Production module is freestanding. Sanitizer CI deliberately links
+        # compiler runtimes; -nostdlib/-z defs would prevent ASan/UBSan tests.
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-fat16-module PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-fat16-module PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
     endif()
     filesystems_configure(filesystems-fat16-module)
     install(FILES
