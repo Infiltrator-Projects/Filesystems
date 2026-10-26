@@ -74,6 +74,43 @@ See the [Drop-in Filesystem Module Contract](docs/DROP_IN_FILESYSTEM_MODULES.md)
 for the module ABI, capability model, Boot bootstrapping, privilege boundaries,
 deduplication plan and qualification gates.
 
+## Native application layout (Linux compatibility preserved)
+
+Filesystems' **actual executable and application-owned resources** install
+under `/Programs/Filesystems/`, even in the Debian/Mint package:
+
+```text
+/Programs/Filesystems/
+    Filesystems
+    Helpers/fat16-module-helper
+    Helpers/ofs-module-helper
+    Sources/fat16/
+    Sources/ofs/
+    Resources/EFI/
+/System/Filesystems/
+    FAT16.so              # only after choosing Install FAT16
+    OFS.so                # only after choosing Install OFS
+```
+
+The Linux package carries a tiny `/usr/bin/filesystems` command launcher
+and the desktop launcher; these make the same native application executable
+discoverable on Linux without putting a duplicate copy under `/usr/bin`.
+Linux-only kernel module building, source provisioning, and GNOME/udev
+desktop integration currently retain their existing `/usr/lib/filesystems/`
+system integration resources. Those are **not** the FAT16/OFS `.so` module
+installation interface and are not assumed present on native InfiltratorOS.
+The experimental EFI build products are application resources, not ESP
+drivers deployed by package installation.
+
+The selected on-demand compile action consumes only source files packaged
+beside the application; it places exactly one resulting `.so` under
+`/System/Filesystems/` and never formats or writes a filesystem partition.
+Only explicit separate Boot/setup and Linux kernel driver workflows may
+create/use `.efi` or `.ko` outputs. The current helper scripts still use
+Linux/bash/compiler prerequisites; a future *native* InfiltratorOS build
+backend needs its own qualified compiler/runtime implementation. This path
+correction does **not** claim Linux integrations are portable kernel drivers.
+
 ## OFS standalone module without losing kernel or EFI outputs
 
 OFS now has a **parallel** read-only `OFS.so` drop-in adapter assembled
@@ -299,6 +336,6 @@ Firmware filesystem implementations are maintained by Filesystems, independently
 of Boot. The migrated adapters and provenance are documented in
 [`firmware/uefi/README.md`](firmware/uefi/README.md). The Debian release carries
 the ext4 reader and the separately marked experimental OFS reader under
-`/usr/lib/filesystems/efi/`. Installing Filesystems does not copy modules into an
+`/Programs/Filesystems/Resources/EFI/`. Installing Filesystems does not copy modules into an
 EFI partition or alter a boot-manager installation. Setup, or an explicit local
 test, selects the required drivers for its chosen target directory.

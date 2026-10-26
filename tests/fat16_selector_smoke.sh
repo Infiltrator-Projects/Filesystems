@@ -9,20 +9,22 @@ if [[ "${GITHUB_ACTIONS:-}" != true ||
     exit 1
 fi
 
-helper=/usr/lib/filesystems/fat16-module-helper
-source_dir=/usr/lib/filesystems/fat16-source
+app_dir=/Programs/Filesystems
+helper="$app_dir/Helpers/fat16-module-helper"
+source_dir="$app_dir/Sources/fat16"
 module=/System/Filesystems/FAT16.so
-[[ ! -e "$helper" && ! -e "$module" ]] ||
+[[ ! -e "$helper" && ! -e "$module" && ! -d "$app_dir" ]] ||
   { echo "Pre-existing FAT16 test path; refusing replacement" >&2; exit 1; }
 
 cleanup() {
     sudo "$helper" remove >/dev/null 2>&1 || :
     sudo rm -f "$helper" "$source_dir/fat16_module.c" "$source_dir/fat16_module.h"
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
+    sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
 }
 trap cleanup EXIT
 
-sudo install -d -m 0755 "$source_dir"
+sudo install -d -m 0755 "$app_dir/Helpers" "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat16_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat16_module.h "$source_dir"
 sudo install -m 0755 packaging/linux/fat16-module-helper.sh "$helper"

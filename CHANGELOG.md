@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.86 — 2026-10-26 (native application resource layout)
+
+- Install the Filesystems application binary under `/Programs/Filesystems/Filesystems` instead of `/usr/bin/filesystems`, with a tiny Linux-only `/usr/bin/filesystems` launch shim for Mint/Debian desktop compatibility.
+- Move the FAT16 and OFS on-demand build helpers and canonical source inputs under `/Programs/Filesystems/Helpers/` and `Sources/`. Configure app resource lookup from the one application-root contract, not fixed `/usr/lib/filesystems/*-source` locations. Helpers use source paths relative to their own installation directories and check root-owned trusted source trees before privileged compilation.
+- Keep staged EFI reader binaries under `/Programs/Filesystems/Resources/EFI/`, without touching firmware or ESP content. Linux-specific native-kernel, udev and GNOME integration resources stay in existing `/usr/lib/filesystems/` because they are actually required for the Mint/Debian integration workflow; native InfiltratorOS does not inherit those paths.
+- Preserve exactly one generated FAT16.so/OFS.so under `/System/Filesystems/` for each clicked Install. Existing Linux `.ko`/EFI driver build pipelines and partitions remain untouched.
+- Extend CI package, source-layout and disposable smoke tests. This changes packaging/layout only and **does not** claim complete FAT16/OFS filesystem writing, formatting or ELF Boot-module support.
+
 ## 0.5.85 — 2026-10-26 (OFS standalone module candidate)
 
 - Add the freestanding, read-only `OFS.so` module, compiled from existing canonical OFS core primitives, DOSType classifier and freestanding OFS EFI reader source. The new module is NOT a second independent disk parser.

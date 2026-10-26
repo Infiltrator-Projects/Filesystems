@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Disposable CI host: verify the current Filesystems package install/reinstall/purge lifecycle.
-set -euo pipefail
+set -Eeuo pipefail
+trap 'code=$?; echo "Filesystems package lifecycle failure at line $LINENO: $BASH_COMMAND (exit $code)" >&2' ERR
 [[ $# -eq 1 ]]
 root=$(cd "$(dirname "$0")/.." && pwd)
 deb=$(realpath "$1")
@@ -29,6 +30,18 @@ verify_installed() {
 
     # Native orchestration is deliberately split into a thin coordinator and
     # a kernel-only transaction helper. Both must exist in the real package.
+    # Application resources live under /Programs. Linux-specific native
+    # kernel and GNOME integration remain in their distro-owned paths.
+    test -x /Programs/Filesystems/Filesystems
+    test -x /usr/bin/filesystems
+    test -x /Programs/Filesystems/Helpers/fat16-module-helper
+    test -x /Programs/Filesystems/Helpers/ofs-module-helper
+    test -f /Programs/Filesystems/Sources/fat16/fat16_module.c
+    test -f /Programs/Filesystems/Sources/ofs/module/ofs_module.c
+    test ! -e /usr/lib/filesystems/fat16-source
+    test ! -e /usr/lib/filesystems/ofs-source
+    test ! -e /usr/lib/filesystems/fat16-module-helper
+    test ! -e /usr/lib/filesystems/ofs-module-helper
     test -x /usr/lib/filesystems/native-module-helper
     test -x /usr/lib/filesystems/kernel-module-helper
 
