@@ -63,7 +63,7 @@ defragmentation primitives are to be consolidated from the existing Filesystems,
 Defragmenter and Test Media implementations **without dropping behaviour**.
 Defragmenter retains its generic safety, placement and transaction authority.
 
-This is **a design target, not implemented drop-in support**. Ordinary Linux
+The FAT16 and OFS experimental selector/install paths are implemented, but the **full multi-consumer, full read/write, format, repair, defrag and Boot architecture remains a design target**. Ordinary Linux
 `.so` files are not kernel drivers or UEFI images. Boot's proposed restricted
 ELF loader must first be engineered and qualified; its initial reader must be
 reachable before the root filesystem can be read. Existing Linux `.ko` and
