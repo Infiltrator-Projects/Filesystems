@@ -38,6 +38,31 @@ Provider choice is subordinate to filesystem identity. NTFS is one filesystem wh
 
 The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`](docs/FILESYSTEMS_MATRIX.md). CI verifies that every compiled catalogue ID appears there exactly once.
 
+## Drop-in filesystem modules — target architecture
+
+The intended native installation model is **one drag-and-drop file per on-media
+filesystem identity, directly under `/System/Filesystems/`**, following the
+discoverable Calendar/Clock module model. A compatible and trusted
+`fat.so`, `exfat.so`, `ofs.so` or `ffs.so` advertises capabilities to
+Filesystems, Files, Defragmenter, Test Media and eventually Boot without
+separate per-application registration. FAT12/16/32 are one format family.
+
+The filesystem-specific parsing, allocation, formatting, write/verification and
+defragmentation primitives are to be consolidated from the existing Filesystems,
+Defragmenter and Test Media implementations **without dropping behaviour**.
+Defragmenter retains its generic safety, placement and transaction authority.
+
+This is **a design target, not implemented drop-in support**. Ordinary Linux
+`.so` files are not kernel drivers or UEFI images. Boot's proposed restricted
+ELF loader must first be engineered and qualified; its initial reader must be
+reachable before the root filesystem can be read. Existing Linux `.ko` and
+firmware `.efi` deployment remain necessary during migration. The working
+InfiltratorFS driver and physical test media must not be disturbed.
+
+See the [Drop-in Filesystem Module Contract](docs/DROP_IN_FILESYSTEM_MODULES.md)
+for the module ABI, capability model, Boot bootstrapping, privilege boundaries,
+deduplication plan and qualification gates.
+
 ## Desktop integration ownership
 
 GNOME Disks, Nemo and the native filesystem manager are distinct integration
@@ -210,6 +235,7 @@ The central Infiltrator repository publication path accepts only an exact qualif
 Key contracts are documented under `docs/`, including:
 
 - `FILESYSTEMS_MATRIX.md` — enumerated filesystem contract and status;
+- `DROP_IN_FILESYSTEM_MODULES.md` — drag-and-drop single-file modules, shared Defragmenter/Test Media capabilities and future Boot loader;
 - `BRITTLENESS_REDUCTION.md` — ownership, transaction, coupling and failure-reporting boundaries;
 - platform/build/runtime qualification documents and implementation notes.
 
