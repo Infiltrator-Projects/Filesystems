@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Disposable CI host: verify the current Filesystems package install/reinstall/purge lifecycle.
 set -euo pipefail
+trap 'code=$?; echo "Filesystems package lifecycle failure at line $LINENO: $BASH_COMMAND (exit $code)" >&2' ERR
 [[ $# -eq 1 ]]
 root=$(cd "$(dirname "$0")/.." && pwd)
 deb=$(realpath "$1")
