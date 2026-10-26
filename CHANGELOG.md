@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.82 — 2026-10-26 (architecture clarification)
+
+- Correct the single-file drop-in architecture: FAT12, FAT16 and FAT32 may share implementation source, but they are **three independent, self-contained modules** (`FAT12.so`, `FAT16.so`, `FAT32.so`), not one combined `fat.so` package.
+- Specify that Filesystems **Install FAT12** places only `FAT12.so` in `/System/Filesystems/` and introduces no FAT16/FAT32 dependency or installation. FAT16-first refers to development sequence only.
+- Documentation only: existing driver binaries, tests, Boot deployments and active InfiltratorFS volumes are untouched.
+
 ## 0.5.81 — 2026-10-26 (documentation/architecture contract)
 
 - Document the original drag-and-drop Filesystems design: one self-describing, discoverable filesystem module file directly under `/System/Filesystems/`, with versioned, independently qualified capabilities for Filesystems, Files, Defragmenter, Test Media and later Boot.
