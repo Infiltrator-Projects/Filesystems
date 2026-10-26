@@ -74,6 +74,26 @@ See the [Drop-in Filesystem Module Contract](docs/DROP_IN_FILESYSTEM_MODULES.md)
 for the module ABI, capability model, Boot bootstrapping, privilege boundaries,
 deduplication plan and qualification gates.
 
+## FAT16 standalone implementation (experimental)
+
+FAT16 is now the **first** independently selectable module implementation.
+Filesystems' **Install FAT16** action compiles the packaged,
+freestanding FAT16 C source and places just `FAT16.so` in
+`/System/Filesystems/`; **Remove FAT16** removes just that file.
+Dropping a precompiled, compatible `FAT16.so` into that directory is
+an alternative. The module does not install `dosfstools`, touch FAT12/FAT32,
+call `modprobe`, replace any kernel filesystem driver or write to an ESP.
+
+The present ABI is **read-only and limited**: geometry/BPB classification,
+8.3 root-directory file enumeration, FAT16 cluster-chain reads and root-file
+fragmentation counting. It is qualified against disposable synthetic media,
+not yet integrated into Defragmenter's mutation engine, Linux VFS mounts,
+VFAT long-name traversal or Boot's future freestanding ELF loader. No
+formatting, writable FAT16 support or defragmentation claim is made yet.
+The module source is under
+`native/filesystems/fat16/module/`. A compiler and binutils must already be
+present; Filesystems will **not** install them automatically.
+
 ## Desktop integration ownership
 
 GNOME Disks, Nemo and the native filesystem manager are distinct integration
