@@ -126,6 +126,7 @@ int main(int argc, char** argv)
     std::size_t dkms = 0U;
     std::size_t userspace = 0U;
     std::size_t tools_only = 0U;
+    std::size_t drop_in = 0U;
 
     for (const auto& entry : catalog()) {
         if (entry.id == std::string_view("fuse2fs")) {
@@ -167,6 +168,13 @@ int main(int argc, char** argv)
                 return fail("userspace provider classification is inconsistent");
             }
             break;
+        case filesystems::SupportProvider::DropIn:
+            ++drop_in;
+            if (entry.id != "fat16" || !entry.modules.empty() ||
+                !entry.packages.empty()) {
+                return fail("FAT16 must be standalone without APT or kernel modules");
+            }
+            break;
         case filesystems::SupportProvider::ToolsOnly:
             ++tools_only;
             if (!entry.modules.empty() || entry.packages.empty()) {
@@ -187,12 +195,14 @@ int main(int argc, char** argv)
     if (hfs_uses_removed_package) {
         return fail("HFS still references hfsutils, which is not in Debian trixie stable");
     }
-    if (kernel_only != 22U || kernel_with_userspace != 12U ||
-        dkms != 3U || userspace != 3U || tools_only != 1U) {
+    if (kernel_only != 22U || kernel_with_userspace != 11U ||
+        dkms != 3U || userspace != 3U || tools_only != 1U ||
+        drop_in != 1U) {
         return fail("support-provider classification counts changed unexpectedly");
     }
 
-    if (filesystems::package_is_catalogued("e2fsprogs") ||
+    if (filesystems::package_is_catalogued("dosfstools") ||
+        filesystems::package_is_catalogued("e2fsprogs") ||
         !filesystems::package_is_catalogued("zfs-dkms") ||
         !filesystems::package_is_catalogued("infiltratorfs") ||
         filesystems::package_is_catalogued("dislocker") ||
