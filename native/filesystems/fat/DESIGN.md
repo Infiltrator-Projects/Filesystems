@@ -12,7 +12,7 @@ implementations.
 
 ## Current state
 
-The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
+The FAT16 consolidation now includes copied working Defragmenter FAT geometry, directory and Test Media creator code under `consolidation/defragmenter/`. The compiled `FAT16.so` includes a backward-compatible v2 directory reader, using a freestanding port of Defragmenter's VFAT LFN and cluster enumeration logic. The originals are staged for subsequent mutation/formatter integration; they are not yet built into the module. The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
 implementation is preserved under `linux/` with upstream licensing
 and provenance. It is not project-authored Filesystems code.
 
@@ -34,7 +34,8 @@ imported reference source.
 native/filesystems/fat/
   DESIGN.md
   core/                 future complete canonical FAT12/16/32 semantics
-  module/               current self-contained experimental FAT16.so source
+  module/               experimental FAT16.so reader and ABI v2 source
+  consolidation/         editable working Defragmenter FAT and creator code
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows IFS/WDK adapter
   userspace/            optional adapter over the same core
