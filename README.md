@@ -50,6 +50,14 @@ in the directory. FAT16 and FAT32 have their own independent single-file
 installations; all three reuse common FAT *source code*, not a combined
 `fat.so` binary or a shared runtime dependency.
 
+**Filesystems' target Install action is only a selector and compiler:**
+click **Install OFS** to compile the existing OFS source into one self-contained
+`OFS.so` and place that file in `/System/Filesystems/`. Dragging a
+precompiled `OFS.so` directly into that directory has the identical result.
+Neither route installs an extra package, kernel module, EFI driver, another
+filesystem module or registry. **Install FAT12** similarly builds and places
+only `FAT12.so`. See the full [selector/build contract](docs/DROP_IN_FILESYSTEM_MODULES.md#filesystems-is-a-selectorcompiler-not-a-driver-installer).
+
 The filesystem-specific parsing, allocation, formatting, write/verification and
 defragmentation primitives are to be consolidated from the existing Filesystems,
 Defragmenter and Test Media implementations **without dropping behaviour**.
@@ -87,7 +95,7 @@ using independent private `dpkg-divert` databases.
 
 Filesystems has different presentation contexts that consume the same stable filesystem identities while keeping platform-specific support policy separate.
 
-The normal **desktop manager** combines the identity contract with Linux support policy: it discovers support already present on the running system, installs or removes the current provider for a filesystem, loads or unloads eligible kernel modules, reports limitations and integrates supported formats with the desktop storage stack.
+**Current legacy desktop-manager behaviour (to be migrated):** it combines the identity contract with Linux support policy: it discovers support already present on the running system, installs or removes the current provider for a filesystem, loads or unloads eligible kernel modules, reports limitations and integrates supported formats with the desktop storage stack. **This is not the target Filesystems Install action.** The target action only compiles a selected self-contained `.so` and places it in `/System/Filesystems/`; runtime kernel integration is separate.
 
 The planned **Setup** installer has its own interface. During operating-system installation it will ask which qualified filesystem should be used for the target storage and drive the installation transaction through the Filesystems setup capability contract. Windows, EFI and setup consumers use the identity-only API rather than inheriting Debian package or Linux module policy.
 
@@ -180,7 +188,7 @@ The Linux manager scans the running system for:
 
 Probe failures are explicit. A failed package, repository, module or kernel inventory is not converted into a normal "missing" result and does not enable an action based on incomplete state.
 
-## Installation and removal
+## Legacy provider installation and removal (existing implementation, not target module selector)
 
 Install and remove operations are scoped to the selected filesystem. Project-native filesystems deploy their own kernel driver and their own desktop-identification material. Package-backed filesystems use the selected provider package without turning provider package names into new filesystem identities.
 

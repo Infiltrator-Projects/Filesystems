@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.83 — 2026-10-26 (selector/compiler architecture clarification)
+
+- Specify the exact Filesystems target Install workflow: selecting a filesystem compiles only its existing source to one self-contained `.so` and atomically places only that file in `/System/Filesystems/`.
+- Dragging in a precompiled module is explicitly equivalent. The selector does not install APT packages, DKMS, Linux `.ko`, EFI drivers, udev registrations or additional filesystem modules.
+- Distinguish target UI install semantics from legacy native-driver/package-management functionality, which remains unchanged while module discovery and Boot ELF loading are developed and qualified.
+- Documentation only: no runtime driver, Boot, Defragmenter or InfiltratorFS changes.
+
 ## 0.5.82 — 2026-10-26 (architecture clarification)
 
 - Correct the single-file drop-in architecture: FAT12, FAT16 and FAT32 may share implementation source, but they are **three independent, self-contained modules** (`FAT12.so`, `FAT16.so`, `FAT32.so`), not one combined `fat.so` package.

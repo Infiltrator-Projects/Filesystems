@@ -26,6 +26,56 @@ An ordinary user places `ffs.so` in that directory. After the file has finished 
 
 The installed folder is a **capability source**, not the same thing as kernel registration. **FAT12, FAT16 and FAT32 are independently selectable, independently installable files: `FAT12.so`, `FAT16.so`, and `FAT32.so`.** They may be grouped as the classic FAT *source-code family*, but there is no combined `fat.so` installation. Clicking **Install FAT12** puts **only** `FAT12.so` in `/System/Filesystems/`: no FAT16 or FAT32 file, registration, runtime dependency or automatic installation. Each binary contains all shared format code it needs. `exfat.so` is a separate format. Amiga OFS (`DOS\0`) and Amiga FFS (`DOS\1`) are distinct identities and must never masquerade as one another. InfiltratorFS is one identity with one module; its format is owned by its separate repository.
 
+## Filesystems is a selector/compiler, not a driver installer
+
+The target Filesystems **Install <format>** action is deliberately a
+one-artifact build-and-copy operation. It must be functionally equivalent
+to the user dragging a precompiled, compatible module into the folder.
+
+```text
+Click "Install OFS" in Filesystems
+  -> select the OFS source tree already owned by the project
+  -> compile its canonical core + agreed standalone module adapter
+  -> produce one self-contained OFS.so
+  -> validate the complete output
+  -> atomically place OFS.so directly in /System/Filesystems/
+  -> report success
+```
+
+```text
+Drag an already compiled OFS.so into /System/Filesystems/
+  -> detect the completed file and validate it
+  -> expose its advertised capabilities
+```
+
+**Both workflows end with exactly the same file in the same directory.**
+The selector must not install other filesystem files, packages, Linux
+kernel modules, EFI drivers, DKMS registrations, udev rules, desktop
+integrations, NVRAM changes or additional registries. **Uninstall** for
+this target removes only the selected module file once it is safe to do
+so. No action on another filesystem's module is implicit.
+
+Source-code sharing is an engineering/build-time concern: each selected
+module must contain its needed common-format code and have no implicit
+runtime dependency on a different format's `.so`. For example, selecting
+**Install FAT12** compiles the FAT12-specific build from the common FAT
+source and places **only `FAT12.so`**, never FAT16/FAT32.
+
+Actual compilation may have prerequisites supplied by the development
+environment, but those prerequisites are not permission for the Install
+button to mutate the operating system. Report missing compiler or
+dependencies as an actionable build error rather than silently using APT
+or deploying another driver. A failed build must leave any previously
+working module unchanged.
+
+This is the **intended replacement** for the current package/provider
+and kernel-driver-management behaviour described elsewhere in this
+repository. That older behaviour is the current implementation, **not**
+the desired meaning of the future Filesystems *Install* button.
+Separate kernel/root-driver and Boot ESP staging responsibilities, where
+necessary, belong to their own explicit workflows. These downstream
+runtime limitations must not be disguised as steps of the selector.
+
 ## One authoritative implementation; several consumers
 
 Each drop-in file exports a **versioned, C-compatible filesystem module ABI** and embeds the metadata needed for safe discovery. The filesystem-specific semantics originate in one canonical source implementation, not independently maintained parsers in several applications. Consumers call only their supported operations, not a monolithic all-or-nothing driver.

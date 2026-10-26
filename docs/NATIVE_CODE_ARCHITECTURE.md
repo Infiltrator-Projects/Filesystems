@@ -79,6 +79,18 @@ self-contained, independently installable artifacts** (`FAT12.so`, `FAT16.so`,
 `FAT32.so`). Installing one cannot implicitly install or depend on either of the
 others. The Filesystems Install FAT12 action places only `FAT12.so` in the
 native directory. Source-code families do not define installation units.
+**Target install semantics:** clicking `Install OFS` in Filesystems compiles
+OFS's already-present canonical source and module adapter into a standalone
+`OFS.so`, then atomically copies that single file into
+`/System/Filesystems/`. Dropping a precompiled `OFS.so` into the same
+folder has exactly the same installed outcome. Neither action installs a
+Linux `.ko`, EFI driver, package, metadata sidecar or another filesystem;
+those belong to separate, explicit host deployment workflows. Build
+prerequisites are reported, not installed implicitly. This replaces the
+current native-driver manager as the meaning of the application's main
+`Install` selector; do not mistake the existing legacy `Install native`
+kernel operation below for this target.
+
 A compatible module exposes a versioned C ABI and independently qualified
 detect, read, write, create, analyse, relocate, verify and recovery capabilities.
 Defragmenter and Test Media are consumers of the *same format semantics*,
