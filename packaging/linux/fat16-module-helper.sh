@@ -14,20 +14,25 @@ fatal() { echo "FAT16: $*" >&2; exit 1; }
 [[ $# -eq 1 ]] || fatal "usage: fat16-module-helper install|remove|status"
 
 safe_directory() {
-    [[ -d "$destination" && ! -L /System && ! -L "$destination" ]] ||
-        fatal "expected a real /System/Filesystems directory"
-    [[ "$(stat -c %u "$destination")" == 0 ]] ||
-        fatal "module directory must be owned by root"
-    # Refuse a directory writable by others.
-    mode=$(stat -c %a "$destination")
-    (( (8#$mode & 8#022) == 0 )) ||
-        fatal "module directory must not be group/world writable"
+    # Both pathname components must be trusted, not just the leaf.
+    for directory in /System "$destination"; do
+        [[ -d "$directory" && ! -L "$directory" ]] ||
+            fatal "expected a real trusted module directory"
+        [[ "$(stat -c %u "$directory")" == 0 ]] ||
+            fatal "module directory must be root owned"
+        mode=$(stat -c %a "$directory")
+        (( (8#$mode & 8#022) == 0 )) ||
+            fatal "module directory must not be group/world writable"
+    done
 }
 safe_file() {
     [[ -f "$module" && ! -L "$module" ]] ||
         fatal "FAT16.so is not a regular file"
     [[ "$(stat -c %u "$module")" == 0 ]] ||
         fatal "FAT16.so is not root owned"
+    mode=$(stat -c %a "$module")
+    (( (8#$mode & 8#022) == 0 )) ||
+        fatal "FAT16.so must not be group/world writable"
 }
 case "$1" in
     status)
