@@ -410,7 +410,8 @@ if(UNIX)
     # source in CI; installed Filesystems compiles that SAME source when the
     # user selects "Install FAT16". Do not preinstall a module or use APT.
     add_library(filesystems-fat16-module SHARED
-        native/filesystems/fat/module/fat16_module.c)
+        native/filesystems/fat/module/fat16_module.c
+        native/filesystems/fat/module/fat16_namespace.c)
     target_include_directories(filesystems-fat16-module PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
     set_target_properties(filesystems-fat16-module PROPERTIES
@@ -431,6 +432,7 @@ if(UNIX)
     filesystems_configure(filesystems-fat16-module)
     install(FILES
         native/filesystems/fat/module/fat16_module.c
+        native/filesystems/fat/module/fat16_namespace.c
         native/filesystems/fat/module/fat16_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
     install(PROGRAMS packaging/linux/fat16-module-helper.sh
