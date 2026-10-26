@@ -80,7 +80,7 @@ static int fat16_probe(const IfsFat16Io *io, IfsFat16Volume *v)
     /* Reject uninitialised tables: reserved entries encode media and EOC. */
     uint8_t first[4];
     if (bounded_read(io, result.fat_offset, first, sizeof first) != 0 ||
-        first[0] != boot[21] || (first[1] & 0xffu) != 0xffu ||
+        first[0] != boot[21] || first[1] != 0xffu ||
         le16(first + 2) < 0xfff8u)
         return -1;
     *v = result;
@@ -104,8 +104,8 @@ static int fat_entry(const IfsFat16Io *io, const IfsFat16Volume *v,
 static int fat16_root_file(const IfsFat16Io *io, const IfsFat16Volume *v,
                            uint32_t nth, IfsFat16File *file)
 {
-    if (!v || !file || nth >= v->root_entries)
-        return nth >= (v ? v->root_entries : 0u) && v ? 1 : -1;
+    if (!v || !file) return -1;
+    if (nth >= v->root_entries) return 1;
     uint32_t visible = 0;
     for (uint32_t i = 0; i < v->root_entries; ++i) {
         uint8_t dir[32];
