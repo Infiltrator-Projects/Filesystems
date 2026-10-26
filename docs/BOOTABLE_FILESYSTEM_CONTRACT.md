@@ -40,6 +40,27 @@ Kernel begins running; UEFI boot-services filesystem access ends
 3. A custom, deliberately modular Linux build is the intended intermediate test environment. Individual filesystem implementations should be selected as loadable modules rather than assumed built into a distribution kernel. Modules required to mount root, plus any needed device drivers, partition parsers, dependencies and loader infrastructure, must be available before mounting root, typically inside a generated initramfs.
 4. The kernel need not support the boot-payload filesystem if it never mounts it. Conversely, choosing OFS for the kernel image does **not** make an ext4 Linux root become OFS. Source and root are independent choices, though Setup may choose the same format for both once qualified.
 
+## Future alternative to per-format EFI drivers
+
+The current `.efi` driver sequence above describes the **existing
+transitional Boot integration**, not a permanent requirement to maintain
+separate format implementations. The [Drop-in Filesystem Module
+Contract](DROP_IN_FILESYSTEM_MODULES.md) records the longer-term target:
+a single, freestanding, self-describing filesystem `.so` per format, with a
+strictly read-only interface executable by a purpose-built Boot ELF loader
+and by compatible userspace consumers. This would share format semantics
+with Filesystems, Defragmenter and Test Media.
+
+An ordinary Linux `.so` cannot be passed to UEFI `LoadImage`. The
+proposed ELF profile, loader, trust policy, limited firmware host services,
+Secure Boot integration and cross-environment ABI **remain unimplemented and
+require independent qualification**. A verified initial module copy must
+be staged on firmware-readable media (normally the ESP) before Boot can
+read a filesystem that contains `/System/Filesystems`; that copy is not a
+second format engine. The OS's Linux root still needs kernel/early-boot
+support independently. Existing proven `.efi` deployment, device-binding
+and boot tests must continue until the new path passes equivalent gates.
+
 ## Capabilities rather than pretended compatibility
 
 A disk format is a stable identity; its EFI reader, formatter, Linux module, and future native-OS module are separate deployable capabilities. A Filesystems capability profile for each target should distinguish at least:

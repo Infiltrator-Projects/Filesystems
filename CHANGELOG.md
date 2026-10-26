@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.81 — 2026-10-26 (documentation/architecture contract)
+
+- Document the original drag-and-drop Filesystems design: one self-describing, discoverable filesystem module file directly under `/System/Filesystems/`, with versioned, independently qualified capabilities for Filesystems, Files, Defragmenter, Test Media and later Boot.
+- Record a shared-format-code migration plan for FAT12/16/32, exFAT, OFS and FFS; consolidate duplicate readers, allocation logic, formatters and test-media creators without removing working code, format-specific safety, crash recovery or independent tests.
+- Define the prospective freestanding ELF `.so` Boot loader and required read-only, firmware-safe ABI/trust/ESP bootstrapping checks. The working Linux `.ko`, EFI `.efi` and InfiltratorFS deployments remain unchanged; the new loader and modules are **not implemented by this documentation update**.
+
 ## 0.5.79 — 2026-10-24 (development candidate; DOS0 NOT feature-complete)
 
 - Add `native/filesystems/ofs/DOS0_COMPLETION.md`: explicit authentic DOS0 format, Linux read/write, EFI read, root boot, hardware, recovery and independent interoperability requirements. Do not conflate this checklist with proof of completion.
