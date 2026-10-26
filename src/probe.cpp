@@ -495,6 +495,32 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     ProbeResult result;
     NativeModuleObservation native_observation;
 
+    if (descriptor.id == "fat16") {
+        // FAT16's selector checks only the single installed .so. Never
+        // probe, load or install stock kernel modules or Debian packages.
+        const char* const helper = "/usr/lib/filesystems/fat16-module-helper";
+        if (!g_file_test(helper, G_FILE_TEST_IS_EXECUTABLE)) {
+            result.state = SupportState::Incomplete;
+            result.detail = "FAT16 module compiler helper is not installed.";
+            result.reliable = false;
+            return result;
+        }
+        const CommandResult status = run_command({helper, "status"});
+        if (status.succeeded() &&
+            status.stdout_text.find("installed") != std::string::npos) {
+            result.state = SupportState::Ready;
+            result.detail = "/System/Filesystems/FAT16.so is present and structurally validated.";
+        } else if (status.spawned && status.exit_status == 3) {
+            result.state = SupportState::Installable;
+            result.detail = "Select Install FAT16 to compile and place FAT16.so.";
+        } else {
+            result.state = SupportState::Incomplete;
+            result.detail = "Existing FAT16.so or module directory failed validation.";
+            result.reliable = false;
+        }
+        return result;
+    }
+
     result.project_native_module = descriptor.project_native_linux;
     result.module_requirement_met = descriptor.modules.empty();
     result.kernel_state = descriptor.modules.empty()

@@ -41,6 +41,9 @@ jobs:
           cpack --config build-desktop/CPackConfig.cmake -G DEB -B dist-desktop
           python3 tests/efi_payload_test.py --package dist-desktop/Filesystems-$(cat VERSION)-amd64.deb
 
+      - name: Prove FAT16 standalone compile/install and manual drag-in on disposable runner
+        run: bash tests/fat16_selector_smoke.sh
+
       - name: Verify actual APT install, reinstall and purge
         run: bash tests/desktop_package_test.sh dist-desktop/*.deb
 

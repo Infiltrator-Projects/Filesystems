@@ -115,6 +115,28 @@ int main()
         return fail("shared package impact mapping is incorrect");
     }
 
+    const FilesystemDescriptor* fat16 = find_entry("fat16");
+    if (fat16 == nullptr || fat16->provider != SupportProvider::DropIn ||
+        !fat16->packages.empty() || !fat16->modules.empty() ||
+        package_is_catalogued("dosfstools")) {
+        return fail("FAT16 must have independent .so selection without APT");
+    }
+    ProbeResult fat16_missing;
+    fat16_missing.state = SupportState::Installable;
+    const auto fat16_install = module_action_policy(*fat16, fat16_missing);
+    if (fat16_install.action != ModuleActionKind::InstallDropIn ||
+        fat16_install.button.label != "Install FAT16" ||
+        package_action_policy(*fat16, fat16_missing).button.visible) {
+        return fail("FAT16 installer routes to the wrong action");
+    }
+    ProbeResult fat16_present;
+    fat16_present.state = SupportState::Ready;
+    const auto fat16_remove = module_action_policy(*fat16, fat16_present);
+    if (fat16_remove.action != ModuleActionKind::RemoveDropIn ||
+        fat16_remove.button.label != "Remove FAT16") {
+        return fail("FAT16 remove must target one .so only");
+    }
+
     const FilesystemDescriptor* ext3 = find_entry("ext3");
     const FilesystemDescriptor* apfs = find_entry("apfs");
     const FilesystemDescriptor* hfs = find_entry("hfs");

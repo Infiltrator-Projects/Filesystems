@@ -19,6 +19,8 @@ enum class ModuleActionKind {
     None,
     InstallNative,
     RemoveNative,
+    InstallDropIn,
+    RemoveDropIn,
     Load,
     Unload
 };

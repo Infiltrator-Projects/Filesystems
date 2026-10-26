@@ -12,15 +12,16 @@ implementations.
 
 ## Current state
 
-FAT is currently **imported-source development state**. The pinned Linux FAT/VFAT/MS-DOS
+The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
 implementation is preserved under `linux/` with upstream licensing
 and provenance. It is not project-authored Filesystems code.
 
 ## Current directory contract
 
-While FAT remains in imported-source development state, the filesystem root contains only
-`DESIGN.md` and `linux/`, with the pinned upstream Linux FAT/MS-DOS/VFAT
-implementation under `linux/`. The future `core/`, `linux/`,
+The existing imported Linux source remains under `linux/`; the additional
+`module/` directory contains our independently built portable FAT16 module
+and versioned read-only C ABI, without installing or modifying kernel drivers.
+The future `core/`, `linux/`,
 `windows/` and `userspace/` directories appear only with independently
 authored implementation; `kernel/` is not a valid alternate source tree.
 
@@ -32,7 +33,8 @@ imported reference source.
 ```text
 native/filesystems/fat/
   DESIGN.md
-  core/                 canonical FAT12/16/32 + directory/name semantics
+  core/                 future complete canonical FAT12/16/32 semantics
+  module/               current self-contained experimental FAT16.so source
   linux/                thin Linux VFS/module adapter
   windows/              thin Windows IFS/WDK adapter
   userspace/            optional adapter over the same core

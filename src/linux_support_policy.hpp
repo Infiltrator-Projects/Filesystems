@@ -49,7 +49,7 @@ inline const std::vector<LinuxSupportPolicy>& linux_support_policies()
         {"sysv", {"sysv"}, {}, AccessMode::Mixed, SupportProvider::Kernel},
         {"ufs", {"ufs"}, {}, AccessMode::Mixed, SupportProvider::Kernel},
         {"omfs", {"omfs"}, {}, AccessMode::Mixed, SupportProvider::Kernel},
-        {"fat", {"vfat", "msdos"}, {"dosfstools"}, AccessMode::ReadWrite, SupportProvider::KernelWithUserspace},
+        {"fat16", {}, {}, AccessMode::ReadOnly, SupportProvider::DropIn},
         {"exfat", {}, {}, AccessMode::ReadWrite, SupportProvider::Kernel},
         {"ntfs", {}, {}, AccessMode::ReadWrite, SupportProvider::Kernel},
         {"hfs", {"hfs"}, {"hfsprogs"}, AccessMode::Mixed, SupportProvider::KernelWithUserspace},

@@ -579,6 +579,24 @@ void remove_packages_async(
         });
 }
 
+void manage_fat16_module_async(const bool remove,
+                               ActionCompletion completion)
+{
+    // This operation is intentionally fixed-purpose. No PATH-derived
+    // compiler, arbitrary filesystem ID, APT, DKMS or kernel module command.
+    constexpr const char* helper =
+        "/usr/lib/filesystems/fat16-module-helper";
+    if (!executable_file(helper)) {
+        completion(false, "The FAT16 module compiler helper is not installed.");
+        return;
+    }
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "FAT16.so removed." :
+                 "FAT16.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void load_module_async(const std::string& module,
                        ActionCompletion completion)
 {

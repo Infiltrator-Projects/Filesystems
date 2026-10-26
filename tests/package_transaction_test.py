@@ -201,12 +201,12 @@ with tempfile.TemporaryDirectory(prefix="filesystems-packages-") as temporary:
 
     # Both names are catalogue-managed. The newly dependent second package
     # must still be refused because it was absent from the user's approval.
-    changed = ordinary + installed("dosfstools", "Depends: hfsprogs\n")
+    changed = ordinary + installed("xfsprogs", "Depends: hfsprogs\n")
     result = invoke(approved, changed)
     assert result.returncode != 0 and not marker.exists(), result.stdout
     assert "plan changed after confirmation" in result.stdout, result.stdout
 
-    result = invoke(["hfsprogs:amd64", "dosfstools:amd64"], changed)
+    result = invoke(["hfsprogs:amd64", "xfsprogs:amd64"], changed)
     assert marker.exists() and "--remove" in marker.read_text(), result.stdout
 
     result = invoke(approved, installed("hfsprogs", "Priority: required\n"))

@@ -351,6 +351,37 @@ if(UNIX)
     install(TARGETS filesystems-ofs-image
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
+    # FAT16 is the first selectable single-file module. Build the exact
+    # source in CI; installed Filesystems compiles that SAME source when the
+    # user selects "Install FAT16". Do not preinstall a module or use APT.
+    add_library(filesystems-fat16-module SHARED
+        native/filesystems/fat/module/fat16_module.c)
+    target_include_directories(filesystems-fat16-module PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+    set_target_properties(filesystems-fat16-module PROPERTIES
+        PREFIX "" OUTPUT_NAME "FAT16")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-fat16-module PRIVATE
+            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+        # Production module is freestanding. Sanitizer CI deliberately links
+        # compiler runtimes; -nostdlib/-z defs would prevent ASan/UBSan tests.
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-fat16-module PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-fat16-module PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-fat16-module)
+    install(FILES
+        native/filesystems/fat/module/fat16_module.c
+        native/filesystems/fat/module/fat16_module.h
+        DESTINATION "lib/filesystems/fat16-source")
+    install(PROGRAMS packaging/linux/fat16-module-helper.sh
+        DESTINATION "lib/filesystems"
+        RENAME fat16-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -431,6 +462,16 @@ if(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    if(TARGET filesystems-fat16-module)
+        add_executable(filesystems-fat16-module-test
+            tests/fat16_module_test.c)
+        target_link_libraries(filesystems-fat16-module-test PRIVATE
+            filesystems-fat16-module)
+        filesystems_configure(filesystems-fat16-module-test)
+        add_test(NAME filesystems-fat16-module
+            COMMAND filesystems-fat16-module-test)
+    endif()
+
     add_executable(filesystems-catalog-test
         tests/catalog_test.cpp)
     target_link_libraries(filesystems-catalog-test
