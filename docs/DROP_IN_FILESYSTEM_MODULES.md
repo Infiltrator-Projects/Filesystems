@@ -2,6 +2,27 @@
 
 **Status: agreed architectural direction, not a claim of implemented runtime support.** This is the target for Filesystems, Boot, Defragmenter, Defragmenter Test Media, Files, and Setup. Existing filesystem modules, qualified Boot drivers, Linux mounts and physical partitions must remain untouched until their replacements have independent qualification.
 
+## Implementation status (October 2026)
+
+This is a **target architecture**, not an assertion that all 41 filesystem
+modules are already implemented. The current 41-entry catalogue has a FAT16
+identity; **FAT12 and FAT32 standalone selector entries and artifacts remain
+target work**. Future independent module identities and catalogue changes
+must be explicitly reconciled rather than assumed from this diagram.
+
+Released v0.5.86 has on-demand experimental `FAT16.so` and `OFS.so`
+selectors. Unreleased FAT16 consolidation PR #47 brings existing
+Defragmenter/Test Media source into Filesystems, and adds a read-only nested
+directory/VFAT v2 reader. The copied formatter, FAT mutation, defragmentation,
+journaling and recovery source is not compiled into the standalone artifact
+yet. Neither the installed file nor the selector's **Ready** status establishes
+normal read/write mounting, root support or physical-media qualification.
+
+Treat the existing Linux `.ko`, Windows `.sys` and firmware `.efi`
+implementations as distinct, separately tested host adapters while
+working toward shared canonical semantics. A self-contained freestanding
+`.so` does not by itself replace those host interfaces.
+
 ## User-facing contract: one file, drag and drop
 
 The native location is **`/System/Filesystems/`**, with **one regular file per filesystem identity**, directly inside that directory. No filesystem-specific subdirectories, sidecar manifests, registration databases, package-install commands or manual application registration are required to *discover* a drop-in module. This deliberately follows the direct module-discovery concept used by Calendar and Clock resources.

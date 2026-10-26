@@ -3,7 +3,14 @@
 This document is the authoritative migration ledger for the active EXT2, EXT3
 and EXT4 implementation source.
 
-The project rule is simple: production implementation source must be written
+**Scope of this ledger:** the independently project-authored replacement
+objective for EXT2, EXT3 and EXT4. This is an intentional EXT-specific
+provenance rule, not a universal prohibition on developing the copied working
+implementations of other filesystem formats. Their actual editable-source
+policy is in [`NATIVE_CODE_ARCHITECTURE.md`](NATIVE_CODE_ARCHITECTURE.md).
+The exact original provenance remains binding in either approach.
+
+The EXT project-authorship rule is: production implementation source must be written
 for Filesystems. External implementations may be studied for observable
 behaviour, media compatibility, edge cases and test vectors, but copied or
 transformed implementation source is not an acceptable final state.

@@ -40,6 +40,28 @@ qualification before adding that format to the managed native deployment set.
 formats whose complete source is not yet copied into this repository,
 rather than treating empty directories or design documents as a code baseline.
 
+## Source development policy and precedence
+
+The working-source rule is defined in
+[`NATIVE_CODE_ARCHITECTURE.md`](NATIVE_CODE_ARCHITECTURE.md)
+and [`../native/filesystems/README.md`](../native/filesystems/README.md):
+copied complete implementations may be modified in place and must not be
+discarded or silently overwritten. A format `DESIGN.md` continues to own
+that format's technical rules, variant boundaries and actual state, but
+historical instructions to freeze imported source or prohibit editing it are
+superseded by this editable-source policy.
+
+A format-specific **independently project-authored rewrite** objective, when
+explicitly declared (notably for EXT2/3/4), remains a separate goal and
+provenance test. Modifying copied code is valid development, but never
+automatically changes its authorship. Compilation of a copied driver never
+automatically qualifies the target `.ko`, `.so`, `.efi` or root use.
+
+The user-facing `Ready` selector state indicates structural module presence
+and ABI validation, not filesystem feature completeness. The definitive
+capability scope remains the per-format design, acceptance matrix and
+independent runtime evidence.
+
 ## Retired identities
 
 [`../data/retired-source-identities.txt`](../data/retired-source-identities.txt) is the guardrail for historical provider, transport, overlay, archive, container and other non-format source identities that must not return as native filesystem trees. The imported-source verification must not overwrite original working implementations or recreate retired identities.

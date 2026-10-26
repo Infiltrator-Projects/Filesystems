@@ -6,6 +6,10 @@ The catalogue is intentionally **format-centric** and contains **41 persistent l
 
 **Baseline:** Debian stable (Debian 13 “trixie” when this matrix was updated)  
 **Catalogue entries:** 41  
+**Branch status:** The experimental FAT16 v2 directory/LFN extension documented
+here belongs to unreleased PR #47 / v0.5.87 development, not installed
+v0.5.86. The FAT12 and FAT32 standalone modules remain target identities,
+not additional selectable catalogue rows.
 **Code source of truth:** `src/catalog.cpp`  
 **Documentation invariant:** CI verifies that every compiled catalogue ID has exactly one unique `support-<id>` row anchor in this matrix.
 
