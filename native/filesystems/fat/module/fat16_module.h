@@ -67,4 +67,36 @@ typedef struct {
 
 /* Exported discovery symbol. Not a Linux .ko, EFI image, or full defrag ABI. */
 const IfsFat16Module *infiltrator_filesystem_module_v1(void);
+
+/* ABI v2 is additive. v1 symbol, layout and existing capability flags stay
+ * unchanged. The directory extension is read-only and never mounts a volume.
+ * The caller passes 0 for the fixed root, or the first cluster of a directory.
+ * nth enumerates visible entries, excluding . and ..; 1 means end of list.
+ * VFAT names are UTF-8 (up to 260 UTF-16 code units), with short-name fallback.
+ */
+#define IFS_FAT16_ABI_V2 2u
+#define IFS_FAT16_NAME_BYTES 781u
+#define IFS_FAT16_CAP_DIRECTORY (UINT64_C(1) << 8)
+#define IFS_FAT16_CAP_VFAT_LFN (UINT64_C(1) << 9)
+typedef struct {
+    char name[IFS_FAT16_NAME_BYTES];
+    char short_name[13];
+    uint32_t first_cluster;
+    uint32_t size_bytes;
+    uint8_t attributes;
+} IfsFat16Dirent;
+typedef struct {
+    uint32_t abi_version;
+    uint32_t structure_bytes;
+    const char *format_id;
+    uint64_t capabilities;
+    int (*list_directory)(const IfsFat16Io *, const IfsFat16Volume *,
+                          uint32_t directory_cluster, uint32_t nth,
+                          IfsFat16Dirent *);
+    int (*read_entry)(const IfsFat16Io *, const IfsFat16Volume *,
+                      const IfsFat16Dirent *, uint64_t offset,
+                      void *buffer, uint32_t length);
+} IfsFat16ModuleV2;
+const IfsFat16ModuleV2 *infiltrator_filesystem_module_v2(void);
+
 #endif
