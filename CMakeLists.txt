@@ -351,6 +351,54 @@ if(UNIX)
     install(TARGETS filesystems-ofs-image
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
+    # Standalone OFS.so: directly reuse our canonical OFS core and the
+    # existing freestanding OFS EFI *reader* (not the EFI driver wrapper).
+    # The Filesystems Install OFS action compiles this source on demand.
+    add_library(filesystems-ofs-dropin SHARED
+        native/filesystems/ofs/module/ofs_module.c
+        native/filesystems/ofs/efi/reader.c
+        native/filesystems/ofs/core/ofs_core.c
+        native/filesystems/ofs/core/ofs_primitives.c)
+    set_target_properties(filesystems-ofs-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "OFS")
+    target_include_directories(filesystems-ofs-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        # Match the on-demand compiler helper's -O2 optimization profile.
+        # Higher -O3 optimization triggers a misleading cross-TU array-bound
+        # diagnostic in the independently qualified legacy OFS reader; do
+        # not edit, suppress warnings globally, or fork that reader.
+        target_compile_options(filesystems-ofs-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-ofs-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-ofs-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-ofs-dropin)
+    install(FILES
+        native/filesystems/ofs/module/ofs_module.c
+        native/filesystems/ofs/module/ofs_module.h
+        DESTINATION "lib/filesystems/ofs-source/module")
+    install(FILES
+        native/filesystems/ofs/efi/reader.c
+        native/filesystems/ofs/efi/reader.h
+        DESTINATION "lib/filesystems/ofs-source/efi")
+    install(FILES
+        native/filesystems/ofs/core/ofs_core.c
+        native/filesystems/ofs/core/ofs_core.h
+        native/filesystems/ofs/core/ofs_primitives.c
+        native/filesystems/ofs/core/ofs_primitives.h
+        DESTINATION "lib/filesystems/ofs-source/core")
+    install(PROGRAMS packaging/linux/ofs-module-helper.sh
+        DESTINATION "lib/filesystems"
+        RENAME ofs-module-helper)
+
     # FAT16 is the first selectable single-file module. Build the exact
     # source in CI; installed Filesystems compiles that SAME source when the
     # user selects "Install FAT16". Do not preinstall a module or use APT.
@@ -462,6 +510,16 @@ if(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    if(TARGET filesystems-ofs-dropin)
+        add_executable(filesystems-ofs-dropin-test
+            tests/ofs_dropin_module_test.c)
+        target_link_libraries(filesystems-ofs-dropin-test PRIVATE
+            filesystems-ofs-dropin)
+        filesystems_configure(filesystems-ofs-dropin-test)
+        add_test(NAME filesystems-ofs-dropin
+            COMMAND filesystems-ofs-dropin-test)
+    endif()
+
     if(TARGET filesystems-fat16-module)
         add_executable(filesystems-fat16-module-test
             tests/fat16_module_test.c)

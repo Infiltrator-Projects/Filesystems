@@ -74,6 +74,25 @@ See the [Drop-in Filesystem Module Contract](docs/DROP_IN_FILESYSTEM_MODULES.md)
 for the module ABI, capability model, Boot bootstrapping, privilege boundaries,
 deduplication plan and qualification gates.
 
+## OFS standalone module without losing kernel or EFI outputs
+
+OFS now has a **parallel** read-only `OFS.so` drop-in adapter assembled
+from the existing canonical OFS core and EFI reader. **Install OFS** in
+Filesystems compiles just this `.so` and places it in
+`/System/Filesystems/`; dragging in a compatible precompiled `OFS.so`
+has the same result. The module currently supports a restricted subset:
+512-byte DOS0/DOS2/DOS4 identification, bounded directory traversal and
+read-only file access. It is not yet a full-featured Defragmenter,
+formatter or Boot ELF-plugin replacement.
+
+**Crucial:** the independently built `ofs.ko` Linux driver, experimental
+`OFS_x64.efi` UEFI driver and `filesystems-ofs-image` formatter remain
+available and are built/tested using their existing paths. Neither the new
+Install/Remove OFS button nor the new `.so` changes those binaries,
+active mounts, UEFI boot files or physical OFS partitions. Do not remove
+the legacy boot/runtime outputs until an independently qualified
+replacement exists.
+
 ## FAT16 standalone implementation (experimental)
 
 FAT16 is now the **first** independently selectable module implementation.

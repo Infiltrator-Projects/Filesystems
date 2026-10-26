@@ -89,15 +89,41 @@ int main()
     }
 
     {
+        // The UI Install OFS action selects only OFS.so. Kernel/EFI builds
+        // stay independently available through their existing toolchains.
         auto entry = descriptor(
             "ofs", SupportProvider::Kernel, {"ofs"}, {}, true);
         ProbeResult probe;
-        probe.module_name = "ofs";
+        probe.state = SupportState::Installable;
+        DesktopAction action = prepare_module_desktop_action(entry, probe);
+        if (action.disposition != DesktopActionDisposition::Execute ||
+            action.kind != DesktopActionKind::InstallDropIn ||
+            action.filesystem_id != "ofs" ||
+            action.busy_label != "Compiling ofs…" ||
+            action.failure_title != "ofs module compilation failed") {
+            return fail("OFS Install must compile only the OFS.so adapter");
+        }
+        probe.state = SupportState::Ready;
+        action = prepare_module_desktop_action(entry, probe);
+        if (action.disposition != DesktopActionDisposition::Execute ||
+            action.kind != DesktopActionKind::RemoveDropIn ||
+            action.filesystem_id != "ofs" ||
+            action.busy_label != "Removing ofs…") {
+            return fail("OFS remove must remove only OFS.so");
+        }
+    }
+
+    {
+        // A non-drop-in native driver action must remain available.
+        auto entry = descriptor(
+            "ext3", SupportProvider::Kernel, {"ext3"}, {}, true);
+        ProbeResult probe;
+        probe.module_name = "ext3";
         probe.project_native_installed = false;
         DesktopAction action = prepare_module_desktop_action(entry, probe);
         if (action.disposition != DesktopActionDisposition::Execute ||
             action.kind != DesktopActionKind::InstallNativeModule ||
-            action.filesystem_id != "ofs" || action.module != "ofs" ||
+            action.filesystem_id != "ext3" || action.module != "ext3" ||
             action.busy_label != "Installing native…" ||
             action.failure_title != "Native module installation failed") {
             return fail("native installation command is not explicit and inspectable");
@@ -108,7 +134,7 @@ int main()
         action = prepare_module_desktop_action(entry, probe);
         if (action.disposition != DesktopActionDisposition::Execute ||
             action.kind != DesktopActionKind::RemoveNativeModule ||
-            action.filesystem_id != "ofs" || action.module != "ofs" ||
+            action.filesystem_id != "ext3" || action.module != "ext3" ||
             action.busy_label != "Removing native…" ||
             action.failure_title != "Native module removal failed") {
             return fail("native removal command is not explicit and inspectable");

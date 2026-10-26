@@ -495,6 +495,32 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     ProbeResult result;
     NativeModuleObservation native_observation;
 
+    if (descriptor.id == "ofs") {
+        // OFS's Filesystems selector is a compile-to-.so operation.
+        // The existing ofs.ko and OFS UEFI driver remain untouched.
+        const char* const helper = "/usr/lib/filesystems/ofs-module-helper";
+        if (!g_file_test(helper, G_FILE_TEST_IS_EXECUTABLE)) {
+            result.state = SupportState::Incomplete;
+            result.reliable = false;
+            result.detail = "OFS drop-in compiler helper is not installed.";
+            return result;
+        }
+        const CommandResult status = run_command({helper, "status"});
+        if (status.succeeded() &&
+            status.stdout_text.find("installed") != std::string::npos) {
+            result.state = SupportState::Ready;
+            result.detail = "/System/Filesystems/OFS.so is present and structurally validated (read-only 512-byte reader).";
+        } else if (status.spawned && status.exit_status == 3) {
+            result.state = SupportState::Installable;
+            result.detail = "Select Install OFS to compile only OFS.so.";
+        } else {
+            result.state = SupportState::Incomplete;
+            result.reliable = false;
+            result.detail = "OFS.so or its trusted directory failed validation.";
+        }
+        return result;
+    }
+
     if (descriptor.id == "fat16") {
         // FAT16's selector checks only the single installed .so. Never
         // probe, load or install stock kernel modules or Debian packages.

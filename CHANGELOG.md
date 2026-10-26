@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.85 — 2026-10-26 (OFS standalone module candidate)
+
+- Add the freestanding, read-only `OFS.so` module, compiled from existing canonical OFS core primitives, DOSType classifier and freestanding OFS EFI reader source. The new module is NOT a second independent disk parser.
+- Wire Filesystems **Install OFS** to compile and atomically place only `/System/Filesystems/OFS.so`; **Remove OFS** affects only that file. Already-compiled `OFS.so` can be placed manually. No APT, DKMS, modprobe, ESP writes or other filesystem modules.
+- Keep existing `ofs.ko` Linux driver generation, `OFS_x64.efi` EFI build, current OFS formatter and their test suites completely intact; none is replaced by the new .so.
+- Expose only presently validated read-only 512-byte DOS0/DOS2/DOS4 module features (identify, directory enumeration/lookup, file reads). This does not imply complete OFS specification support, 512–32768-byte geometry support in the .so, write or format support in the .so, Defragmenter relocation or new Boot ELF-module loading.
+- Add an independent disposable-image ABI fixture and isolated GitHub-hosted select/compile/install/manual-copy smoke test. No physical disks or boot installations are touched.
+
 ## 0.5.84 — 2026-10-26 (FAT16 drop-in implementation candidate)
 
 - Replace the FAT family `dosfstools`/kernel-provider selector in Filesystems with an independent FAT16 entry whose Install/Remove button compiles/removes only `/System/Filesystems/FAT16.so`, with no APT, DKMS, modprobe or other FAT variant.

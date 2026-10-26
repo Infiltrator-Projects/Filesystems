@@ -48,6 +48,9 @@ std::string support_detail_text(const FilesystemDescriptor& descriptor,
     std::string detail =
         std::string("Support path: ") + support_provider_label(descriptor.provider);
 
+    if (descriptor.id == "ofs") {
+        return "Support path: Drop-in .so  •  " + probe.detail;
+    }
     if (descriptor.provider == SupportProvider::DropIn) {
         detail += "  •  ";
         detail += probe.detail;
@@ -127,6 +130,25 @@ ModuleActionPolicy module_action_policy(const FilesystemDescriptor& descriptor,
                                         const ProbeResult& probe)
 {
     ModuleActionPolicy policy;
+    if (descriptor.id == "ofs") {
+        policy.button.visible = true;
+        if (!probe.reliable) {
+            policy.button.label = "Refresh required";
+        } else if (probe.state == SupportState::Ready) {
+            policy.action = ModuleActionKind::RemoveDropIn;
+            policy.button.enabled = true;
+            policy.button.destructive = true;
+            policy.button.label = "Remove OFS";
+        } else if (probe.state == SupportState::Installable) {
+            policy.action = ModuleActionKind::InstallDropIn;
+            policy.button.enabled = true;
+            policy.button.primary = true;
+            policy.button.label = "Install OFS";
+        } else {
+            policy.button.label = "Build unavailable";
+        }
+        return policy;
+    }
     if (descriptor.provider == SupportProvider::DropIn) {
         policy.button.visible = true;
         if (!probe.reliable) {
