@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Only run on disposable GitHub-hosted CI runners; does not touch block devices.
+set -euo pipefail
+
+if [[ "${GITHUB_ACTIONS:-}" != true ||
+      "${RUNNER_ENVIRONMENT:-}" != github-hosted ]]; then
+    echo 'Refusing FAT16 /System smoke test outside disposable GitHub-hosted CI.' >&2
+    exit 1
+fi
+
+helper=/usr/lib/filesystems/fat16-module-helper
+source_dir=/usr/lib/filesystems/fat16-source
+module=/System/Filesystems/FAT16.so
+[[ ! -e "$helper" && ! -e "$module" ]] ||
+  { echo "Pre-existing FAT16 test path; refusing replacement" >&2; exit 1; }
+
+cleanup() {
+    sudo "$helper" remove >/dev/null 2>&1 || :
+    sudo rm -f "$helper" "$source_dir/fat16_module.c" "$source_dir/fat16_module.h"
+    sudo rmdir "$source_dir" >/dev/null 2>&1 || :
+}
+trap cleanup EXIT
+
+sudo install -d -m 0755 "$source_dir"
+sudo install -m 0644 native/filesystems/fat/module/fat16_module.c "$source_dir"
+sudo install -m 0644 native/filesystems/fat/module/fat16_module.h "$source_dir"
+sudo install -m 0755 packaging/linux/fat16-module-helper.sh "$helper"
+
+sudo "$helper" install
+[[ -f "$module" ]] || { echo "missing compiled FAT16.so" >&2; exit 1; }
+[[ "$(sudo "$helper" status)" == installed ]] ||
+  { echo "installed module not detected" >&2; exit 1; }
+if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
+    echo "FAT16.so has host-linked library dependencies" >&2
+    exit 1
+fi
+readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+
+sudo "$helper" remove
+[[ ! -e "$module" ]] || { echo "FAT16 removal failed" >&2; exit 1; }
+
+# The copied prebuilt module and a module compiled by Install are discovered
+# through the exact same directory; neither installs a second filesystem.
+prebuilt=$(find build-desktop -name FAT16.so -type f -print -quit)
+[[ -n "$prebuilt" ]] || { echo "prebuilt FAT16.so missing" >&2; exit 1; }
+sudo install -m 0644 "$prebuilt" "$module"
+[[ "$(sudo "$helper" status)" == installed ]] ||
+  { echo "precompiled FAT16.so was not recognised" >&2; exit 1; }
+sudo "$helper" remove
+
+echo 'FAT16-SELECT-COMPILE-COPY-AND-DRAG-PASS'
