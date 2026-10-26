@@ -4,7 +4,11 @@
 set -euo pipefail
 export LC_ALL=C
 
-source_dir=/usr/lib/filesystems/fat16-source
+# Locate source files relative to the installed application helper itself.
+# Linux packaging has a /usr/bin launcher, but no separate .so compiler tree.
+self_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+app_dir=$(cd -- "$self_dir/.." && pwd -P)
+source_dir="$self_dir/../Sources/fat16"
 destination=/System/Filesystems
 module="$destination/FAT16.so"
 compiler=/usr/bin/cc
@@ -43,6 +47,21 @@ check_module() {
         fatal "FAT16 module ABI entry point missing"
 }
 
+# The privileged compiler must never consume untrusted application source.
+# Validate each real path component; do not silently trust /Programs permissions.
+safe_source_tree() {
+    for dir in "$(dirname -- "$app_dir")" "$app_dir" "$self_dir" \
+               "$app_dir/Sources" "$app_dir/Sources/fat16"; do
+        [[ -d "$dir" && ! -L "$dir" ]] ||
+            fatal "application resource directory is missing or a symlink: $dir"
+        [[ "$(stat -c %u -- "$dir")" == 0 ]] ||
+            fatal "application resources must be root-owned: $dir"
+        mode=$(stat -c %a -- "$dir")
+        (( (8#$mode & 8#022) == 0 )) ||
+            fatal "application resources are writable by another user: $dir"
+    done
+}
+
 case "$1" in
     status)
         [[ -d "$destination" && ! -L "$destination" && ! -L /System ]] ||
@@ -55,6 +74,7 @@ case "$1" in
         ;;
     install)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
+        safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
         [[ -f "$source_dir/fat16_module.c" &&
