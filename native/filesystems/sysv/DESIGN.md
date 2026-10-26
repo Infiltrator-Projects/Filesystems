@@ -1,6 +1,6 @@
 # System V / Xenix / Coherent Filesystem Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -14,36 +14,13 @@ supported SysV-family variants, with thin operating-system adapters.
 
 ## Current implementation state
 
-SysV is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/sysv/linux/` contains actual Linux filesystem implementation source, which can be developed directly. The copied Linux source includes Xenix, System V and Coherent variant handling.
 
-There is no project-authored canonical SysV-family engine and no Filesystem
-Support SysV native module claimed by this directory. The source beneath
-`linux/` is the pinned upstream Linux implementation retained as
-format, variant-detection and interoperability evidence.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-The upstream licences, copyrights, filenames and translation-unit boundaries
-remain intact. The former top-level `kernel/` staging directory was misleading
-because it looked like project-owned production source.
+## Current source directory and integration boundary
 
-## Current directory layout
-
-```text
-native/filesystems/sysv/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux SysV-family source, reference only
-```
-
-When an independent implementation begins:
-
-```text
-native/filesystems/sysv/
-  DESIGN.md
-  core/                  canonical supported SysV/Xenix/Coherent semantics
-  linux/                 thin Linux VFS/module adapter
-  windows/               thin Windows adapter when implemented
-  linux/       preserved upstream evidence
-```
+The actual source layout is `native/filesystems/sysv/DESIGN.md` alongside `native/filesystems/sysv/linux/`; there is **no `reference/linux/` source tree**. The original `linux/` source is editable implementation code, not a temporary or replaceable research cache. Optional `core/`, `windows/`, `efi/` and other host adapters are created as their real implementation and qualification require, not as a prerequisite for editing existing source. A build must not advertise support it has not passed independent media/runtime tests.
 
 ## Canonical ownership
 
@@ -59,6 +36,9 @@ lifecycle remain Linux-adapter concerns.
 
 ## File-boundary rule
 
+Editing the copied implementation directly is permitted. Preserve source attribution; renaming or reshaping an imported file does not make it independently project-authored.
+
+
 The imported `balloc.c`, `ialloc.c`, `dir.c`, `inode.c`,
 `itree.c`, `namei.c`, `super.c` and `sysv.h` remain unchanged in
 `linux/`.
@@ -67,6 +47,9 @@ Project-owned source must be cut around portable format/variant responsibilities
 rather than mechanically preserving those Linux file boundaries.
 
 ## Promotion sequence
+
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
 
 1. enumerate and document the exact supported SysV/Xenix/Coherent variants;
 2. implement bounded host-neutral variant detection and geometry validation;
@@ -88,7 +71,7 @@ The editable `linux/` source contains original implementation code copied from t
 
 ## Completion rule
 
-The current tree is reference evidence only. SysV becomes a Filesystems
+The current tree is editable original source, not yet independently qualified for project-native deployment. SysV becomes a Filesystems
 first-party implementation only when the canonical engine and applicable
 adapter have independent implementation and qualification evidence for every
 variant claimed.

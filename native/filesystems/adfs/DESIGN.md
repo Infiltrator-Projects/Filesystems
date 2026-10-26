@@ -1,6 +1,6 @@
 # ADFS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -57,57 +57,18 @@ formats, filetype encoding or other ADFS-defined behaviour.
 
 ## Current implementation state
 
-ADFS is currently **imported-source development state**.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. Its existing upstream implementation contains F/F+ directory support, allocation-map traversal and inode/file I/O.
 
-There is no project-authored canonical ADFS engine and no Filesystems
-ADFS Linux or Windows adapter claimed by this directory. The source under
-`linux/` is the pinned upstream Linux ADFS implementation copied by
-`.github/workflows/import-linux-filesystems.yml`.
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-The imported source currently demonstrates a Linux VFS implementation with F
-and F+ directory handling, allocation-map traversal, inode/file operations and
-optional write support. That capability is evidence about a mature external
-implementation; it is not a claim that Filesystems has independently
-implemented or qualified those behaviours.
+## Source layout and deployment boundary
 
-Reference files retain their upstream filenames, SPDX identifiers, copyrights
-and translation-unit layout. They are intentionally not renamed into
-Filesystems responsibility names until their implementation bodies have
-actually been independently replaced.
-
-## Current directory layout
-
-```text
-native/filesystems/adfs/
-  DESIGN.md
-  reference/
-    linux/               pinned Linux ADFS source, reference only
-```
-
-When the rewrite starts, project-authored code is added beside—not inside—the
-reference tree:
-
-```text
-native/filesystems/adfs/
-  DESIGN.md
-  core/                  canonical ADFS implementation
-  linux/                 thin native Linux adapter
-  windows/               thin native Windows adapter when implemented
-  linux/       preserved upstream evidence
-```
-
-The reference tree is not linked by the product CMake build and is not an
-Infiltrator ADFS module.
-
-While ADFS remains in imported-source development state, `core/`, `linux/`, `windows/`
-and `kernel/` are deliberately absent. Their appearance is a promotion event,
-not a harmless directory reshuffle. CI enforces the working-source root shape,
-checks copied C/header provenance markers and rejects accidental production
-linkage of `linux/`.
+The checked-in baseline is `native/filesystems/adfs/linux/` beside this `DESIGN.md` (not `reference/linux/`). This is actual implementation source for direct modification, not a temporary cache or a guarantee that its unmodified out-of-tree build works. A future `core/` may hold host-neutral filesystem rules extracted from this source, while the existing `linux/` tree becomes or supplies the Linux adapter; a `windows/` adapter is added only when implemented. No invented `kernel/` or second active on-disk parser is necessary. Format-specific host-integration and cross-platform extraction must be validated before claiming those capabilities.
 
 ## Promotion rule
 
-ADFS leaves imported-source development state only after an explicit rewrite milestone:
+The milestones below describe the remaining format-specific engineering and acceptance tests. They can be implemented by adapting and qualifying the existing source; they do not require a speculative replacement before editing can begin. A separately pursued project-authored rewrite must preserve original provenance until the relevant code has actually been replaced.
+
 
 1. document the supported ADFS format variants and geometry limits;
 2. implement host-neutral disc-record, map, directory and object parsing;

@@ -1,6 +1,6 @@
 # OCFS2 Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -16,31 +16,13 @@ boundary around that engine.
 
 ## Current implementation state
 
-OCFS2 is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/ocfs2/linux/` contains actual Linux filesystem implementation source, which can be developed directly. The Linux original includes O2CB/DLM clustering in addition to volume, allocation, inode and journal implementation; multi-node operation requires distinct tests.
 
-The source under `linux/` is the pinned upstream Linux OCFS2 tree,
-including its O2CB cluster and DLM/DLMFS implementation. It is retained as
-format, interoperability, cluster-state and failure/recovery evidence only.
-Filesystems does not claim that source as project-authored code.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-The former `kernel/` staging path was misleading because it looked like a
-production Filesystems native module. The unchanged upstream blobs are
-therefore kept under an explicit reference/provenance boundary.
+## Target integration and source layout
 
-## Target layout
-
-```text
-native/filesystems/ocfs2/
-  DESIGN.md
-  core/                 canonical OCFS2 format/filesystem semantics
-  linux/                thin Linux VFS/block/module adapter
-  windows/              thin Windows adapter if eventually justified
-  cluster/              host-neutral cluster/locking service boundary
-  linux/      pinned upstream Linux OCFS2/O2CB/DLM evidence
-```
-
-The exact cluster transport may evolve. Filesystem semantics must not fork per
-operating system or per cluster provider.
+The existing `linux/` implementation is the starting point for engineering and compatibility, with original attribution retained. Extract format-defined behaviour to one host-neutral canonical core when multiple consumers require it; keep Linux VFS, Windows IFS, firmware and application module execution as independently qualified adapter contracts. The current tree does not imply any Windows/EFI/root deliverable. Preserve O2CB/DLM cluster coordination as an explicit host integration boundary.
 
 ## Canonical-core ownership
 
@@ -79,6 +61,9 @@ implementation.
 
 ## File-boundary rule
 
+Editing the copied implementation directly is permitted. Preserve source attribution; renaming or reshaping an imported file does not make it independently project-authored.
+
+
 Files below `linux/` retain upstream filenames, SPDX identifiers,
 copyrights and source boundaries, including `alloc.c`, `journal.c`,
 `dlmglue.c`, the `cluster/` tree and the `dlm/` and `dlmfs/` trees.
@@ -88,6 +73,9 @@ responsibilities and canonical/adapter ownership. Moving or renaming an
 upstream OCFS2 file does not constitute an independent rewrite.
 
 ## Promotion sequence
+
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
 
 OCFS2 leaves imported-source development state only through deliberate milestones:
 

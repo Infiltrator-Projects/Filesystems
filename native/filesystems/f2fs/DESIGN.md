@@ -1,6 +1,6 @@
 # F2FS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -9,33 +9,19 @@ F2FS is a conventional local flash-oriented filesystem with checkpoint,
 segment, node and garbage-collection semantics. Filesystems must
 implement those semantics once in a host-neutral core.
 
-## Current state
+## Current implementation state
 
-F2FS is currently **imported-source development state**. The Linux implementation under
-`linux/` is preserved unchanged as upstream evidence and is not
-project-authored source.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied Linux implementation includes checkpoint/node/segment mechanisms and native F2FS mount code.
 
-## Current directory contract
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-While F2FS remains in imported-source development state, the filesystem root contains only
-`DESIGN.md` and `linux/`, with the pinned upstream Linux implementation
-under `linux/`. The future `core/`, `linux/` and `windows/`
-directories appear only with independently authored implementation. `kernel/`
-and `userspace/` are not valid alternate source trees.
+## Source layout and deployment boundary
 
-CI enforces this boundary and rejects accidental production linkage of the
-imported reference source.
+The checked-in baseline is `native/filesystems/f2fs/linux/` beside this `DESIGN.md` (not `reference/linux/`). This is actual implementation source for direct modification, not a temporary cache or a guarantee that its unmodified out-of-tree build works. A future `core/` may hold host-neutral filesystem rules extracted from this source, while the existing `linux/` tree becomes or supplies the Linux adapter; a `windows/` adapter is added only when implemented. No invented `kernel/` or second active on-disk parser is necessary. Format-specific host-integration and cross-platform extraction must be validated before claiming those capabilities.
 
-## Target layout
+## Target integration
 
-```text
-native/filesystems/f2fs/
-  DESIGN.md
-  core/                 canonical F2FS format/filesystem semantics
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows adapter when implemented
-  linux/      pinned upstream Linux evidence
-```
+Retain the editable `linux/` source and its original provenance. Separate filesystem-defined semantics into one canonical core as cross-platform consumers are implemented, without discarding existing functional behaviour. A Linux `.ko`, Windows `.sys`, EFI reader and drop-in application `.so` have distinct ABI/build/qualification contracts. 
 
 ## Canonical ownership
 

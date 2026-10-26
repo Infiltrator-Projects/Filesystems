@@ -1,6 +1,6 @@
 # BeFS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -36,45 +36,18 @@ lifetime rules belong only in the Linux adapter.
 
 ## Current implementation state
 
-BeFS is currently **imported-source development state**.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied source provides the existing Linux BeFS compatibility implementation, primarily read-oriented.
 
-The source under `linux/` is the pinned upstream Linux BeFS driver.
-It is primarily useful as a mature read-oriented compatibility reference for
-legacy BeOS media. Filesystems does not claim that source as its own
-implementation.
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-The reference tree keeps its upstream SPDX identifiers, copyrights, filenames,
-ChangeLog and source boundaries intact. Project-authored code must not be
-created by simply renaming or recommenting those files.
+## Source layout and deployment boundary
 
-## Current directory layout
-
-```text
-native/filesystems/befs/
-  DESIGN.md
-  reference/
-    linux/                  pinned upstream Linux BeFS source
-```
-
-While BeFS remains in imported-source development state, CI therefore treats
-`DESIGN.md` and `linux/` as the only valid filesystem-root entries. The
-appearance of `core/`, `linux/`, `windows/`, `userspace/` or `kernel/` is a
-promotion event and must arrive with independently authored implementation and
-qualification, not as a directory rename. The imported tree is excluded from
-the production CMake graph.
-
-The future project layout is:
-
-```text
-native/filesystems/befs/
-  DESIGN.md
-  core/                     canonical BeFS semantics
-  linux/                    thin Linux VFS/module adapter
-  windows/                  thin Windows IFS/WDK adapter when implemented
-  linux/          preserved upstream evidence
-```
+The checked-in baseline is `native/filesystems/befs/linux/` beside this `DESIGN.md` (not `reference/linux/`). This is actual implementation source for direct modification, not a temporary cache or a guarantee that its unmodified out-of-tree build works. A future `core/` may hold host-neutral filesystem rules extracted from this source, while the existing `linux/` tree becomes or supplies the Linux adapter; a `windows/` adapter is added only when implemented. No invented `kernel/` or second active on-disk parser is necessary. Format-specific host-integration and cross-platform extraction must be validated before claiming those capabilities.
 
 ## File-boundary rule
+
+The original files may be edited directly. Changing a filename or translating a body does not by itself change authorship; only actual independent replacement qualifies as project-authored source. Keep working functionality and attribution while moving any genuinely shared format rules to a canonical engine.
+
 
 Upstream files such as `btree.c`, `datastream.c`, `linuxvfs.c` and
 `super.c` remain in the reference tree with their original names.

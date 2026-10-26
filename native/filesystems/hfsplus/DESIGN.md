@@ -1,6 +1,6 @@
 # HFS+ / HFSX Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -24,41 +24,13 @@ architecture:
 
 ## Current implementation state
 
-HFS+ is currently **imported-source development state**.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied HFS+ implementation includes B-trees, catalogues, extents and journalling-related support; HFSX ordering and writes require separate qualification.
 
-There is no project-authored HFS+ canonical engine and no Filesystems
-HFS+ native driver claimed by this directory. The source under
-`linux/` is the pinned upstream Linux HFS+ implementation copied by
-the reference-refresh workflow.
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-Those files retain their upstream SPDX identifiers, copyrights, filenames and
-implementation boundaries. Moving the reference source beneath
-`linux/` is provenance/layout hygiene only; it does not turn that
-implementation into project-authored code.
+## Source layout and deployment boundary
 
-The reference tree is not the permanent Filesystems source architecture.
-
-## Current directory layout
-
-```text
-native/filesystems/hfsplus/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux HFS+ source, reference only
-```
-
-When an independent rewrite begins, project-authored source is added beside the
-reference tree:
-
-```text
-native/filesystems/hfsplus/
-  DESIGN.md
-  core/                  canonical HFS+/HFSX implementation
-  linux/                 thin Linux VFS/module adapter
-  windows/               thin Windows IFS/WDK adapter when implemented
-  userspace/             optional image/inspection adapter over the same core
-  linux/       preserved upstream evidence
-```
+The checked-in baseline is `native/filesystems/hfsplus/linux/` beside this `DESIGN.md` (not `reference/linux/`). This is actual implementation source for direct modification, not a temporary cache or a guarantee that its unmodified out-of-tree build works. A future `core/` may hold host-neutral filesystem rules extracted from this source, while the existing `linux/` tree becomes or supplies the Linux adapter; a `windows/` adapter is added only when implemented. No invented `kernel/` or second active on-disk parser is necessary. Format-specific host-integration and cross-platform extraction must be validated before claiming those capabilities.
 
 ## Canonical-core ownership
 
@@ -102,6 +74,9 @@ HFS+ implementations.
 
 ## File-boundary rule
 
+The original files may be edited directly. Changing a filename or translating a body does not by itself change authorship; only actual independent replacement qualifies as project-authored source. Keep working functionality and attribution while moving any genuinely shared format rules to a canonical engine.
+
+
 The upstream reference filenames such as `btree.c`, `catalog.c`,
 `extents.c`, `inode.c`, `super.c`, `unicode.c` and `xattr.c` remain
 unchanged under `linux/` so their provenance is obvious.
@@ -113,7 +88,8 @@ implementation has been rewritten.
 
 ## Promotion sequence
 
-HFS+ leaves imported-source development state only through an explicit rewrite:
+The milestones below describe the remaining format-specific engineering and acceptance tests. They can be implemented by adapting and qualifying the existing source; they do not require a speculative replacement before editing can begin. A separately pursued project-authored rewrite must preserve original provenance until the relevant code has actually been replaced.
+
 
 1. define the supported HFS+/HFSX media variants and feature/journal limits;
 2. implement bounded host-neutral volume-header and fork/extents decoding;
@@ -149,4 +125,4 @@ The editable `linux/` source contains original implementation code copied from t
 
 A Filesystems HFS+ implementation is not claimed until a canonical core
 and at least one adapter have independent implementation and qualification
-evidence. The current reference tree is evidence only.
+evidence. the current editable source is not yet independently qualified as a Filesystems native provider.

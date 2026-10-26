@@ -1,6 +1,6 @@
 # NILFS2 Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -11,36 +11,13 @@ applies the one-canonical-filesystem architecture.
 
 ## Current implementation state
 
-NILFS2 is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/nilfs2/linux/` contains actual Linux filesystem implementation source, which can be developed directly. NILFS2 checkpoint/segment/snapshot and inode/file functions exist in the copied Linux implementation.
 
-The Linux NILFS2 implementation beneath `linux/` is pinned upstream
-source retained as format, interoperability and recovery evidence. It is not
-project-authored Filesystems code. Its original filenames, licences and
-source boundaries remain intact.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-Moving that source out of the retired `kernel/` staging directory is
-provenance/layout hygiene only; it is not a rewrite.
+## Current source directory and integration boundary
 
-## Current layout
-
-```text
-native/filesystems/nilfs2/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux NILFS2 evidence
-```
-
-A future independent implementation is added beside it:
-
-```text
-native/filesystems/nilfs2/
-  DESIGN.md
-  core/                  canonical NILFS2 format/filesystem semantics
-  linux/                 thin Linux VFS/block adapter
-  windows/               thin Windows adapter when implemented
-  userspace/             optional image/qualification adapter
-  linux/       preserved upstream evidence
-```
+The actual source layout is `native/filesystems/nilfs2/DESIGN.md` alongside `native/filesystems/nilfs2/linux/`; there is **no `reference/linux/` source tree**. The original `linux/` source is editable implementation code, not a temporary or replaceable research cache. Optional `core/`, `windows/`, `efi/` and other host adapters are created as their real implementation and qualification require, not as a prerequisite for editing existing source. A build must not advertise support it has not passed independent media/runtime tests.
 
 ## Canonical ownership
 
@@ -54,6 +31,9 @@ Linux VFS objects, page/buffer cache, block-device plumbing, sysfs, workqueues
 and module lifetime remain adapter concerns.
 
 ## Promotion sequence
+
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
 
 1. define supported NILFS2 format/features and checkpoint rules;
 2. implement bounded superblock/checkpoint/segment decoding;
@@ -77,6 +57,6 @@ The editable `linux/` source contains original implementation code copied from t
 
 ## Completion rule
 
-The current tree is reference evidence only. NILFS2 is not a Filesystems
+The current tree is editable original source, not yet independently qualified for project-native deployment. NILFS2 is not a Filesystems
 native implementation until the canonical core and applicable adapter are
 independently implemented and qualified.

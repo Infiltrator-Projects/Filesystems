@@ -1,6 +1,6 @@
 # GFS2 Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -13,26 +13,15 @@ It is not merely a network namespace, so its permanent architecture includes a
 canonical filesystem engine. Cluster lock transport and OS objects remain
 adapters around that engine.
 
-## Current state
+## Current implementation state
 
-GFS2 is currently **imported-source development state**. The pinned upstream Linux GFS2
-implementation under `linux/` is compatibility and design evidence
-only and is not project-authored Filesystems code.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied implementation contains Linux GFS2 cluster and locking integration; native shared-disk semantics need separate multi-node tests.
 
-## Target layout
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-```text
-native/filesystems/gfs2/
-  DESIGN.md
-  core/                 canonical GFS2 format/filesystem/cluster semantics
-  linux/                thin Linux VFS/block adapter
-  windows/              thin Windows adapter if eventually justified
-  cluster/              host-neutral cluster-lock service adapter boundary
-  linux/      pinned upstream Linux evidence
-```
+## Target integration
 
-The exact cluster transport may evolve, but filesystem semantics must not be
-forked per operating system.
+Retain the editable `linux/` source and its original provenance. Separate filesystem-defined semantics into one canonical core as cross-platform consumers are implemented, without discarding existing functional behaviour. A Linux `.ko`, Windows `.sys`, EFI reader and drop-in application `.so` have distinct ABI/build/qualification contracts. Cluster locking and coordination remain explicit native integration responsibilities.
 
 ## Canonical ownership
 

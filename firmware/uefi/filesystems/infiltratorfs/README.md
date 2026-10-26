@@ -1,8 +1,14 @@
 # InfiltratorFS UEFI integration
 
-Boot includes InfiltratorFS as a first-class filesystem target.
+Boot may load an InfiltratorFS boot-payload volume only through a reader
+qualified for the actual current InfiltratorFS on-disk format. The canonical
+format engine and maintained EFI implementation are owned by the separate
+`Infiltrator-Projects/InfiltratorFS` repository. This folder is a **legacy,
+pinned Format 0.18 migration snapshot**, not a current or production
+InfiltratorFS EFI driver. It must not be selected merely because the source
+exists here.
 
-This directory is the UEFI integration layer. It is deliberately based on the canonical portable InfiltratorFS format/core implementation rather than the Linux kernel VFS adapter; Linux kernel code cannot be used directly in UEFI.
+The historical directory was intended as a UEFI integration layer. It is deliberately based on the canonical portable InfiltratorFS format/core implementation rather than the Linux kernel VFS adapter; Linux kernel code cannot be used directly in UEFI.
 
 ## Source provenance
 
@@ -26,4 +32,12 @@ The Linux `kernel/` implementation is not copied into the boot manager. The UEFI
 
 ## Status
 
-The portable source is vendored and pinned here first. The EFI storage and FSW adapter are then built around that source. The driver must not be added to the default filesystem build list until it can mount, enumerate directories, follow symlinks and read ordinary, sparse, inline and compressed files successfully.
+The historical portable source is present only as an unshipped migration
+snapshot; it is not the canonical current reader. Filesystems' maintained
+EFI build excludes this Format 0.18 adapter. The duplicate implementation
+must not be promoted or used as a substitute for the current InfiltratorFS
+repository's independently qualified reader. Any new firmware integration
+must verify the current format generation, directories, symlinks, ordinary,
+sparse, inline and compressed reads, and real boot-media I/O before release.
+The ongoing removal of the obsolete fork is tracked separately in
+Filesystems PR #39.
