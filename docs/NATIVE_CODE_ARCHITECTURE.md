@@ -147,23 +147,54 @@ Filesystems must not become one enormous kernel module or Windows driver. Conven
 
 During current Linux development, required canonical-core source may be compiled directly into each `.ko` rather than introducing a private shared kernel-module ABI. That is intentional.
 
-## Reference/import and rewrite states
+## Editable imports, integration and project-authored rewrites
 
-An in-scope disk filesystem waiting for independent implementation may retain upstream source as **reference evidence**. Such source retains original licence/provenance and must not be represented as project-authored code or compiled into production merely because it exists.
+Imported implementation source is **real, editable working code**. It is not
+a throwaway research cache or an instruction to start from a miniature
+independent substitute. Where an existing implementation already provides
+geometry, namespace, read/write, formatting or recovery functions, development
+should map and preserve those functions before splitting out a canonical,
+host-neutral engine and thin platform adapters. Current source ownership and
+format boundaries are recorded in
+[`FILESYSTEM_DESIGN_INDEX.md`](FILESYSTEM_DESIGN_INDEX.md) and each
+format's `DESIGN.md`.
 
-When a filesystem is promoted to rewrite state:
+**Editing original code does not change authorship.** Keep its licence,
+copyright, origin and derivative provenance accurate. A separately required
+project-authored rewrite must actually replace the implementation and prove
+equivalent behaviour; renaming symbols, comments, file paths or packaging
+cannot establish independent authorship.
 
-1. record the format contract and required compatibility behaviour;
-2. freeze the reference material as evidence;
-3. replace implementation units with project-authored canonical engine/adapters;
-4. qualify corruption handling and read interoperability;
-5. add safe mutation and recovery;
-6. qualify platform adapters independently; and
-7. qualify EFI/root/setup integration before enabling the format in the InfiltratorOS setup shell.
+Use three different, explicit states:
 
-EXT2, EXT3, EXT4 and the five Amiga formats documented in [`AMIGA_FILESYSTEMS.md`](AMIGA_FILESYSTEMS.md) are current rewrite/project-native targets.
+1. **Editable imported baseline:** actual original code exists and may be
+   developed; this alone does not establish a buildable project-native module.
+2. **Integrated/qualified provider:** the exact implementation and adapter
+   have passed their named build, runtime, malformed-media, mutation/recovery
+   and installation gates for the capabilities claimed. The provider may
+   still contain original source with its original attribution.
+3. **Independently project-authored replacement:** only the genuinely
+   replaced implementation components may be identified as project-authored.
+   This is a separate provenance state from runtime qualification.
 
-Historical research directories for technologies removed from the product catalogue are not candidates for automatic promotion. They may be deleted when they cease to provide useful engineering evidence; their mere presence does not define scope.
+Some format-specific projects deliberately impose stricter independent-rewrite
+requirements. In particular, the EXT2/EXT3/EXT4 authorship and migration goal
+is tracked in [`EXT_SOURCE_PROVENANCE.md`](EXT_SOURCE_PROVENANCE.md).
+That specific goal does **not** make a global rewrite-first requirement for
+all 41 formats, and neither policy authorises false attribution.
+
+Port/adapt in stages: preserve the existing working implementation and test
+corpus; document on-disk invariants and ABI ownership; qualify read access;
+then qualify allocation/mutation, crash consistency and recovery; independently
+qualify Linux, Windows, userspace and EFI consumers. Do not remove an active
+working source path until its successor covers the required behaviour and
+tests. Boot/root/setup availability remains gated separately.
+
+Historical references to frozen `reference/` trees or mandatory
+rewrite-before-edit in older format designs describe past architecture, not
+a prohibition on modifying copied source. However, provenance and outstanding
+safety/qualification gates in those documents remain binding.
+
 
 ## Linux native installation contract
 

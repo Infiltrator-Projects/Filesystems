@@ -1,6 +1,6 @@
 # XFS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -12,42 +12,13 @@ systems expose that core through thin adapters.
 
 ## Current implementation state
 
-XFS is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/xfs/linux/` contains actual Linux filesystem implementation source, which can be developed directly. The copied XFS Linux source includes libxfs and scrub subsystems; build and repair/format qualification remain separate.
 
-There is no project-authored canonical XFS engine and no Filesystems XFS
-native module claimed by this directory. The source under `linux/`
-is the pinned upstream Linux XFS implementation retained as format,
-interoperability, repair and failure-behaviour evidence.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-Those files retain their upstream SPDX/licence/copyright notices, filenames and
-implementation boundaries. Relocating the unchanged Linux tree from the old
-`kernel/` staging path to `linux/` is provenance/layout hygiene
-only; it is not an implementation rewrite and does not change authorship.
+## Current source directory and integration boundary
 
-## Current directory layout
-
-```text
-native/filesystems/xfs/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux XFS source, reference only
-```
-
-When an independent implementation begins, project-owned source is added beside
-that evidence:
-
-```text
-native/filesystems/xfs/
-  DESIGN.md
-  core/                  canonical XFS format/filesystem semantics
-  linux/                 thin Linux VFS/block/module adapter
-  windows/               thin Windows IFS/WDK adapter when implemented
-  userspace/             optional image/inspection/qualification adapter
-  linux/       preserved upstream Linux evidence
-```
-
-Empty project implementation directories are not created merely to imply
-progress.
+The actual source layout is `native/filesystems/xfs/DESIGN.md` alongside `native/filesystems/xfs/linux/`; there is **no `reference/linux/` source tree**. The original `linux/` source is editable implementation code, not a temporary or replaceable research cache. Optional `core/`, `windows/`, `efi/` and other host adapters are created as their real implementation and qualification require, not as a prerequisite for editing existing source. A build must not advertise support it has not passed independent media/runtime tests.
 
 ## Canonical-core ownership
 
@@ -76,6 +47,9 @@ native object lifetime belong only in the Windows adapter.
 
 ## Reference scrub and libxfs rule
 
+Editing the copied implementation directly is permitted. Preserve source attribution; renaming or reshaping an imported file does not make it independently project-authored.
+
+
 The imported `libxfs/` and `scrub/` subtrees remain part of the upstream
 reference snapshot. Their presence is valuable behavioural and repair evidence
 but does not make them project-owned canonical code.
@@ -87,7 +61,10 @@ that their implementation has crossed the project-authorship boundary.
 
 ## Promotion sequence
 
-XFS leaves imported-source development state only through deliberate independent work:
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
+
+XFS becomes eligible for separately qualified native capabilities only after the following integration and acceptance milestones:
 
 1. define the supported XFS format generation and incompat/ro-compat features;
 2. implement bounded host-neutral superblock and allocation-group validation;
@@ -120,7 +97,7 @@ The editable `linux/` source contains original implementation code copied from t
 
 ## Completion rule
 
-The current tree is reference evidence only. XFS becomes a Filesystems
+The current tree is editable original source, not yet independently qualified for project-native deployment. XFS becomes a Filesystems
 first-party implementation only when its canonical engine and applicable
 platform adapter have independent implementation, tests and qualification
 evidence.

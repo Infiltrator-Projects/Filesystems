@@ -1,6 +1,6 @@
 # OMFS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -21,36 +21,13 @@ applies the normal canonical-engine architecture.
 
 ## Current implementation state
 
-OMFS is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/omfs/linux/` contains actual Linux filesystem implementation source, which can be developed directly. The source contains OMFS inode/object and allocation decoding.
 
-The source below `linux/` is the pinned upstream Linux OMFS driver.
-It is retained as format, interoperability and failure-behaviour evidence only;
-Filesystems does not claim it as project-authored implementation.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-The former `kernel/` staging directory was misleading because it looked like
-production native Filesystems code. The upstream blobs are therefore
-preserved unchanged under the explicit reference/provenance boundary.
+## Current source directory and integration boundary
 
-## Current directory layout
-
-```text
-native/filesystems/omfs/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux OMFS source, reference only
-```
-
-When an independent implementation begins, project-owned code is added beside
-the reference tree:
-
-```text
-native/filesystems/omfs/
-  DESIGN.md
-  core/                  canonical OMFS format/filesystem implementation
-  linux/                 thin Linux VFS/module adapter
-  windows/               thin Windows IFS/WDK adapter when implemented
-  linux/       preserved upstream evidence
-```
+The actual source layout is `native/filesystems/omfs/DESIGN.md` alongside `native/filesystems/omfs/linux/`; there is **no `reference/linux/` source tree**. The original `linux/` source is editable implementation code, not a temporary or replaceable research cache. Optional `core/`, `windows/`, `efi/` and other host adapters are created as their real implementation and qualification require, not as a prerequisite for editing existing source. A build must not advertise support it has not passed independent media/runtime tests.
 
 ## Canonical-core ownership
 
@@ -75,6 +52,9 @@ translation belong in `windows/`.
 
 ## File-boundary rule
 
+Editing the copied implementation directly is permitted. Preserve source attribution; renaming or reshaping an imported file does not make it independently project-authored.
+
+
 Upstream files such as `bitmap.c`, `dir.c`, `file.c`, `inode.c`,
 `omfs.h` and `omfs_fs.h` retain their original names, licences and
 provenance under `linux/`.
@@ -84,6 +64,9 @@ and thin host adapters. Moving, renaming or recommenting copied Linux source is
 not an independent rewrite.
 
 ## Promotion sequence
+
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
 
 1. document the supported OMFS variants, geometry and format limits;
 2. implement host-neutral volume, inode/object and allocation decoding;

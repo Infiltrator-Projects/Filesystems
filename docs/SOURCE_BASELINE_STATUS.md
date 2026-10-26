@@ -13,6 +13,13 @@ source available in this repository:
 - **4** source baselines not yet imported into this repository:
   InfiltratorFS (maintained independently), VMFS3/VMFS5, VMFS6 and ZFS.
 
+These counts describe **source availability only**, not built/qualified
+drop-in application modules or independent root-boot compatibility. The
+managed and imported Linux counts are derived from separate manifests:
+`data/native-filesystems.tsv` (13) and
+`data/imported-source-filesystems.txt` (22). Imported source may be
+directly modified while preserving truthful original provenance.
+
 Actual filesystem source, an independently qualified native `.ko`,
 a read-only EFI reader and safe bootable InfiltratorOS root semantics are
 four distinct engineering milestones.

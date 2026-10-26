@@ -45,6 +45,8 @@ check_module() {
     "$elf_checker" -Ws "$file" |
         grep -F 'infiltrator_filesystem_module_v1' >/dev/null ||
         fatal "FAT16 module ABI entry point missing"
+    "$elf_checker" -Ws "$file" | grep -F 'infiltrator_filesystem_module_v2' >/dev/null ||
+        fatal "FAT16 directory module ABI v2 entry point missing"
 }
 
 # The privileged compiler must never consume untrusted application source.
@@ -78,8 +80,10 @@ case "$1" in
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
         [[ -f "$source_dir/fat16_module.c" &&
+           -f "$source_dir/fat16_namespace.c" &&
            -f "$source_dir/fat16_module.h" &&
            ! -L "$source_dir/fat16_module.c" &&
+           ! -L "$source_dir/fat16_namespace.c" &&
            ! -L "$source_dir/fat16_module.h" ]] ||
             fatal "packaged FAT16 module source missing"
         [[ ! -L /System && ! -L "$destination" ]] ||
@@ -94,7 +98,9 @@ case "$1" in
         "$compiler" -std=c11 -O2 -fPIC -fno-stack-protector \
             -fno-builtin -ffreestanding -fvisibility=hidden \
             -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
-            -I "$source_dir" -o "$temporary" "$source_dir/fat16_module.c" ||
+            -I "$source_dir" -o "$temporary" \
+            "$source_dir/fat16_module.c" \
+            "$source_dir/fat16_namespace.c" ||
             fatal "FAT16 compilation failed; old module unchanged"
         check_module "$temporary"
         chmod 0644 "$temporary"

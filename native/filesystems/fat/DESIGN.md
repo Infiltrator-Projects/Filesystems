@@ -12,34 +12,39 @@ implementations.
 
 ## Current state
 
-The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
+The FAT16 consolidation now includes copied working Defragmenter FAT geometry, directory and Test Media creator code under `consolidation/defragmenter/`. The compiled `FAT16.so` includes a backward-compatible v2 directory reader, using a freestanding port of Defragmenter's VFAT LFN and cluster enumeration logic. The originals are staged for subsequent mutation/formatter integration; they are not yet built into the module. The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
 implementation is preserved under `linux/` with upstream licensing
 and provenance. It is not project-authored Filesystems code.
 
-## Current directory contract
-
-The existing imported Linux source remains under `linux/`; the additional
-`module/` directory contains our independently built portable FAT16 module
-and versioned read-only C ABI, without installing or modifying kernel drivers.
-The future `core/`, `linux/`,
-`windows/` and `userspace/` directories appear only with independently
-authored implementation; `kernel/` is not a valid alternate source tree.
-
-CI enforces this boundary and rejects accidental production linkage of the
-imported reference source.
-
-## Target layout
+## Current source layout and compilation boundary
 
 ```text
 native/filesystems/fat/
   DESIGN.md
-  core/                 future complete canonical FAT12/16/32 semantics
-  module/               current self-contained experimental FAT16.so source
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows IFS/WDK adapter
-  userspace/            optional adapter over the same core
-  linux/      pinned upstream Linux evidence
+  linux/                    editable original Linux FAT/VFAT source
+  module/
+    fat16_module.c           compiled experimental v1 reader
+    fat16_namespace.c        compiled experimental v2 directory/LFN port
+    fat16_module.h           v1/v2 reader ABI declarations
+  consolidation/
+    README.md
+    defragmenter/            actual copied FAT engine, writer and creator
 ```
+
+The original FAT/VFAT Linux implementation in `linux/` can be directly
+developed but is not currently built into this experimental `.so`. The
+Defragmenter copies are also editable working source, retained under their
+original attribution, **not** automatically compiled into `FAT16.so`.
+The staged mutation, formatting, relocation, journaling and recovery
+implementations need host-I/O separation and tests before activation.
+
+Future responsibility-based `core/`, `linux/`, `windows/` and firmware
+adapter boundaries are introduced as they are implemented and qualified;
+they are not evidence that those adapters already exist or run. `kernel/`
+is not a separate alternate format engine. One family source can produce
+three separately installable FAT12/FAT16/FAT32 modules, but only FAT16's
+experimental selector currently exists in the 41-format catalogue.
+
 
 ## Canonical ownership
 

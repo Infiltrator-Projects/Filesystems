@@ -12,19 +12,25 @@ The baseline Linux distribution is **Debian stable**. As of September 2026 that 
 
 ## Actual copied filesystem implementations
 
-The 41-format catalogue is distinct from the source inventory. **The original
-Linux implementation code for 26 additional formats is checked in under
-`native/filesystems/<id>/linux/` as editable working source**, including NTFS
-recovered from the historical NTFS3 source tree. These are not frozen references
-and an automated upstream refresh is not permitted to overwrite modifications.
+The **41-format catalogue** is distinct from the implementation inventories.
+**13** format identities have managed native Linux modules listed in
+`data/native-filesystems.tsv`; **22 additional** Linux implementation source
+trees are preserved for direct modification under
+`native/filesystems/<id>/linux/` and listed in
+`data/imported-source-filesystems.txt`. The NTFS3 source belongs to the
+managed **NTFS** identity and is not an extra catalogue/provider row.
+Two more formats have editable original userspace baselines (CP/M, Fosfat).
+Thus **37 of 41** catalogue formats have implementation source in this
+repository. Four baselines are not present here: separately owned
+InfiltratorFS, VMFS3/VMFS5, VMFS6 and ZFS.
 
-The existing nine individually managed native modules remain governed by
-`data/native-filesystems.tsv`; simply having original code does not qualify a
-module for installation. See
-[`docs/SOURCE_BASELINE_STATUS.md`](docs/SOURCE_BASELINE_STATUS.md) for the
-seven formats whose complete source baselines are still absent from this
-repository. Neither design documents nor Debian provider names are counted as
-copied implementation source.
+The copied source is **working, editable code**, not a frozen reference cache;
+original authorship and licences persist unless implementation is genuinely
+replaced. Source existence by itself does not qualify a native `.ko`, an
+application-facing `.so`, an EFI reader or bootable root support. See
+[`docs/SOURCE_BASELINE_STATUS.md`](docs/SOURCE_BASELINE_STATUS.md) and
+[`native/filesystems/README.md`](native/filesystems/README.md).
+No automatic source refresh may overwrite local modifications.
 
 ## Product scope
 
@@ -63,7 +69,7 @@ defragmentation primitives are to be consolidated from the existing Filesystems,
 Defragmenter and Test Media implementations **without dropping behaviour**.
 Defragmenter retains its generic safety, placement and transaction authority.
 
-This is **a design target, not implemented drop-in support**. Ordinary Linux
+The FAT16 and OFS experimental selector/install paths are implemented, but the **full multi-consumer, full read/write, format, repair, defrag and Boot architecture remains a design target**. Ordinary Linux
 `.so` files are not kernel drivers or UEFI images. Boot's proposed restricted
 ELF loader must first be engineered and qualified; its initial reader must be
 reachable before the root filesystem can be read. Existing Linux `.ko` and
@@ -140,15 +146,24 @@ Dropping a precompiled, compatible `FAT16.so` into that directory is
 an alternative. The module does not install `dosfstools`, touch FAT12/FAT32,
 call `modprobe`, replace any kernel filesystem driver or write to an ESP.
 
-The present ABI is **read-only and limited**: geometry/BPB classification,
-8.3 root-directory file enumeration, FAT16 cluster-chain reads and root-file
-fragmentation counting. It is qualified against disposable synthetic media,
-not yet integrated into Defragmenter's mutation engine, Linux VFS mounts,
-VFAT long-name traversal or Boot's future freestanding ELF loader. No
-formatting, writable FAT16 support or defragmentation claim is made yet.
-The module source is under
-`native/filesystems/fat/module/`. A compiler and binutils must already be
-present; Filesystems will **not** install them automatically.
+**Released v0.5.86:** `FAT16.so` exposes a limited, read-only v1 API:
+BPB/geometry classification, 8.3 root-directory files, FAT16 cluster-chain
+reads and root-file fragment counting. The selector's **Ready** state verifies
+module presence/structure; it does not certify read/write/mount correctness.
+
+**Unreleased v0.5.87 consolidation in PR #47:** the module source adds an
+additive read-only v2 API for nested-directory enumeration, VFAT long-name
+decoding and file reads. The actual editable Defragmenter FAT engine and Test
+Media FAT creator have been copied under
+`native/filesystems/fat/consolidation/defragmenter/`. The original write,
+format, relocation and recovery implementations are **not yet linked into
+`FAT16.so` or qualified there**. An `.so` is not a Linux VFS mount, kernel
+`.ko` or Boot EFI filesystem reader. No general-purpose formatting, FAT16
+writes, defragmentation or physical-media release qualification is claimed.
+
+The module sources are under `native/filesystems/fat/module/`. The
+on-demand compiler and binutils must already be present; the Install action
+does not automatically install development dependencies.
 
 ## Desktop integration ownership
 

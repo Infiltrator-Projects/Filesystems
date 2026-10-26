@@ -1,6 +1,6 @@
 # Classic HFS Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -9,22 +9,15 @@ HFS is the classic Macintosh Hierarchical File System. It is a conventional
 local block filesystem and therefore belongs in the canonical-engine
 architecture.
 
-## Current state
+## Current implementation state
 
-HFS is currently **imported-source development state**. The pinned upstream Linux HFS
-source under `linux/` is preserved as compatibility evidence and is
-not project-authored Filesystems code.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied Linux implementation provides classic HFS volume/catalogue/extent reading.
 
-## Target layout
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-```text
-native/filesystems/hfs/
-  DESIGN.md
-  core/                 canonical HFS format/filesystem semantics
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows IFS/WDK adapter when implemented
-  linux/      pinned upstream Linux evidence
-```
+## Target integration
+
+Retain the editable `linux/` source and its original provenance. Separate filesystem-defined semantics into one canonical core as cross-platform consumers are implemented, without discarding existing functional behaviour. A Linux `.ko`, Windows `.sys`, EFI reader and drop-in application `.so` have distinct ABI/build/qualification contracts. 
 
 ## Canonical ownership
 
@@ -37,6 +30,9 @@ Linux VFS objects, page/buffer APIs, mount/module lifetime and native permission
 presentation remain adapter concerns.
 
 ## File-boundary rule
+
+The original files may be edited directly. Changing a filename or translating a body does not by itself change authorship; only actual independent replacement qualifies as project-authored source. Keep working functionality and attribution while moving any genuinely shared format rules to a canonical engine.
+
 
 Upstream `btree.c`, `catalog.c`, `extent.c`, `inode.c`, `super.c` and
 related files retain their original names only in `linux/`.

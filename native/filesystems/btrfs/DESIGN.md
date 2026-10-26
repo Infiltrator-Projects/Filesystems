@@ -1,6 +1,6 @@
 # Btrfs Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** The original Linux implementation in `linux/` is editable development source with its original licence, copyright and provenance. Earlier frozen-reference and rewrite-before-edit instructions are superseded by [the source ownership policy](../README.md). Direct code modifications are permitted; a qualified native driver and an independently project-authored rewrite are separate achievements.
 
 
 ## Classification
@@ -9,37 +9,19 @@ Btrfs is a conventional local copy-on-write filesystem with checksums,
 snapshots/subvolumes and multi-device capabilities. It belongs in the normal
 canonical-engine architecture.
 
-## Current state
+## Current implementation state
 
-Btrfs is currently **imported-source development state**. The source under
-`linux/` is the pinned upstream Linux implementation and is not
-project-authored Filesystems code.
+**Editable upstream implementation; not a managed Filesystems native driver.** The actual source is in `linux/` and may be modified directly. The copied Linux implementation includes chunk/device mapping, B-trees, COW transactions and snapshot/subvolume mechanisms.
 
-The reference tree is intentionally preserved with upstream filenames,
-licences, copyright and subsystem boundaries.
+This format is not listed in `data/native-filesystems.tsv`. Neither project-native installation, independently authored provenance, Windows/EFI drivers, nor InfiltratorOS root support follows from the copied source. Its original copyright and licence remain attached to any derivative. Promotion to a supported access path requires reproducible builds, independent interoperability and corruption tests, and runtime qualification of the exact capabilities advertised.
 
-## Current directory contract
+## Source layout and deployment boundary
 
-While Btrfs remains in imported-source development state, the filesystem root contains only
-`DESIGN.md` and `linux/`; the copied Linux tree remains under
-`linux/` with upstream filenames and boundaries intact. The future
-`core/`, `linux/` and `windows/` directories are created only when an
-independent rewrite actually begins. `kernel/` and `userspace/` are not valid
-shortcuts around that promotion boundary.
+The checked-in baseline is `native/filesystems/btrfs/linux/` beside this `DESIGN.md` (not `reference/linux/`). This is actual implementation source for direct modification, not a temporary cache or a guarantee that its unmodified out-of-tree build works. A future `core/` may hold host-neutral filesystem rules extracted from this source, while the existing `linux/` tree becomes or supplies the Linux adapter; a `windows/` adapter is added only when implemented. No invented `kernel/` or second active on-disk parser is necessary. Format-specific host-integration and cross-platform extraction must be validated before claiming those capabilities.
 
-CI enforces this present-state layout and rejects accidental linkage of the
-reference tree into the production CMake graph.
+## Target integration
 
-## Target layout
-
-```text
-native/filesystems/btrfs/
-  DESIGN.md
-  core/                 canonical Btrfs filesystem semantics
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows IFS/WDK adapter when implemented
-  linux/      pinned upstream Linux evidence
-```
+Retain the editable `linux/` source and its original provenance. Separate filesystem-defined semantics into one canonical core as cross-platform consumers are implemented, without discarding existing functional behaviour. A Linux `.ko`, Windows `.sys`, EFI reader and drop-in application `.so` have distinct ABI/build/qualification contracts. 
 
 ## Canonical ownership
 
@@ -54,14 +36,17 @@ lifetime remain Linux-adapter concerns.
 
 ## File-boundary rule
 
+The original files may be edited directly. Changing a filename or translating a body does not by itself change authorship; only actual independent replacement qualifies as project-authored source. Keep working functionality and attribution while moving any genuinely shared format rules to a canonical engine.
+
+
 Upstream files such as `ctree.c`, `inode.c`, `extent-tree.c`,
-`tree-log.c`, `volumes.c` and related headers remain reference filenames.
-Project-authored files must be cut around Filesystems ownership and
+`tree-log.c`, `volumes.c` and related headers remain inherited source filenames until responsibility-based refactoring is justified.
+Project-authored files should be organised around Filesystems ownership and
 portable invariants rather than copied/renamed from Linux.
 
 ## Promotion sequence
 
-The rewrite begins with bounded format/feature decoding and read-only tree,
+The next integration and qualification phase begins with bounded format/feature decoding and read-only tree,
 chunk/device and extent traversal, qualified against independent images and
 malformed-media cases. Mutation, snapshots/subvolumes, multi-device writes and
 repair require separate durability/recovery qualification before they can be

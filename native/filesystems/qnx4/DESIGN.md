@@ -1,6 +1,6 @@
 # QNX4 Filesystem Design and Ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+> **Working-source and qualification status (26 October 2026).** Actual Linux implementation code lives in `linux/` and is directly editable with original attribution retained. Older frozen-reference or mandatory rewrite-before-edit wording is historical. Direct modification does not establish independent authorship or qualify a filesystem driver. See [the source policy](../README.md).
 
 
 ## Classification
@@ -24,40 +24,13 @@ platform adapters.
 
 ## Current implementation state
 
-QNX4 is currently **imported-source development state**.
+**Editable imported implementation; native deployment not yet qualified.** `native/filesystems/qnx4/linux/` contains actual Linux filesystem implementation source, which can be developed directly. The copied Linux QNX4 code includes bitmap, inode, directory and namespace interpretation.
 
-There is no project-authored canonical QNX4 engine and no Filesystems
-QNX4 native driver claimed by this directory. The source under
-`linux/` is the pinned upstream Linux QNX4 implementation copied by
-`.github/workflows/import-linux-filesystems.yml`.
+The original source is not automatically a project-authored implementation. This format is not registered in the 13-member `data/native-filesystems.tsv` deployment manifest. Project-native Linux `.ko`, Windows/EFI support, writing and InfiltratorOS root suitability each require their own applicable integration and independent tests. Existing copyrights and source licences remain intact.
 
-Those files retain their upstream SPDX/licence/copyright notices, filenames and
-translation-unit boundaries. They are reference evidence, not project-authored
-production code.
+## Current source directory and integration boundary
 
-The former top-level `kernel/` staging path was misleading because it made
-unchanged upstream Linux source look like a Filesystems native module.
-The imported blobs are therefore kept behind the explicit reference boundary.
-
-## Current directory layout
-
-```text
-native/filesystems/qnx4/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux QNX4 source, reference only
-```
-
-When an independent implementation begins:
-
-```text
-native/filesystems/qnx4/
-  DESIGN.md
-  core/                  canonical QNX4 format/filesystem implementation
-  linux/                 thin Linux VFS/module adapter
-  windows/               thin Windows IFS/WDK adapter when implemented
-  linux/       preserved upstream evidence
-```
+The actual source layout is `native/filesystems/qnx4/DESIGN.md` alongside `native/filesystems/qnx4/linux/`; there is **no `reference/linux/` source tree**. The original `linux/` source is editable implementation code, not a temporary or replaceable research cache. Optional `core/`, `windows/`, `efi/` and other host adapters are created as their real implementation and qualification require, not as a prerequisite for editing existing source. A build must not advertise support it has not passed independent media/runtime tests.
 
 ## Canonical ownership
 
@@ -78,6 +51,9 @@ format semantics.
 
 ## File-boundary rule
 
+Editing the copied implementation directly is permitted. Preserve source attribution; renaming or reshaping an imported file does not make it independently project-authored.
+
+
 Upstream files such as `bitmap.c`, `dir.c`, `inode.c`, `namei.c` and
 `qnx4.h` remain unchanged below `linux/`.
 
@@ -87,6 +63,9 @@ those Linux files. Moving or recommenting imported source is never evidence of
 an independent rewrite.
 
 ## Promotion sequence
+
+The following engineering and qualification milestones apply without banning direct modifications to the existing original source. A project-authored rewrite, if pursued, is a separate provenance milestone and must be evidenced by genuine implementation replacement.
+
 
 1. document the supported QNX4 format variants and geometry;
 2. implement bounded host-neutral superblock/inode/directory/allocation parsing;
@@ -112,6 +91,6 @@ The editable `linux/` source contains original implementation code copied from t
 
 ## Completion rule
 
-The current tree is reference evidence only. QNX4 becomes a Filesystems
+The current tree is editable original source, not yet independently qualified for project-native deployment. QNX4 becomes a Filesystems
 first-party implementation only when its canonical engine and applicable
 platform adapter have independent implementation and qualification evidence.

@@ -6,6 +6,10 @@ The catalogue is intentionally **format-centric** and contains **41 persistent l
 
 **Baseline:** Debian stable (Debian 13 “trixie” when this matrix was updated)  
 **Catalogue entries:** 41  
+**Branch status:** The experimental FAT16 v2 directory/LFN extension documented
+here belongs to unreleased PR #47 / v0.5.87 development, not installed
+v0.5.86. The FAT12 and FAT32 standalone modules remain target identities,
+not additional selectable catalogue rows.
 **Code source of truth:** `src/catalog.cpp`  
 **Documentation invariant:** CI verifies that every compiled catalogue ID has exactly one unique `support-<id>` row anchor in this matrix.
 
@@ -45,7 +49,7 @@ The desktop manager may expose formats whose current provider is read-only or to
 | 28 | <a id="support-sysv"></a>`sysv` | System V / Xenix / Coherent FS | Unix / Legacy | Variant / kernel dependent | Kernel | `sysv` | — | Historical System V-derived disk format family. |
 | 29 | <a id="support-ufs"></a>`ufs` | UFS / BSD FFS | Unix / BSD | Variant / kernel dependent | Kernel | `ufs` | — | UFS family used by BSD, Sun and other Unix systems; current Linux write support varies by variant. |
 | 30 | <a id="support-omfs"></a>`omfs` | OMFS | Embedded / Legacy | Variant / kernel dependent | Kernel | `omfs` | — | Optimized MPEG File System disk format used by some embedded media devices. |
-| 31 | <a id="support-fat16"></a>`fat16` | FAT16 | Microsoft / DOS | Read-only (experimental module) | Standalone drop-in `FAT16.so` | — | — | **Install FAT16** compiles only `FAT16.so` into `/System/Filesystems/`. FAT16 BPB/geometry, 8.3 root files, read-only file contents and root-file fragment counts are implemented. FAT12/FAT32, VFAT long names, nested directories, formatting, writing, defrag relocation and Boot ELF loading are NOT enabled by this module. |
+| 31 | <a id="support-fat16"></a>`fat16` | FAT16 | Microsoft / DOS | Read-only (experimental module, v2 directory/LFN extension) | Standalone drop-in `FAT16.so` | — | — | **Install FAT16** compiles only `FAT16.so` into `/System/Filesystems/`. FAT16 BPB/geometry, 8.3 root files, read-only file contents and root-file fragment counts are implemented in ABI v1. ABI v2 additionally enumerates nested directories and decodes validated VFAT long filenames; remaining full FAT semantics and physical-media qualification are pending. FAT12/FAT32, formatting, writing, defrag relocation, mounted VFS and Boot ELF loading are NOT enabled by this module. |
 | 32 | <a id="support-exfat"></a>`exfat` | exFAT | Microsoft | Read / write | Project-native kernel | `exfat` | — | Original Linux exFAT kernel implementation is managed as `exfat.ko` after independent Linux 6.12 QEMU write/remount and offline filesystem-check qualification. Formatter/repair and EFI/root support are separate capabilities. |
 | 33 | <a id="support-ntfs"></a>`ntfs` | NTFS | Microsoft | Read / write | Project-native kernel | `ntfs3` | — | Original Linux NTFS3 source built as a native `ntfs3.ko`; independent Linux 6.12 QEMU write/remount and `ntfscat` cross-check passed. The catalogue remains one NTFS format identity. EFI/root qualification remains separate. |
 | 34 | <a id="support-hfs"></a>`hfs` | Apple HFS | Apple / Classic Mac | Variant / kernel dependent | Kernel + userspace | `hfs` | `hfsprogs` | Classic Macintosh HFS disk format. |
