@@ -92,9 +92,9 @@ const std::vector<FilesystemIdentity>& filesystem_identities()
         {"omfs", "OMFS", "Embedded / Legacy",
          "Optimized MPEG File System local disk format used by some embedded media devices.", ""},
 
-        {"fat", "FAT12 / FAT16 / FAT32", "Microsoft / DOS",
-         "Classic DOS and Windows FAT disk filesystems.",
-         "FAT is one format-family entry; fusefat is only an alternative provider and is not separately catalogued."},
+        {"fat16", "FAT16", "Microsoft / DOS",
+         "Classic FAT16 on-disk filesystem. Build one independent FAT16.so module.",
+         "Experimental module: read-only FAT16 probing, 8.3 root-directory file reads and root-file fragmentation counting. No formatter or relocating defrag yet."},
         {"exfat", "exFAT", "Microsoft",
          "Microsoft removable/local-storage filesystem.",
          "exFAT is represented once; exfat-fuse is not a second filesystem entry."},
