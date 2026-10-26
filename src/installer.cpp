@@ -597,6 +597,22 @@ void manage_fat16_module_async(const bool remove,
         std::move(completion));
 }
 
+void manage_ofs_module_async(const bool remove,
+                             ActionCompletion completion)
+{
+    constexpr const char* helper = "/usr/lib/filesystems/ofs-module-helper";
+    if (!executable_file(helper)) {
+        completion(false, "The OFS module compiler helper is not installed.");
+        return;
+    }
+    // Only the OFS.so module is built/removed. No .ko, EFI, APT, or disk writes.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "OFS.so removed." :
+                 "OFS.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void load_module_async(const std::string& module,
                        ActionCompletion completion)
 {
