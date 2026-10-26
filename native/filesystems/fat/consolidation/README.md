@@ -7,6 +7,12 @@ authoritative FAT family implementation.
 
 * fat_volume.c/.h: FAT12/16/32 geometry, FAT table reads and mutations.
 * fat_directory.c/.h: recursive directory catalogue, VFAT LFN decoding.
+* fat_analysis.c/.h: fragmentation and allocation-map analysis.
+* fat_io.c/.h: buffered relocation I/O interface.
+* fat_journal.c/.h: durable transaction journal support.
+* fat_relayout.c/.h: placement/relayout planning.
+* fat_relocation.c/.h: relocation mechanics and recovery.
+* writer.c: existing integrated FAT12/16/32 Defragmenter worker.
 * test_media_raw_fat.c: bounded FAT12/16/32 fixture format and verifier.
 
 These original files deliberately remain **uncompiled** by FAT16.so for now:
