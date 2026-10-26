@@ -11,7 +11,9 @@ The native location is **`/System/Filesystems/`**, with **one regular file per f
     infiltratorfs.so
     ofs.so
     ffs.so
-    fat.so
+    FAT12.so
+    FAT16.so
+    FAT32.so
     exfat.so
     ext4.so
     ntfs.so
@@ -22,7 +24,7 @@ An ordinary user places `ffs.so` in that directory. After the file has finished 
 
 **Presence is not execution permission or proof of support.** An untrusted or malformed binary is never executed merely because it has an `.so` suffix. A module can be listed as present but incompatible, untrusted or unqualified, with a clear diagnostic. A module must not gain privileged disk-write, kernel-load, or firmware-execution authority solely through drag and drop.
 
-The installed folder is a **capability source**, not the same thing as kernel registration. FAT12, FAT16 and FAT32 are one `fat.so` format family; exFAT is `exfat.so`. Amiga OFS (`DOS\0`) and Amiga FFS (`DOS\1`) are distinct identities and must never masquerade as one another. InfiltratorFS is one identity with one module; its format is owned by its separate repository.
+The installed folder is a **capability source**, not the same thing as kernel registration. **FAT12, FAT16 and FAT32 are independently selectable, independently installable files: `FAT12.so`, `FAT16.so`, and `FAT32.so`.** They may be grouped as the classic FAT *source-code family*, but there is no combined `fat.so` installation. Clicking **Install FAT12** puts **only** `FAT12.so` in `/System/Filesystems/`: no FAT16 or FAT32 file, registration, runtime dependency or automatic installation. Each binary contains all shared format code it needs. `exfat.so` is a separate format. Amiga OFS (`DOS\0`) and Amiga FFS (`DOS\1`) are distinct identities and must never masquerade as one another. InfiltratorFS is one identity with one module; its format is owned by its separate repository.
 
 ## One authoritative implementation; several consumers
 
@@ -78,7 +80,7 @@ There is material duplicate format logic today:
 
 Test Media may use the module's format/create/populate API, but independent fixtures and verifiers must be retained as **external correctness oracles**; never accept a writer's own checksum as the sole proof that its output is correct. Any destructive operation still requires a confirmed sacrificial target and a stable target identity.
 
-The first migration candidates are **FAT12/16/32 (one `fat.so`), exFAT (`exfat.so`), OFS (`ofs.so`), and then FFS DOS1 (`ffs.so`)**. The AFFS worker's OFS/FFS distinction must survive splitting into separate format identities. The existing working InfiltratorFS filesystem, module, EFI boot path and physical partition **must not be modified as the test platform** for the new plugin architecture; integrate it only after equivalence tests on disposable images and separate qualification.
+The first migration candidates are **three independently installable modules `FAT12.so`, `FAT16.so`, `FAT32.so`**, built from shared FAT source with independently verified 12-, 16- and 32-bit format rules; followed by exFAT (`exfat.so`), OFS (`ofs.so`), and FFS DOS1 (`ffs.so`). FAT16 is the easiest first engineering proof; that build order must not cause FAT12 or FAT32 to be installed. The AFFS worker's OFS/FFS distinction must survive splitting into separate format identities. The existing working InfiltratorFS filesystem, module, EFI boot path and physical partition **must not be modified as the test platform** for the new plugin architecture; integrate it only after equivalence tests on disposable images and separate qualification.
 
 Do not delete existing format writers, fixers, tests or working native modules until the replacement covers their documented functionality and independent runtime evidence. One canonical source does not mean accepting a regression or dropping a feature.
 
@@ -98,7 +100,7 @@ Do not delete existing format writers, fixers, tests or working native modules u
 
 **Gate 1 — stable module ABI:** document the C ABI, ELF subset, self-description, trust model, host I/O, version negotiation and capability flags. Build a userspace discovery harness and prove that one dropped file is enough for application discovery without an installer.
 
-**Gate 2 — FAT proof:** implement `fat.so`, test detection, reads, writes (where qualified), FAT12/16/32 edge cases, create/verify and defragmentation on disposable images. Prove that Defragmenter and Test Media use it without losing independent verification.
+**Gate 2 — FAT16 proof:** implement self-contained `FAT16.so` first, test detection, reads, writes (where qualified), create/verify and defragmentation on disposable FAT16 images. Prove that Defragmenter and Test Media use it without losing independent verification. Then build and separately qualify `FAT12.so` and `FAT32.so` from the shared FAT source. Test that installing or removing FAT12 affects *only* `FAT12.so`, never FAT16 or FAT32. Ensure filesystem discovery and the Filesystems **Install FAT12** action select the exact module file, not a family aggregate.
 
 **Gate 3 — exFAT and Amiga:** qualify `exfat.so`, `ofs.so` and `ffs.so` independently, including DOS variant and short-name behaviour and recovery. Preserve existing working independent Linux drivers.
 
