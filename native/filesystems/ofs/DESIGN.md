@@ -11,3 +11,18 @@ There must be one OFS engine only. No FUSE, vendored, reference, compatibility, 
 OFS is separate from FFS and SFS. Shared AmigaDOS format concepts do not imply a shared filesystem engine.
 
 Qualification requires supported-target builds, destructive read/write verification, independently created test media, and source review confirming that the active implementation is project-authored code.
+
+## Standalone OFS.so adapter (experimental, read-only)
+
+`module/ofs_module.c` exports the same standalone, versioned entry point
+as the experimental FAT16 drop-in, and compiles the **existing**
+`efi/reader.c` with `core/ofs_core.c` and `core/ofs_primitives.c` into
+one `OFS.so`. This is reuse of format code, **not a replacement for**
+`ofs.ko` or `OFS_x64.efi`. The Linux and UEFI drivers, along with their
+separate build and release qualification, remain in this repository.
+
+At present this .so exports only read-only 512-byte DOS0/DOS2/DOS4
+detection, directory traversal, and file access. Larger-block OFS,
+formatting, writable operations, defragmentation/recovery and direct
+Boot ELF-module execution are **not** claimed by the .so. See the
+[drop-in contract](../../../docs/DROP_IN_FILESYSTEM_MODULES.md).
