@@ -9,10 +9,11 @@ if [[ "${GITHUB_ACTIONS:-}" != true ||
     exit 1
 fi
 
-helper=/usr/lib/filesystems/ofs-module-helper
-source_dir=/usr/lib/filesystems/ofs-source
+app_dir=/Programs/Filesystems
+helper="$app_dir/Helpers/ofs-module-helper"
+source_dir="$app_dir/Sources/ofs"
 module=/System/Filesystems/OFS.so
-[[ ! -e "$helper" && ! -e "$module" ]] ||
+[[ ! -e "$helper" && ! -e "$module" && ! -d "$app_dir" ]] ||
   { echo "Pre-existing OFS test path; refusing replacement" >&2; exit 1; }
 
 cleanup() {
@@ -23,10 +24,11 @@ cleanup() {
         sudo rmdir "$source_dir/$part" >/dev/null 2>&1 || :
     done
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
+    sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
 }
 trap cleanup EXIT
 
-sudo install -d -m 0755 "$source_dir/module" "$source_dir/core" "$source_dir/efi"
+sudo install -d -m 0755 "$app_dir/Helpers" "$source_dir/module" "$source_dir/core" "$source_dir/efi"
 for type in module core efi; do
     case "$type" in
         module) names=(ofs_module.c ofs_module.h) ;;
