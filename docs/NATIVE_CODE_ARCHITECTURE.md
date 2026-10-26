@@ -68,6 +68,30 @@ The EFI adapter owns the small UEFI filesystem-reader surface required by the bo
 
 A Linux `.ko` is not an EFI driver and a Windows `.sys` is not a Linux driver. The adapters are different binaries with different host contracts; the filesystem semantics beneath them remain one authority.
 
+## Drop-in filesystem module target
+
+The installed application-facing interface is intended to be **one
+self-describing file per filesystem identity**, placed directly in
+`/System/Filesystems/`, discovered without a package-manager install,
+sidecar manifest, manually curated filename list or per-format subdirectory.
+A compatible module exposes a versioned C ABI and independently qualified
+detect, read, write, create, analyse, relocate, verify and recovery capabilities.
+Defragmenter and Test Media are consumers of the *same format semantics*,
+not alternative owners of duplicated format parsers. Defragmenter retains
+general safety, staging, transaction and privileged write policy.
+
+Boot's longer-term extension may use a purpose-built loader for a restricted,
+freestanding ELF `.so` profile, with read-only host callbacks. That does not
+mean UEFI can directly load ordinary Linux shared objects; an exact binary
+ABI, trustworthy pre-root/ESP staging, and successful dual-environment tests
+are prerequisites. Existing independent `.efi` firmware readers and Linux
+`.ko` modules are **not removed by this design document**. The application
+plugin is neither a Linux VFS adapter nor a substitute for a kernel root
+driver. Preserve the working InfiltratorFS deployment during migration.
+
+See [Drop-in Filesystem Modules](DROP_IN_FILESYSTEM_MODULES.md) for the
+authoritative product contract, deduplication inventory and phased gates.
+
 ## Source layout direction
 
 The target layout is responsibility-based:
