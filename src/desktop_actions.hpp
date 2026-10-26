@@ -31,6 +31,8 @@ enum class DesktopActionKind {
     RemovePackages,
     InstallNativeModule,
     RemoveNativeModule,
+    InstallDropIn,
+    RemoveDropIn,
     LoadModule,
     UnloadModule
 };
