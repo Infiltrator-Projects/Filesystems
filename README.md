@@ -149,6 +149,32 @@ Linux/bash/compiler prerequisites; a future *native* InfiltratorOS build
 backend needs its own qualified compiler/runtime implementation. This path
 correction does **not** claim Linux integrations are portable kernel drivers.
 
+## Installation namespaces and the Linux-only exception
+
+The native InfiltratorOS Filesystems application lives in
+`/Programs/Filesystems/`, including its executable, compiler helpers,
+`Sources/`, and `Resources/EFI/`. The four current selectable drop-ins
+(FAT12/FAT16/FAT32/OFS) **always** install exactly one compiled module directly
+under `/System/Filesystems/`, or accept that same module dropped manually.
+Their compiler helpers find packaged source relative to their own installed
+application location. Neither a source tree nor the compiler helper for a
+selected `.so` is installed under `/usr/lib/filesystems/`.
+
+**Mint/Debian compatibility exception:** the current Debian package also
+retains a limited `/usr/lib/filesystems/` tree for Linux-specific kernel
+module transactions and their Linux VFS source, manifest and removal guard.
+Those objects are needed for the *existing Linux host integration*; they are
+not part of the native Filesystems application layout and must not be
+installed into a native InfiltratorOS image. The distro-specific
+`/usr/bin/filesystems` file is only a launcher for
+`/Programs/Filesystems/Filesystems`. The Linux-only helpers must never be
+used as a runtime dependency by `FAT16.so` or `OFS.so`.
+
+This rule is checked in the source-architecture regression suite. Actual
+kernel `.ko` and EFI `.efi` compilation/deployment remain independently
+qualified operations: clicking **Install FAT16** or **Install OFS** is not
+permission to mutate a kernel, EFI partition or boot configuration.
+
 ## OFS standalone module without losing kernel or EFI outputs
 
 OFS now has a **parallel** read-only `OFS.so` drop-in adapter assembled
