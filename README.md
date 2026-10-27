@@ -43,7 +43,7 @@ The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`]
 Every currently built standalone filesystem .so carries a non-executed
 `.ifsmeta` format identifier. The installed selector checks this ELF
 metadata against the expected filesystem identity **before** reporting
-the file as installed, preventing FAT12.so, FAT16.so, FAT32.so, OFS.so or EXT2.so
+the file as installed, preventing FAT12.so, FAT16.so, FAT32.so, OFS.so, EXT2.so or BFS.so
 from being accepted merely because another binary was renamed. This is
 a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
@@ -78,10 +78,27 @@ synthetic-disk qualification do not establish production write safety on
 physical media.
 
 The four original modules remain read-only; EXT2 is the fifth module build
-target. Format-specific module operation tables still differ. A unified,
+target and SCO BFS is the sixth. Format-specific module operation tables still differ. A unified,
 portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
+
+## Current SCO BFS.so implementation (restricted in-place writes)
+
+`BFS.so` is an independent freestanding module for **SCO UnixWare Boot File
+System**, not BeOS BeFS. It uses repository-owned BFS on-disk semantics
+to enumerate the root directory, look up case-sensitive names, read
+contiguous file extents, and overwrite allocated bytes of existing files.
+The helper builds the one file into `/System/Filesystems/BFS.so` from
+`/Programs/Filesystems/Sources/bfs/`. This source target has a
+compiler/helper path but no GTK Install/Remove button yet.
+
+BFS writes require explicit host write and flush callbacks and refuse
+interrupted relocation markers. CI tests both synthetic images and independently
+formatted `mkfs.bfs` images; physical-device writes, metadata allocation,
+create/rename/delete, resize, formatter, repair and defragmentation are
+**not qualified**. As with EXT2, a real shared dispatcher for other
+InfiltratorOS applications remains unfinished.
 
 ## Current FAT32.so implementation
 
@@ -173,8 +190,9 @@ correction does **not** claim Linux integrations are portable kernel drivers.
 
 The native InfiltratorOS Filesystems application lives in
 `/Programs/Filesystems/`, including its executable, compiler helpers,
-`Sources/`, and `Resources/EFI/`. The five current selectable drop-ins
-(FAT12/FAT16/FAT32/OFS/EXT2) **always** install exactly one compiled module directly
+`Sources/`, and `Resources/EFI/`. The five current graphical selectors
+(FAT12/FAT16/FAT32/OFS/EXT2) and the sixth independently buildable
+BFS drop-in **always** install exactly one compiled module directly
 under `/System/Filesystems/`, or accept that same module dropped manually.
 Their compiler helpers find packaged source relative to their own installed
 application location. Neither a source tree nor the compiler helper for a
