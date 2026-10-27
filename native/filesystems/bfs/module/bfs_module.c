@@ -53,19 +53,24 @@ static int mount_volume(IfsBfsVolume *v, const IfsBfsIo *io)
     end = le32(b + 8);
     from = le32(b + 12);
     to = le32(b + 16);
+    /* mkfs.bfs stores the byte offset immediately after its inode table.
+     * The inode count need not be a multiple of 8; the data blocks begin
+     * at the next 512-byte boundary. Do not reject legitimate media.
+     */
     if (start < BFS_INODE_START + BFS_INODE_BYTES ||
-        start % BFS_INODE_BYTES != 0u ||
-        start % BFS_SUPER_BYTES != 0u ||
+        (start - BFS_INODE_START) % BFS_INODE_BYTES != 0u ||
         end < start || (uint64_t)end >= io->device_bytes)
         return -1;
     blocks = ((uint64_t)end + 1u) / BFS_SUPER_BYTES;
     if (((uint64_t)end + 1u) % BFS_SUPER_BYTES ||
         blocks < 3u || blocks > UINT32_MAX ||
-        (start / BFS_SUPER_BYTES) >= blocks)
+        ((uint64_t)start + BFS_SUPER_BYTES - 1u) /
+            BFS_SUPER_BYTES >= blocks)
         return -1;
     v->io = *io;
     v->volume_bytes = (uint64_t)end + 1u;
-    v->data_start_block = start / BFS_SUPER_BYTES;
+    v->data_start_block = (start / BFS_SUPER_BYTES) +
+                          ((start % BFS_SUPER_BYTES) != 0u);
     v->total_blocks = (uint32_t)blocks;
     v->max_inode = (start - BFS_INODE_START) / BFS_INODE_BYTES +
                    IFS_BFS_ROOT_INODE - 1u;
