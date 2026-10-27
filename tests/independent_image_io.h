@@ -40,6 +40,8 @@ static int disk_write(void *p,uint64_t off,const void *buf,uint32_t len) {
  return 0;
 }
 static int disk_flush(void *p) {TestDisk *d=(TestDisk*)p;
- if(!d||d->fd<0||fsync(d->fd)!=0)return -1;++d->flushes;return 0;
+ if (!d || d->fd < 0 || fsync(d->fd) != 0) return -1;
+ ++d->flushes;
+ return 0;
 }
 #endif
