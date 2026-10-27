@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.91 — 2026-10-27
+
+- Add dedicated rapid CI compiling and testing actual OFS.so, FAT12.so, FAT16.so and FAT32.so artifacts independently from lengthy Linux kernel and EFI build pipelines.
+- Validate strict C compilation, real read-only filesystem regression fixtures, ELF shared-object entry points, zero runtime library dependencies and on-demand compiler helper shell integrity.
+
+
 ## 0.5.90 — 2026-10-27
 
 - Expose independent FAT12 and FAT32 Install/Remove controls alongside FAT16 in the existing classic FAT catalogue row, without adding duplicate filesystem catalogue identities.

@@ -1,0 +1,59 @@
+name: Independent freestanding filesystem shared objects
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/dropin-modules.yml"
+      - "native/filesystems/fat/module/**"
+      - "native/filesystems/ofs/module/**"
+      - "native/filesystems/ofs/efi/**"
+      - "native/filesystems/ofs/core/**"
+      - "tests/fat*_module_test.c"
+      - "tests/ofs_dropin_module_test.c"
+      - "packaging/linux/*module-helper.sh"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-dropins:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact original and project source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Compile and exercise four independent filesystem readers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ifs-dropins
+          flags="-std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror"
+          moduleflags="-fPIC -fno-builtin -fno-stack-protector -ffreestanding -fvisibility=hidden -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now"
+          for width in 12 16 32; do
+            src=native/filesystems/fat/module
+            cc $flags $moduleflags -I "$src" "$src/fat$width_module.c" -o "/tmp/ifs-dropins/FAT$width.so"
+            cc $flags -I "$src" "tests/fat$width_module_test.c" "$src/fat$width_module.c" -o "/tmp/ifs-dropins/fat$width-test"
+            "/tmp/ifs-dropins/fat$width-test"
+          done
+          src=native/filesystems/ofs
+          cc $flags $moduleflags -I "$src/module" -I "$src/core" -I "$src/efi" "$src/module/ofs_module.c" "$src/efi/reader.c" "$src/core/ofs_core.c" "$src/core/ofs_primitives.c" -o /tmp/ifs-dropins/OFS.so
+          cc $flags -I "$src/module" -I "$src/core" -I "$src/efi" tests/ofs_dropin_module_test.c "$src/module/ofs_module.c" "$src/efi/reader.c" "$src/core/ofs_core.c" "$src/core/ofs_primitives.c" -o /tmp/ifs-dropins/ofs-test
+          /tmp/ifs-dropins/ofs-test
+      - name: Verify ELF isolation and entry points
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fs in FAT12 FAT16 FAT32 OFS; do
+            file="/tmp/ifs-dropins/$fs.so"
+            test -s "$file"
+            readelf -h "$file" | grep -Eq 'Type:.*DYN'
+            readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v1' >/dev/null
+            if readelf -d "$file" | grep -Eq '[(]NEEDED[)]'; then
+              echo "Forbidden shared-library dependency: $fs.so" >&2
+              exit 1
+            fi
+          done
+          for helper in fat12 fat16 fat32 ofs; do
+            bash -n "packaging/linux/$helper-module-helper.sh"
+          done
+          sha256sum /tmp/ifs-dropins/*.so
+          echo FOUR-INDEPENDENT-DROPINS-PASSED
