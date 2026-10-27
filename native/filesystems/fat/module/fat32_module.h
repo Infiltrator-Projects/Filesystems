@@ -50,5 +50,33 @@ typedef struct {
     int (*root_file_fragments)(const IfsFat32Io *, const IfsFat32Volume *,
                                const IfsFat32File *, uint32_t *fragments);
 } IfsFat32Module;
+/* Optional V2 extension; V1's read-only binary layout is unchanged.
+ * Adds only bounded, flush-backed overwrites of existing root 8.3 files.
+ */
+#define IFS_FAT32_V2_ABI_VERSION 2u
+#define IFS_FAT32_V2_CAP_OVERWRITE_EXISTING UINT64_C(16)
+typedef int (*IfsFat32WriteAt)(void *context, uint64_t offset,
+                              const void *buffer, uint32_t bytes);
+typedef int (*IfsFat32Flush)(void *context);
+typedef struct {
+    IfsFat32Io read;
+    IfsFat32WriteAt write_at;
+    IfsFat32Flush flush;
+} IfsFat32WritableIo;
+typedef struct {
+    uint32_t abi_version;
+    uint32_t structure_bytes;
+    const char *format_id;
+    const char *format_name;
+    uint64_t capabilities;
+    const IfsFat32Module *readonly_v1;
+    int (*overwrite_existing)(const IfsFat32WritableIo *,
+                              const IfsFat32Volume *,
+                              const IfsFat32File *,
+                              uint64_t position,
+                              const void *buffer, uint32_t bytes);
+} IfsFat32ModuleV2;
+const IfsFat32ModuleV2 *infiltrator_filesystem_module_v2(void);
+
 const IfsFat32Module *infiltrator_filesystem_module_v1(void);
 #endif
