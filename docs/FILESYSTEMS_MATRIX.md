@@ -16,7 +16,7 @@ The desktop manager may expose formats whose current provider is read-only or to
 | # | ID | Name | Family | Current capability | Current Linux path | Kernel module(s) | Debian/Infiltrator package(s) | Purpose / limitation |
 |---:|---|---|---|---|---|---|---|---|
 | 1 | <a id="support-infiltratorfs"></a>`infiltratorfs` | InfiltratorFS | InfiltratorOS | Read / write | DKMS driver | `infiltratorfs` | `infiltratorfs` | First-class InfiltratorOS root-filesystem target. Linux runtime driver is the native InfiltratorFS VFS/DKMS module; matching EFI reader is a separate boot component. |
-| 2 | <a id="support-ext2"></a>`ext2` | EXT2 | Linux | Read / write | Project-native kernel | `ext2` | — | Independent project-native EXT2 implementation. |
+| 2 | <a id="support-ext2"></a>`ext2` | EXT2 | Linux | Read / write via independently qualified `.ko`; experimental bounded existing-file overwrites in `EXT2.so` | Project-native kernel plus separate `EXT2.so` | `ext2` | — | Standalone `.so` reuses the canonical EXT2 engine with lookup/read and in-place writes of already allocated blocks, requiring clean filesystem, writable bounded host I/O and flush. No create/append/resize/metadata mutation, formatting or full defrag; EFI and root setup independently qualified. |
 | 3 | <a id="support-ext3"></a>`ext3` | EXT3 | Linux | Read / write | Project-native kernel | `ext3` | — | Independent project-native EXT3 implementation; not an EXT2 fallback. |
 | 4 | <a id="support-ext4"></a>`ext4` | EXT4 | Linux | Read / write | Project-native kernel | `ext4` | — | Independent project-native EXT4 implementation. |
 | 5 | <a id="support-xfs"></a>`xfs` | SGI XFS | Unix / Linux | Read / write | Kernel + userspace | `xfs` | `xfsprogs` | High-performance journaling local disk filesystem. |
