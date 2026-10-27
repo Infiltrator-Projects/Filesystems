@@ -260,6 +260,10 @@ static int classic_fat_read_file(const IfsClassicFatIo *io, const IfsClassicFatV
     }
     return 0;
 }
+/* Non-executed format identity, tied to the compiled variant. */
+__attribute__((used,section(".ifsmeta")))
+static const char ifs_module_format_identity[] =
+    "IFS-MODULE:" IFS_CLASSIC_FAT_ID ":1";
 static const IfsClassicFatModule module = {
     IFS_CLASSIC_FAT_ABI_VERSION, sizeof(IfsClassicFatModule),
     IFS_CLASSIC_FAT_ID, IFS_CLASSIC_FAT_NAME,

@@ -38,6 +38,16 @@ Provider choice is subordinate to filesystem identity. NTFS is one filesystem wh
 
 The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`](docs/FILESYSTEMS_MATRIX.md). CI verifies that every compiled catalogue ID appears there exactly once.
 
+## Safe format identity validation
+
+Every currently built standalone filesystem .so carries a non-executed
+`.ifsmeta` format identifier. The installed selector checks this ELF
+metadata against the expected filesystem identity **before** reporting
+the file as installed, preventing FAT12.so, FAT16.so, FAT32.so or OFS.so
+from being accepted merely because another binary was renamed. This is
+a format consistency check, not cryptographic module authentication;
+privileged loading still requires a separately defined trust policy.
+
 ## Current freestanding drop-in implementation
 
 The existing source now builds independent read-only `OFS.so`, `FAT16.so`

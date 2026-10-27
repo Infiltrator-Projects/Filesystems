@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.93 — 2026-10-27
+
+- Embed explicit non-executed per-format ELF metadata into OFS.so, FAT12.so, FAT16.so and FAT32.so, and require format identity during install/status validation.
+- Reject a wrong-format .so renamed under another filesystem identity; add cross-format substitution regression tests on disposable runners.
+- Extend dedicated fast .so CI to validate every compiled ELF format identity without loading the binary.
+
+
 ## 0.5.92 — 2026-10-27
 
 - Correct Bash brace delimiting in the rapid .so CI driver-source paths under set -u, so module build and read-only regression tests execute rather than exiting before compilation.

@@ -53,6 +53,9 @@ static int module_read(const IfsOfsDropInVolume *v,
     return v ? ifs_ofs_efi_read(&v->reader, file, offset, buffer, length,
                                 cursor) : -1;
 }
+/* Non-executed format identity for safe single-file selection. */
+__attribute__((used,section(".ifsmeta")))
+static const char ifs_module_format_identity[] = "IFS-MODULE:ofs:1";
 static const IfsOfsDropInModule module = {
     IFS_OFS_DROPIN_ABI_VERSION,
     sizeof(IfsOfsDropInModule),

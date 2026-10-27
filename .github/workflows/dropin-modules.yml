@@ -47,6 +47,8 @@ jobs:
             test -s "$file"
             readelf -h "$file" | grep -Eq 'Type:.*DYN'
             readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v1' >/dev/null
+            identity=$(printf '%s' "$fs" | tr '[:upper:]' '[:lower:]')
+            readelf -p .ifsmeta "$file" | grep -F "IFS-MODULE:$identity:1" >/dev/null
             if readelf -d "$file" | grep -Eq '[(]NEEDED[)]'; then
               echo "Forbidden shared-library dependency: $fs.so" >&2
               exit 1

@@ -45,6 +45,10 @@ check_module() {
     "$elf_checker" -Ws "$file" |
         grep -F 'infiltrator_filesystem_module_v1' >/dev/null ||
         fatal "FAT16 module ABI entry point missing"
+    # Check exact on-disk format before trusting a renamed .so.
+    "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
+        grep -F 'IFS-MODULE:fat16:1' >/dev/null ||
+        fatal "FAT16 embedded format identity missing or incorrect"
 }
 
 # The privileged compiler must never consume untrusted application source.

@@ -42,6 +42,17 @@ readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
 sudo "$helper" remove
 [[ ! -e "$module" ]] || { echo "FAT32 removal failed" >&2; exit 1; }
 
+# A binary for another FAT format is never an acceptable replacement.
+foreign=$(find build-desktop -name "FAT16.so" -type f -print -quit)
+[[ -n "$foreign" ]] || { echo "missing foreign module for identity test" >&2; exit 1; }
+sudo install -m 0644 "$foreign" "$module"
+if sudo "$helper" status >/dev/null 2>&1; then
+    echo "FAT32 accepted a mismatched module identity" >&2
+    exit 1
+fi
+sudo "$helper" remove
+
+
 # The copied prebuilt module and a module compiled by Install are discovered
 # through the exact same directory; neither installs a second filesystem.
 prebuilt=$(find build-desktop -name FAT32.so -type f -print -quit)

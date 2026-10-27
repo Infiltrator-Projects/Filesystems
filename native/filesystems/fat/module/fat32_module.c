@@ -220,6 +220,9 @@ static int read_file(const IfsFat32Io *io, const IfsFat32Volume *v,
     }
     return 0;
 }
+/* Non-executed format identity for safe single-file selection. */
+__attribute__((used,section(".ifsmeta")))
+static const char ifs_module_format_identity[] = "IFS-MODULE:fat32:1";
 static const IfsFat32Module module = {
     IFS_FAT32_ABI_VERSION, sizeof(IfsFat32Module), "fat32", "FAT32",
     IFS_FAT32_CAP_PROBE | IFS_FAT32_CAP_ROOT_83 |
