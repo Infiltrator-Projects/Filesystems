@@ -1,0 +1,71 @@
+name: FAT12/FAT16 real-image portable read-write verification
+on:
+  push:
+    branches: [feature/fat12-fat16-genuine-rw-triple-20261028]
+    paths:
+      - "native/filesystems/fat/portable/**"
+      - "native/filesystems/fat/module/fat12_module.c"
+      - "native/filesystems/fat/module/fat16_module.c"
+      - "tests/fatfs_v3_realimage_test.c"
+      - "packaging/linux/fat1*-module-helper.sh"
+      - ".github/workflows/fat12-fat16-so.yml"
+  pull_request:
+    paths:
+      - "native/filesystems/fat/portable/**"
+      - "native/filesystems/fat/module/fat12_module.c"
+      - "native/filesystems/fat/module/fat16_module.c"
+      - "tests/fatfs_v3_realimage_test.c"
+      - "packaging/linux/fat1*-module-helper.sh"
+      - ".github/workflows/fat12-fat16-so.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fat12-fat16-real-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install genuine independent FAT formatter/checker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dosfstools
+      - name: Compile and check each independent read-write .so
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=native/filesystems/fat/portable
+          m=native/filesystems/fat/module
+          mkdir -p /tmp/fat-modules
+          for fs in 12 16; do
+            gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+              -fPIC -fno-builtin -ffreestanding -fvisibility=hidden \
+              -fno-stack-protector -nostdlib -shared \
+              -Wl,-z,defs,-z,relro,-z,now \
+              -DIFS_FATFS_ONLY="$fs" -I "$p" -I "$m" \
+              "$m/fat${fs}_module.c" "$p/ff.c" "$p/ffunicode.c" \
+              "$p/fatfs_module.c" "$p/fatfs_libc.c" \
+              -o "/tmp/fat-modules/FAT$fs.so"
+            test -s "/tmp/fat-modules/FAT$fs.so"
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v1
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v3
+            readelf -p .ifsmeta "/tmp/fat-modules/FAT$fs.so" | grep -q "IFS-MODULE:fat$fs:3"
+            test -z "$(nm -u "/tmp/fat-modules/FAT$fs.so")"
+          done
+          gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I "$p" tests/fatfs_v3_realimage_test.c -o /tmp/fat-modules/real-test -ldl
+      - name: Test read, write, append, rename, long names and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          truncate -s 1440K /tmp/fat-modules/fat12.img
+          truncate -s 64M /tmp/fat-modules/fat16.img
+          mkfs.fat -F 12 -I -S 512 /tmp/fat-modules/fat12.img
+          mkfs.fat -F 16 -I -S 512 /tmp/fat-modules/fat16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img
+          fsck.fat -n /tmp/fat-modules/fat12.img
+          fsck.fat -n /tmp/fat-modules/fat16.img
+          echo "BOTH-PORTABLE-MODULES-GENUINE-DOSFS-RW-PASS"
