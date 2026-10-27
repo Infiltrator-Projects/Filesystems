@@ -1,21 +1,56 @@
-# FAT12 and FAT16: genuine full-implementation qualification
+# FAT12 and FAT16 driver qualification
 
-Target deliverables are **two independently loadable filesystem identities**, each with a read/write-capable `.so`, `.efi`, and `.ko`. A successful compilation is not a release approval.
+The target is two independently identifiable filesystems, each with a `.so`,
+Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
 
-## Full original source incorporated for UEFI
+## Sources and current implementation
 
-The complete TianoCore EDK2 `FatPkg/EnhancedFatDxe` implementation is copied into `native/filesystems/fat/efi/FatPkg/EnhancedFatDxe`, with package build metadata in the adjacent FatPkg directory. The exact source is from [tianocore/edk2 commit 447c415c2678a2bab107d5d529b879e3d7713830](https://github.com/tianocore/edk2/commit/447c415c2678a2bab107d5d529b879e3d7713830). Copyright and SPDX headers remain in the actual code. All driver C, H, UNI, and INF implementation files are local—**not references or remote source used in place of source ownership**.
+- The EFI source in `native/filesystems/fat/efi/FatPkg` is the full TianoCore
+  EDK2 EnhancedFatDxe implementation from commit
+  `447c415c2678a2bab107d5d529b879e3d7713830`, with its upstream notices
+  preserved. Two build descriptors give distinct driver identities and restrict
+  each driver to its own FAT width. The EDK2 build framework is obtained at
+  build time; the filesystem driver source itself is in this repository.
+- The Linux sources under `native/filesystems/fat/linux` are the copied Linux
+  FAT/VFAT implementation. Each variant builds a separately named namespace
+  module. **Both depend on a compatible Linux FAT core**, so a successful
+  `.ko` build alone does not establish portability across kernel versions or
+  prove a self-contained filesystem module.
+- `FAT12.so` and `FAT16.so` each compile the complete portable ChaN FatFs
+  engine into the individual shared object. The V3 ABI provides directory and
+  file read/write, allocation through file growth, creation, deletion, rename
+  and truncate, with device I/O and flushing supplied by the caller. The
+  imported source headers retain their notices. The legacy V1 API remains
+  available. V3 currently allows only one active volume per module and callers
+  must serialize access and hold exclusive ownership of the device.
+- Directory moves are checked by on-media ancestry, including case and short
+  aliases, to avoid moving a directory inside itself. A failed full-volume
+  seek is not reported as a completed write or truncate. On an I/O error or
+  full volume, partial allocation or extension can still occur; FAT and this
+  interface do not guarantee transactional failure atomicity.
 
-The only modifications are format-specific build descriptors `Fat12.inf` and `Fat16.inf`, distinct module GUIDs, an explicit type guard in `Init.c`, and a package DSC that builds those two targets. The upstream runtime implements file and directory read, write, create, deletion, directory changes, allocation and flush; unlike the existing EFI FSW read-only adapter it is designed to provide writable `EFI_SIMPLE_FILE_SYSTEM_PROTOCOL`. The shared original implementation is compiled separately inside each image. No FAT12/FAT16 impersonation or generic FAT driver masquerading is permitted.
+## Evidence and remaining gates
 
-`scripts/build-fat12-fat16-efi.sh` fetches pinned EDK2 **toolchain/framework** sources for MdePkg and BaseTools but REPLACES FatPkg with the local Filesystems-owned driver sources. The output is `build-fat-efi/FAT12.efi` and `FAT16.efi`. No disk writes or ESP mutations occur.
+The original draft's CI has built both `.ko` and `.efi` images and exercised
+both V3 `.so` files against independently formatted FAT images with mtools and
+fsck. Those results pertain to the exact commits tested. Local synthetic-image
+tests also cover long UTF-8 names, zero-filled growth, full media, directory
+ancestry and valid directory reparenting. Synthetic fixtures are not an
+independent format audit.
 
-## Source ownership / validation gates
+The runtime workflow in this branch boots disposable QEMU guests. It is intended
+to load the actual FAT12 and FAT16 kernel modules and exercise create, write,
+rename, delete and remount, then check images using independent FAT tools. It
+also intends to invoke each EFI driver binding directly under OVMF, rejecting
+the opposite format, writing and renaming files, stopping and rebinding, and
+verifying results with independent tools. **Adding these tests is not proof
+that they pass; consult the workflow results for the exact commit.** No physical
+firmware, disk or installed system is touched by these tests.
 
-- The native Linux FAT source under `native/filesystems/fat/linux` is copied Linux v6.12.107 FAT/VFAT/MSDOS implementation, containing genuine allocation, nested directories, long names, create, rename, delete and read/write. **It has not yet been built as independently verified FAT12.ko / FAT16.ko**. The normal FAT kernel implementation is shared among all three formats; enforcing independently loadable format-specific kernel registration requires native adapter work.
-- The existing `FAT12.so` and `FAT16.so` remain limited classic FAT modules. Bounded overwrite capability in the separate V2 work is **not** full read/write filesystem functionality. Replacing the limited reader with the genuine portable engine, not reimplementing it a third time, is required.
-- The two new EFI images must be tested in real UEFI firmware/QEMU with independently generated FAT12/FAT16 images: reject each other's variant, root and nested directory create/read/rename/delete, long names, noncontiguous file expansion, volume-full and media-error cases, flush/remount, external verification and recovery after interrupted writes.
-- For each `.ko`, qualify genuine Linux 6.12 kernel load/mount, full file/directory create/delete/rename, persistent read/write/remount, independently created images and corruption handling. A shared `fat.ko`+ `vfat.ko` stack is not silently renamed to two format-specific `.ko` files.
-- For each `.so`, validate equivalent operations against authoritative tools, with bounded partition I/O, no uncontrolled host writes, LFN and geometry variants, flushing and failure injection.
-
-**Status:** original full EFI sources integrated, EFI compilation/PE qualification underway. Full release target NOT MET until all six artifacts pass their actual runtime matrices. Do not deploy to a boot disk as if this qualification had already passed.
+Outstanding work includes successful runtime qualification on supported Linux
+kernels and UEFI firmware, corrupted and interrupted-media handling, broader
+geometry and fault-injection coverage, metadata and formatting capabilities,
+and package/install integration. V3 does **not** yet expose the block relocation
+and recovery operations required to move Defragmenter's FAT engine into the
+shared libraries. Do not remove that engine, mark this target complete, or
+publish these drivers as fully qualified on build evidence alone.

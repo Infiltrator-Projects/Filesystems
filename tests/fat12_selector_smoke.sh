@@ -18,7 +18,9 @@ module=/System/Filesystems/FAT12.so
 
 cleanup() {
     sudo "$helper" remove >/dev/null 2>&1 || :
-    sudo rm -f "$helper" "$source_dir/fat12_module.c" "$source_dir/fat12_module.h" "$source_dir/classic_fat_module.c" "$source_dir/classic_fat_module.h"
+    sudo rm -f "$helper" "$source_dir/fat12_module.c" "$source_dir/fat12_module.h" "$source_dir/classic_fat_module.c" "$source_dir/classic_fat_module.h" \
+      "$source_dir/ff.c" "$source_dir/ff.h" "$source_dir/ffconf.h" "$source_dir/diskio.h" \
+      "$source_dir/ffunicode.c" "$source_dir/fatfs_libc.c" "$source_dir/fatfs_module.c" "$source_dir/fatfs_module.h"
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
     sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
 }
@@ -29,6 +31,7 @@ sudo install -m 0644 native/filesystems/fat/module/fat12_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat12_module.h "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/classic_fat_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/classic_fat_module.h "$source_dir"
+sudo install -m 0644 native/filesystems/fat/portable/{ff.c,ff.h,ffconf.h,diskio.h,ffunicode.c,fatfs_libc.c,fatfs_module.c,fatfs_module.h} "$source_dir"
 sudo install -m 0755 packaging/linux/fat12-module-helper.sh "$helper"
 
 sudo "$helper" install
@@ -40,6 +43,18 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
     exit 1
 fi
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v3$' >/dev/null
+
+# Refuse unsafe privileged build input and retain the previously installed SO.
+original_hash=$(sha256sum "$module")
+sudo chmod 0666 "$source_dir/ff.c"
+if sudo "$helper" install >/dev/null 2>&1; then
+    echo "FAT12 accepted world-writable source" >&2
+    exit 1
+fi
+sudo chmod 0644 "$source_dir/ff.c"
+[[ "$(sha256sum "$module")" == "$original_hash" ]] ||
+  { echo "FAT12 replaced the module after refusing unsafe source" >&2; exit 1; }
 
 sudo "$helper" remove
 [[ ! -e "$module" ]] || { echo "FAT12 removal failed" >&2; exit 1; }

@@ -140,7 +140,10 @@ static int file_write(const char *path, uint32_t offset, const void *buffer, uin
     int good;
     if (!selected || !path || (!buffer && n) || n>UINT32_MAX-offset ||
         f_open(&f,path,FA_WRITE|FA_OPEN_EXISTING)!=FR_OK) return -1;
-    good=f_lseek(&f,(FSIZE_t)offset)==FR_OK &&
+    /* FatFs may return FR_OK after clipping a seek when the volume is full.
+     * Never write at the clipped position: that would overwrite earlier data
+     * while telling the caller that its requested offset was honoured. */
+    good=f_lseek(&f,(FSIZE_t)offset)==FR_OK && f_tell(&f)==(FSIZE_t)offset &&
          f_write(&f,buffer,n,&written)==FR_OK && written==n &&
          f_sync(&f)==FR_OK;
     if (f_close(&f)!=FR_OK) good=0;
@@ -152,15 +155,69 @@ static int file_truncate(const char *path, uint32_t bytes)
     int good;
     if (!selected || !path ||
         f_open(&f,path,FA_WRITE|FA_OPEN_EXISTING)!=FR_OK) return -1;
-    good=f_lseek(&f,(FSIZE_t)bytes)==FR_OK &&
+    /* As with writes, a clipped seek is not a successful resize. */
+    good=f_lseek(&f,(FSIZE_t)bytes)==FR_OK && f_tell(&f)==(FSIZE_t)bytes &&
          f_truncate(&f)==FR_OK && f_sync(&f)==FR_OK;
     if (f_close(&f)!=FR_OK) good=0;
     return good?0:-1;
 }
 static int make_dir(const char *path) { return selected && path && f_mkdir(path)==FR_OK?0:-1; }
 static int remove_path(const char *path) { return selected && path && f_unlink(path)==FR_OK?0:-1; }
+/* FatFs does not reject moving a FAT directory under its own descendants.
+ * Follow the destination parent's on-media '..' chain by cluster identity;
+ * comparing path strings would miss short-name aliases and case differences.
+ * Refuse malformed chains and excessive path lengths rather than mutating. */
+static int rename_directory_safe(const char *from,const char *to)
+{
+    FILINFO source_info;
+    DIR source_dir,parent_dir;
+    DWORD source_cluster,parent_cluster;
+    char parent[4096];
+    uint8_t sector[4096];
+    unsigned length=0,last_separator=0,has_separator=0;
+    if (f_stat(from,&source_info)!=FR_OK) return 0;
+    if (!(source_info.fattrib & AM_DIR)) return 1;
+    if (f_opendir(&source_dir,from)!=FR_OK) return 0;
+    source_cluster=source_dir.obj.sclust;
+    if (f_closedir(&source_dir)!=FR_OK || source_cluster<2u) return 0;
+    while (to[length]) {
+        if (length+1u>=sizeof parent) return 0;
+        if (to[length]=='/' || to[length]=='\\') {
+            last_separator=length;
+            has_separator=1;
+        }
+        ++length;
+    }
+    if (has_separator) {
+        unsigned count=last_separator+1u;
+        for(unsigned i=0;i<count;++i) parent[i]=to[i];
+        parent[count]='\0';
+    } else {
+        /* A path without a separator is relative to volume zero's root. */
+        parent[0]='/'; parent[1]='\0';
+    }
+    if (f_opendir(&parent_dir,parent)!=FR_OK) return 0;
+    parent_cluster=parent_dir.obj.sclust;
+    if (f_closedir(&parent_dir)!=FR_OK) return 0;
+    for(DWORD steps=0;parent_cluster!=0u && steps<volume.n_fatent;++steps) {
+        LBA_t first_sector;
+        if(parent_cluster==source_cluster || parent_cluster<2u ||
+           parent_cluster>=volume.n_fatent) return 0;
+        first_sector=volume.database+(LBA_t)(parent_cluster-2u)*volume.csize;
+        if(disk_read(0,sector,first_sector,1)!=RES_OK ||
+           sector[0]!='.' || sector[1]!=' ' || !(sector[11]&AM_DIR) ||
+           sector[32]!='.' || sector[33]!='.' || sector[34]!=' ' ||
+           !(sector[43]&AM_DIR) || sector[20] || sector[21] ||
+           sector[52] || sector[53] ||
+           ((DWORD)sector[26] | (DWORD)sector[27]<<8)!=parent_cluster)
+            return 0;
+        parent_cluster=(DWORD)sector[58] | (DWORD)sector[59]<<8;
+    }
+    return parent_cluster==0u;
+}
 static int rename_path(const char *from,const char *to) {
-    return selected && from && to && f_rename(from,to)==FR_OK?0:-1;
+    return selected && from && to && rename_directory_safe(from,to) &&
+           f_rename(from,to)==FR_OK?0:-1;
 }
 static void copy_name(char out[768],const char *in)
 {

@@ -87,19 +87,20 @@ case "$1" in
         safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
-        [[ -f "$source_dir/fat12_module.c" &&
-           -f "$source_dir/fat12_module.h" &&
-           -f "$source_dir/classic_fat_module.c" &&
-           -f "$source_dir/classic_fat_module.h" &&
-           ! -L "$source_dir/fat12_module.c" &&
-           ! -L "$source_dir/fat12_module.h" &&
-           ! -L "$source_dir/classic_fat_module.c" &&
-           ! -L "$source_dir/classic_fat_module.h" ]] ||
-            fatal "packaged FAT12 module source missing"
-        for name in ff.c ff.h ffconf.h diskio.h ffunicode.c \
+        # The directory may be root-owned while a source file inside it is
+        # writable by another user. Never compile such a file as root.
+        for name in fat12_module.c fat12_module.h \
+                    classic_fat_module.c classic_fat_module.h \
+                    ff.c ff.h ffconf.h diskio.h ffunicode.c \
                     fatfs_libc.c fatfs_module.c fatfs_module.h; do
-            [[ -f "$source_dir/$name" && ! -L "$source_dir/$name" ]] ||
-                fatal "missing/unsafe complete portable FAT12 source: $name"
+            path="$source_dir/$name"
+            [[ -f "$path" && ! -L "$path" ]] ||
+                fatal "missing or unsafe FAT12 source: $name"
+            [[ "$(stat -c %u -- "$path")" == 0 ]] ||
+                fatal "FAT12 source is not root-owned: $name"
+            mode=$(stat -c %a -- "$path")
+            (( (8#$mode & 8#022) == 0 )) ||
+                fatal "FAT12 source is writable by another user: $name"
         done
         [[ ! -L /System && ! -L "$destination" ]] ||
             fatal "symlinked module directory refused"

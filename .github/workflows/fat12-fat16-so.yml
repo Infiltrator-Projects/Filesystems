@@ -90,4 +90,16 @@ jobs:
             /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img cleanup
           fsck.fat -n /tmp/fat-modules/fat12.img
           fsck.fat -n /tmp/fat-modules/fat16.img
+          # On deliberately small full volumes, a clipped seek must not be
+          # reported as a successful write or truncate. Never use real disks.
+          truncate -s 1440K /tmp/fat-modules/full12.img
+          truncate -s 8M /tmp/fat-modules/full16.img
+          mkfs.fat -F 12 -I -S 512 /tmp/fat-modules/full12.img
+          mkfs.fat -F 16 -I -S 512 -s 1 /tmp/fat-modules/full16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/full12.img /tmp/fat-modules/full16.img full
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/full16.img /tmp/fat-modules/full12.img full
+          fsck.fat -n /tmp/fat-modules/full12.img
+          fsck.fat -n /tmp/fat-modules/full16.img
           echo "BOTH-PORTABLE-MODULES-GENUINE-DOSFS-RW-INDEPENDENTLY-VERIFIED"
