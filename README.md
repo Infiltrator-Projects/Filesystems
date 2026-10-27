@@ -60,8 +60,11 @@ FAT12 has its own compiler helper and manual drag-in path for
 `/System/Filesystems/FAT12.so`, without installing FAT16, .ko, .efi or
 other packages. FAT12, FAT16 and FAT32 now each have graphical
 Install/Remove controls in the single classic FAT family row, with their own
-independent compiler helpers and .so files. All three are read-only; their
-formatting, writes and defragmentation remain to be implemented.
+independent compiler helpers and .so files. Their V1 APIs remain read-only, while new optional V2 APIs permit
+flush-backed, bounded overwrites of existing allocated bytes in matching
+root-directory 8.3 regular files. File creation, extension, allocation,
+rename, deletion, full writable mount support, formatting and
+defragmentation remain unfinished.
 
 ## Current EXT2.so implementation (restricted in-place writes)
 
@@ -82,6 +85,16 @@ target and SCO BFS is the sixth. Format-specific module operation tables still d
 portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
+
+## Independent MINIX.so (read-only V1, V2 and V3)
+
+The standalone `MINIX.so` reads Minix V1/V2 name-length variants and V3.
+Its on-disk engine validates superblocks, inode allocation, direct/indirect
+zones, directories, names and file-content ranges. The independently packaged
+source and `/Programs/Filesystems/Helpers/minix-module-helper` compile only
+`/System/Filesystems/MINIX.so`, without replacing Linux `minix.ko`.
+Writes, allocation, formatting, repair, EFI/root boot, cross-product loader
+and physical-media qualification are not established.
 
 ## Current SCO BFS.so implementation (restricted in-place writes)
 
@@ -106,8 +119,9 @@ The independent `FAT32.so` source implements read-only probing of actual
 FAT32 media, 28-bit FAT entry traversal, root directory cluster chains,
 8.3 root file enumeration, fragmented file reading and fragmentation counts.
 It does not substitute FAT16 semantics. Separate FAT12, FAT16 and OFS modules
-remain intact. FAT32 write, formatting, nested directories, VFAT long names,
-defragmentation and graphical selection remain unfinished.
+remain intact. FAT32's V2 extension provides only a restricted existing-data overwrite
+path. General writes, formatting, nested directories, VFAT long names and
+defragmentation remain unfinished.
 
 The FAT32 compiler helper builds and installs only `FAT32.so` under
 `/System/Filesystems/`; it neither installs another FAT variant nor a

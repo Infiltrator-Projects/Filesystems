@@ -1,27 +1,19 @@
 name: Independent freestanding filesystem shared objects
+# One authoritative qualification, invoked by the release-gated build.
+# workflow_dispatch remains available for isolated manual verification.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/dropin-modules.yml"
-      - "native/filesystems/fat/module/**"
-      - "native/filesystems/ofs/module/**"
-      - "native/filesystems/ofs/efi/**"
-      - "native/filesystems/ofs/core/**"
-      - "tests/fat*_module_test.c"
-      - "tests/ofs_dropin_module_test.c"
-      - "packaging/linux/*module-helper.sh"
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   isolated-dropins:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Check out the exact original and project source
+      - name: Check out exact candidate source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-      - name: Compile and exercise four independent filesystem readers
+      - name: Independently compile and exercise all seven implemented modules
         shell: bash
         run: |
           set -euo pipefail
@@ -38,11 +30,47 @@ jobs:
           cc $flags $moduleflags -I "$src/module" -I "$src/core" -I "$src/efi" "$src/module/ofs_module.c" "$src/efi/reader.c" "$src/core/ofs_core.c" "$src/core/ofs_primitives.c" -o /tmp/ifs-dropins/OFS.so
           cc $flags -I "$src/module" -I "$src/core" -I "$src/efi" tests/ofs_dropin_module_test.c "$src/module/ofs_module.c" "$src/efi/reader.c" "$src/core/ofs_core.c" "$src/core/ofs_primitives.c" -o /tmp/ifs-dropins/ofs-test
           /tmp/ifs-dropins/ofs-test
-      - name: Verify ELF isolation and entry points
+          src=native/filesystems/ext2
+          cc $flags $moduleflags -I "$src/module" -I "$src/core" "$src/module/ext2_module.c" "$src/core/ext2_core.c" "$src/core/ext2_engine.c" -o /tmp/ifs-dropins/EXT2.so
+          cc $flags -I "$src/module" -I "$src/core" tests/ext2_dropin_module_test.c "$src/module/ext2_module.c" "$src/core/ext2_core.c" "$src/core/ext2_engine.c" -o /tmp/ifs-dropins/ext2-test
+          /tmp/ifs-dropins/ext2-test
+          src=native/filesystems/bfs/module
+          cc $flags $moduleflags -I "$src" "$src/bfs_module.c" -o /tmp/ifs-dropins/BFS.so
+          cc $flags -I "$src" tests/bfs_dropin_module_test.c "$src/bfs_module.c" -o /tmp/ifs-dropins/bfs-test
+          /tmp/ifs-dropins/bfs-test
+          src=native/filesystems/minix/module
+          cc $flags $moduleflags -I "$src" "$src/minix_module.c" -o /tmp/ifs-dropins/MINIX.so
+          cc $flags -I "$src" tests/minix_dropin_module_test.c "$src/minix_module.c" -o /tmp/ifs-dropins/minix-test
+          /tmp/ifs-dropins/minix-test
+      - name: Qualify mkfs.minix V1 V2 V3 independently on disposable files
         shell: bash
         run: |
           set -euo pipefail
-          for fs in FAT12 FAT16 FAT32 OFS; do
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends util-linux
+          command -v mkfs.minix
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror \
+            -I native/filesystems/minix/module \
+            tests/minix_real_mkfs_test.c \
+            native/filesystems/minix/module/minix_module.c \
+            -o /tmp/ifs-dropins/minix-real
+          for variant in 1:14 1:30 2:14 2:30 3:60; do
+            IFS=: read -r version names <<< "$variant"
+            image=$(mktemp /tmp/ifs-minix-XXXXXXXX.img)
+            truncate -s 8M "$image"
+            if [[ "$version" == 3 ]]; then
+              mkfs.minix -3 "$image" >/dev/null
+            else
+              mkfs.minix "-$version" -n "$names" "$image" >/dev/null
+            fi
+            /tmp/ifs-dropins/minix-real "$image" "$version" "$names"
+            rm -f "$image"
+          done
+      - name: Check ELF identity, ABI exports and freestanding linkage
+        shell: bash
+        run: |
+          set -euo pipefail
+          for fs in FAT12 FAT16 FAT32 OFS EXT2 BFS MINIX; do
             file="/tmp/ifs-dropins/$fs.so"
             test -s "$file"
             readelf -h "$file" | grep -Eq 'Type:.*DYN'
@@ -54,8 +82,16 @@ jobs:
               exit 1
             fi
           done
-          for helper in fat12 fat16 fat32 ofs; do
+          # V2 must remain a genuine, separately exported, format-identified
+          # FAT extension. Existing V1 entry points must remain present.
+          for fs in FAT12 FAT16 FAT32; do
+            file="/tmp/ifs-dropins/$fs.so"
+            identity=$(printf '%s' "$fs" | tr '[:upper:]' '[:lower:]')
+            readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v2' >/dev/null
+            readelf -p .ifsmeta "$file" | grep -F "IFS-MODULE:$identity:2" >/dev/null
+          done
+          for helper in fat12 fat16 fat32 ofs ext2 bfs minix; do
             bash -n "packaging/linux/$helper-module-helper.sh"
           done
           sha256sum /tmp/ifs-dropins/*.so
-          echo FOUR-INDEPENDENT-DROPINS-PASSED
+          echo SEVEN-INDEPENDENT-DROPINS-FAT-V2-PASSED

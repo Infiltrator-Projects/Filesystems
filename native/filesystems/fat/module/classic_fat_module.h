@@ -65,6 +65,37 @@ typedef struct {
                                const IfsClassicFatFile *, uint32_t *fragments);
 } IfsClassicFatModule;
 
+/* Optional V2 extension. The original read-only ABI and its binary layout
+ * remain unchanged. V2 is separately discoverable and deliberately exposes
+ * only in-place overwrites of existing FAT12/16 8.3 root regular files.
+ * No new allocation, append, directory mutation or formatting is provided.
+ */
+#define IFS_CLASSIC_FAT_V2_ABI_VERSION 2u
+#define IFS_CLASSIC_FAT_V2_CAP_OVERWRITE_EXISTING UINT64_C(16)
+typedef int (*IfsClassicFatWriteAt)(void *context, uint64_t offset,
+                                   const void *buffer, uint32_t bytes);
+typedef int (*IfsClassicFatFlush)(void *context);
+typedef struct {
+    IfsClassicFatIo read; /* Must use the same media as write_at. */
+    IfsClassicFatWriteAt write_at;
+    IfsClassicFatFlush flush;
+} IfsClassicFatWritableIo;
+typedef struct {
+    uint32_t abi_version;
+    uint32_t structure_bytes;
+    const char *format_id;
+    const char *format_name;
+    uint64_t capabilities;
+    const IfsClassicFatModule *readonly_v1;
+    /* Returns 0 for a successful overwrite+flush and -1 on failure. */
+    int (*overwrite_existing)(const IfsClassicFatWritableIo *,
+                              const IfsClassicFatVolume *,
+                              const IfsClassicFatFile *,
+                              uint64_t position, const void *buffer,
+                              uint32_t length);
+} IfsClassicFatModuleV2;
+const IfsClassicFatModuleV2 *infiltrator_filesystem_module_v2(void);
+
 /* Exported discovery symbol. Not a Linux .ko, EFI image, or full defrag ABI. */
 const IfsClassicFatModule *infiltrator_filesystem_module_v1(void);
 #endif

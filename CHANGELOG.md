@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.99 — 2026-10-27 (independent read-only MINIX.so)
+
+- Implement one freestanding read-only MINIX.so recognizing V1 (14/30-character names), V2 (14/30) and V3 format variants, with bounded superblock, inode and zone bitmap allocation, directory, direct/indirect zone and file access.
+- Add local compiler helper installing MINIX.so only in /System/Filesystems; Linux minix.ko and EFI drivers remain separate.
+- Add disposable V1/V2/V3 tests and independent mkfs.minix real-image qualification for all five format/name variants, reject forged caller inode mappings, and require seven isolated ELF modules in release-gated CI. Writes, formatting, repair, hardware media, boot and general dispatch remain unqualified.
+
+
+## 0.5.98 — 2026-10-27 (classic FAT V2 bounded data overwrite)
+
+- Extend standalone ELF/ABI qualification to all six implemented FAT12/FAT16/FAT32/OFS/EXT2/BFS modules and the optional FAT V2 exports; make this one reusable workflow a mandatory release-promotion dependency, rather than an advisory separate action.
+
+- Add independent backwards-compatible V2 exports to FAT12.so, FAT16.so and FAT32.so for existing-file data overwrites only, leaving V1 module structures untouched.
+- Re-probe geometry and compare live root-file identity, preflight allocation chains and require host write/flush callbacks before any in-place overwrite. Refuse readonly file attributes, missing callbacks, attempts to extend a file, and unsupported FAT32 active-FAT configurations.
+- Add synthetic data-readback and rejection tests for all three variants, and fix the ELF smoke test order to check V2 before removing the staged test module. No create, allocation, formatting, repair, defrag, automatic physical-device write or full writable mount support is implied.
+
 ## 0.5.97 — 2026-10-27 (independent SCO BFS.so)
 
 - Centralise the Mint/Debian native-kernel-module coordinator and removal-guard lookup in an explicitly Linux-only host adapter; remove Linux directory assumptions from application probe and installer. Add source/layout and helper-resolution regression tests. No packaging or physical system change.
