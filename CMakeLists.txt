@@ -496,6 +496,44 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat32-module-helper)
 
+    # Standalone EXT2.so uses the canonical EXT2 engine with a bounded
+    # host-I/O adapter. Unlike EXT2.ko it cannot allocate or resize files.
+    add_library(filesystems-ext2-dropin SHARED
+        native/filesystems/ext2/module/ext2_module.c
+        native/filesystems/ext2/core/ext2_engine.c
+        native/filesystems/ext2/core/ext2_core.c)
+    set_target_properties(filesystems-ext2-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "EXT2")
+    target_include_directories(filesystems-ext2-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/core")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-ext2-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector
+            -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-ext2-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-ext2-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-ext2-dropin)
+    install(FILES
+        native/filesystems/ext2/module/ext2_module.c
+        native/filesystems/ext2/module/ext2_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/module")
+    install(FILES
+        native/filesystems/ext2/core/ext2_engine.h
+        native/filesystems/ext2/core/ext2_engine.c
+        native/filesystems/ext2/core/ext2_core.h
+        native/filesystems/ext2/core/ext2_core.c
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/core")
+    install(PROGRAMS packaging/linux/ext2-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME ext2-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -660,8 +698,10 @@ if(BUILD_TESTING)
 
     add_executable(filesystems-ext2-engine-test
         tests/ext2_engine_test.c)
+    target_include_directories(filesystems-ext2-engine-test PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/module")
     target_link_libraries(filesystems-ext2-engine-test
-        PRIVATE infiltratr-fs-ext2-efi-reader)
+        PRIVATE infiltratr-fs-ext2-efi-reader filesystems-ext2-dropin)
     filesystems_configure(filesystems-ext2-engine-test)
     add_test(
         NAME filesystems-ext2-engine
