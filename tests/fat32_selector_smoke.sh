@@ -12,21 +12,28 @@ fi
 app_dir=/Programs/Filesystems
 helper="$app_dir/Helpers/fat32-module-helper"
 source_dir="$app_dir/Sources/fat32"
+engine_dir="$app_dir/Sources/fat-defrag"
 module=/System/Filesystems/FAT32.so
 [[ ! -e "$helper" && ! -e "$module" && ! -d "$app_dir" ]] ||
   { echo "Pre-existing FAT32 test path; refusing replacement" >&2; exit 1; }
 
 cleanup() {
     sudo "$helper" remove >/dev/null 2>&1 || :
-    sudo rm -f "$helper" "$source_dir/fat32_module.c" "$source_dir/fat32_module.h"
+    sudo rm -f "$helper" "$source_dir/fat32_module.c" "$source_dir/fat32_module.h" "$source_dir/fatfs_libc.c"
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
+    sudo rm -rf "$engine_dir"
     sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
 }
 trap cleanup EXIT
 
 sudo install -d -m 0755 "$app_dir/Helpers" "$source_dir"
+sudo install -d -m 0755 "$engine_dir/host" "$engine_dir/include/infiltratr"
+sudo install -m 0644 native/filesystems/fat/defrag/*.c native/filesystems/fat/defrag/*.h "$engine_dir"
+sudo install -m 0644 native/filesystems/fat/defrag/host/*.h "$engine_dir/host"
+sudo install -m 0644 src/infiltratr-common/include/infiltratr/*.h "$engine_dir/include/infiltratr"
 sudo install -m 0644 native/filesystems/fat/module/fat32_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat32_module.h "$source_dir"
+sudo install -m 0644 native/filesystems/fat/portable/fatfs_libc.c "$source_dir"
 sudo install -m 0755 packaging/linux/fat32-module-helper.sh "$helper"
 
 sudo "$helper" install
@@ -38,6 +45,7 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
     exit 1
 fi
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+readelf -Ws "$module" | grep 'infiltrator_filesystem_defrag_v1$' >/dev/null
 
 sudo "$helper" remove
 [[ ! -e "$module" ]] || { echo "FAT32 removal failed" >&2; exit 1; }

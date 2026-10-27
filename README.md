@@ -64,8 +64,11 @@ physical-media or crash-recovery qualification.
 The FAT12 and FAT16 compiler helpers build one corresponding module into
 `/System/Filesystems/`, without installing the other variant. Their EFI and
 Linux module candidates have separate build and runtime qualification lanes;
-they are not installed by the `.so` selector. The relocation and recovery interface required by Defragmenter is not yet
-available. FAT32 retains its existing read-only module.
+they are not installed by the `.so` selector. A versioned defragmentation
+interface now supplies the relocated FAT engine, its journal and recovery
+operations to Defragmenter's child-process host. FAT32 includes the same
+interface so existing FAT32 defragmentation can continue. See the
+[FAT defragmentation ABI](docs/FAT_DEFRAG_MODULE_ABI.md).
 
 ## Current EXT2.so implementation (restricted in-place writes)
 
@@ -81,7 +84,7 @@ callbacks. All offsets are partition-relative. The compiled module and its
 synthetic-disk qualification do not establish production write safety on
 physical media.
 
-OFS and FAT32 remain read-only; EXT2 and SCO BFS support restricted
+OFS and the FAT32 general file API remain read-only; EXT2 and SCO BFS support restricted
 in-place writes, and FAT12/FAT16 add the V3 writable interface described above. Format-specific module operation tables still differ. A unified,
 portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
@@ -110,8 +113,9 @@ The independent `FAT32.so` source implements read-only probing of actual
 FAT32 media, 28-bit FAT entry traversal, root directory cluster chains,
 8.3 root file enumeration, fragmented file reading and fragmentation counts.
 It does not substitute FAT16 semantics. Separate FAT12, FAT16 and OFS modules
-remain intact. FAT32 write, formatting, nested directories, VFAT long names and
-defragmentation remain unfinished.
+remain intact. General FAT32 file writes, formatting, nested directories and
+VFAT long names remain unfinished. The separate defragmentation interface can
+relocate data and recover journalled FAT32 transactions.
 
 The FAT32 compiler helper builds and installs only `FAT32.so` under
 `/System/Filesystems/`; it neither installs another FAT variant nor a

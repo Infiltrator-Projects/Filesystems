@@ -12,6 +12,7 @@ fi
 app_dir=/Programs/Filesystems
 helper="$app_dir/Helpers/fat12-module-helper"
 source_dir="$app_dir/Sources/fat12"
+engine_dir="$app_dir/Sources/fat-defrag"
 module=/System/Filesystems/FAT12.so
 [[ ! -e "$helper" && ! -e "$module" && ! -d "$app_dir" ]] ||
   { echo "Pre-existing FAT12 test path; refusing replacement" >&2; exit 1; }
@@ -22,11 +23,16 @@ cleanup() {
       "$source_dir/ff.c" "$source_dir/ff.h" "$source_dir/ffconf.h" "$source_dir/diskio.h" \
       "$source_dir/ffunicode.c" "$source_dir/fatfs_libc.c" "$source_dir/fatfs_module.c" "$source_dir/fatfs_module.h"
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
+    sudo rm -rf "$engine_dir"
     sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
 }
 trap cleanup EXIT
 
 sudo install -d -m 0755 "$app_dir/Helpers" "$source_dir"
+sudo install -d -m 0755 "$engine_dir/host" "$engine_dir/include/infiltratr"
+sudo install -m 0644 native/filesystems/fat/defrag/*.c native/filesystems/fat/defrag/*.h "$engine_dir"
+sudo install -m 0644 native/filesystems/fat/defrag/host/*.h "$engine_dir/host"
+sudo install -m 0644 src/infiltratr-common/include/infiltratr/*.h "$engine_dir/include/infiltratr"
 sudo install -m 0644 native/filesystems/fat/module/fat12_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat12_module.h "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/classic_fat_module.c "$source_dir"
@@ -43,6 +49,7 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
     exit 1
 fi
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+readelf -Ws "$module" | grep 'infiltrator_filesystem_defrag_v1$' >/dev/null
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v3$' >/dev/null
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v4$' >/dev/null
 

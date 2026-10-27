@@ -13,6 +13,8 @@ module for one width must not be accepted as another by renaming the file.
 - `module/` contains the legacy V1 FAT12/16 adapters and independent FAT32
   reader. Each FAT12/16 shared object embeds the common portable sources and
   exports its own format identity; neither needs the other to be installed.
+- `defrag/` contains the shared FAT relocation and durable recovery engine,
+  its versioned process-host ABI, and the generic host interface declarations.
 - `linux/` contains the actual copied Linux 6.12.107 FAT/VFAT/MSDOS code and
   the experimental FAT12/FAT16 namespace builds. The two modules depend on a
   compatible Linux FAT core. They are not self-contained replacement kernels.
@@ -41,9 +43,10 @@ EFI driver, another FAT variant or a separate package.
 
 ## FAT32 shared object
 
-`FAT32.so` remains a separate experimental read-only parser with FAT32 chain
+`FAT32.so` retains its experimental read-only file API with FAT32 chain
 reading and root-file fragmentation analysis. Its helper installs only that
-module. FAT12/16's V3/V4 operations are not a FAT32 implementation.
+module. FAT12/16's V3/V4 operations are not a FAT32 implementation. The
+separate defrag ABI supports journalled FAT32 relocation and recovery.
 
 ## Qualification and remaining work
 
@@ -54,9 +57,8 @@ the Linux test boots the actual two modules against a compatible FAT core.
 Check the workflow results for the exact source commit and distinguish QEMU
 results from physical-device or firmware results.
 
-These interfaces do not yet provide Defragmenter's relocation and journal
-recovery operations, nor a common consumer dispatcher. Defragmenter currently
-uses one FAT worker for FAT12, FAT16 and FAT32; migration must preserve all
-three formats and recovery semantics before that worker can be removed.
-Corrupt-media, I/O failure and interruption behaviour require further testing;
-there is no claim of transactional crash recovery.
+The versioned defrag ABI makes the FAT relocation and recovery engine available
+to Defragmenter's child-process loader. Interrupted journal-stage recovery and
+wrong-target refusal are tested on images; physical power-loss, corrupt-media
+and broader I/O failure behaviour require further qualification. See
+`docs/FAT_DEFRAG_MODULE_ABI.md`.
