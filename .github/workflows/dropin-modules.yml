@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Check out exact candidate source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
-      - name: Independently compile and exercise all six implemented modules
+      - name: Independently compile and exercise all seven implemented modules
         shell: bash
         run: |
           set -euo pipefail
@@ -38,11 +38,15 @@ jobs:
           cc $flags $moduleflags -I "$src" "$src/bfs_module.c" -o /tmp/ifs-dropins/BFS.so
           cc $flags -I "$src" tests/bfs_dropin_module_test.c "$src/bfs_module.c" -o /tmp/ifs-dropins/bfs-test
           /tmp/ifs-dropins/bfs-test
+          src=native/filesystems/minix/module
+          cc $flags $moduleflags -I "$src" "$src/minix_module.c" -o /tmp/ifs-dropins/MINIX.so
+          cc $flags -I "$src" tests/minix_dropin_module_test.c "$src/minix_module.c" -o /tmp/ifs-dropins/minix-test
+          /tmp/ifs-dropins/minix-test
       - name: Check ELF identity, ABI exports and freestanding linkage
         shell: bash
         run: |
           set -euo pipefail
-          for fs in FAT12 FAT16 FAT32 OFS EXT2 BFS; do
+          for fs in FAT12 FAT16 FAT32 OFS EXT2 BFS MINIX; do
             file="/tmp/ifs-dropins/$fs.so"
             test -s "$file"
             readelf -h "$file" | grep -Eq 'Type:.*DYN'
@@ -62,8 +66,8 @@ jobs:
             readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v2' >/dev/null
             readelf -p .ifsmeta "$file" | grep -F "IFS-MODULE:$identity:2" >/dev/null
           done
-          for helper in fat12 fat16 fat32 ofs ext2 bfs; do
+          for helper in fat12 fat16 fat32 ofs ext2 bfs minix; do
             bash -n "packaging/linux/$helper-module-helper.sh"
           done
           sha256sum /tmp/ifs-dropins/*.so
-          echo SIX-INDEPENDENT-DROPINS-FAT-V2-PASSED
+          echo SEVEN-INDEPENDENT-DROPINS-FAT-V2-PASSED

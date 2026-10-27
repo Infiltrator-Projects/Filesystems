@@ -550,6 +550,8 @@ jobs:
            grep -Fq './Programs/Filesystems/Helpers/fat32-module-helper' package-contents.txt
           grep -Fq './Programs/Filesystems/Helpers/ofs-module-helper' package-contents.txt
           grep -Fq './Programs/Filesystems/Helpers/bfs-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Helpers/minix-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Sources/minix/module/minix_module.c' package-contents.txt
           grep -Fq './Programs/Filesystems/Sources/bfs/module/bfs_module.c' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/fat16-source/' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/ofs-source/' package-contents.txt
