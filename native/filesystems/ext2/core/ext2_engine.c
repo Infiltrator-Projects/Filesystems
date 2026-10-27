@@ -516,6 +516,56 @@ IfsExt2Status ifs_ext2_read_file(
     return IFS_EXT2_OK;
 }
 
+/* A writable file block must be allocated in its group bitmap and must
+ * never overlap the group's allocation metadata. Unlike a range check,
+ * this rejects a corrupted inode which points at an inode table or bitmap.
+ * Caller owns media exclusivity; this cannot stop concurrent OS writes.
+ */
+static IfsExt2Status preflight_existing_data_block(
+    const IfsExt2Volume *volume, ifs_ext2_u64 physical,
+    void *scratch, ifs_ext2_u32 scratch_size)
+{
+    IfsExt2GroupDescriptor descriptor;
+    ifs_ext2_u64 group_first, table_end, bit_index, bitmap_offset;
+    ifs_ext2_u32 group;
+    ifs_ext2_u8 allocated = 0U;
+    IfsExt2Status status;
+
+    if (physical < volume->first_data_block ||
+        physical >= volume->total_blocks)
+        return IFS_EXT2_ERROR_CORRUPT;
+    group = (ifs_ext2_u32)
+        ((physical - volume->first_data_block) / volume->blocks_per_group);
+    if (group >= volume->group_count)
+        return IFS_EXT2_ERROR_CORRUPT;
+    status = read_group_descriptor(
+        volume, group, &descriptor, scratch, scratch_size);
+    if (status != IFS_EXT2_OK)
+        return status;
+    group_first = (ifs_ext2_u64)volume->first_data_block +
+                  (ifs_ext2_u64)group * volume->blocks_per_group;
+    table_end = (ifs_ext2_u64)descriptor.inode_table +
+                volume->super.inode_table_blocks_per_group;
+    /* Conservatively exclude every group prefix through the inode table.
+     * This includes the superblock, GDT and reserved GDT backup blocks.
+     * Unusual layouts with valid earlier data are not writable yet.
+     */
+    if (physical < table_end ||
+        physical == descriptor.block_bitmap ||
+        physical == descriptor.inode_bitmap)
+        return IFS_EXT2_ERROR_CORRUPT;
+    bit_index = physical - group_first;
+    if (bit_index >= volume->blocks_per_group)
+        return IFS_EXT2_ERROR_CORRUPT;
+    bitmap_offset = (ifs_ext2_u64)descriptor.block_bitmap *
+                    volume->block_size + bit_index / 8U;
+    status = read_exact(volume, bitmap_offset, &allocated, 1U);
+    if (status != IFS_EXT2_OK)
+        return status;
+    return (allocated & (ifs_ext2_u8)(1U << (bit_index & 7U))) != 0U
+        ? IFS_EXT2_OK : IFS_EXT2_ERROR_CORRUPT;
+}
+
 IfsExt2Status ifs_ext2_write_file_existing(
     const IfsExt2Volume *volume,
     const IfsExt2Inode *inode,
@@ -542,6 +592,35 @@ IfsExt2Status ifs_ext2_write_file_existing(
     if (byte_offset > inode->size ||
         (ifs_ext2_u64)byte_count > inode->size - byte_offset)
         return IFS_EXT2_ERROR_RANGE;
+
+    /* Preflight the entire span before the first host write. In particular,
+     * a trailing hole, unallocated block or metadata pointer must not cause
+     * a partial overwrite of the earlier (otherwise valid) file blocks.
+     */
+    if (byte_count != 0U) {
+        const ifs_ext2_u64 first = byte_offset / volume->block_size;
+        const ifs_ext2_u64 last =
+            (byte_offset + (ifs_ext2_u64)byte_count - 1U) /
+            volume->block_size;
+        ifs_ext2_u64 logical;
+        if (last > UINT32_MAX)
+            return IFS_EXT2_ERROR_RANGE;
+        for (logical = first; logical <= last; ++logical) {
+            ifs_ext2_u64 physical = 0U;
+            int hole = 0;
+            status = ifs_ext2_map_file_block(
+                volume, inode, (ifs_ext2_u32)logical,
+                &physical, &hole, scratch, scratch_size);
+            if (status != IFS_EXT2_OK)
+                return status;
+            if (hole)
+                return IFS_EXT2_ERROR_UNSUPPORTED;
+            status = preflight_existing_data_block(
+                volume, physical, scratch, scratch_size);
+            if (status != IFS_EXT2_OK)
+                return status;
+        }
+    }
 
     while (total < byte_count) {
         ifs_ext2_u64 current = byte_offset + total;
