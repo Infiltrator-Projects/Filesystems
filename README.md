@@ -49,6 +49,26 @@ a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
 
 ## Current freestanding drop-in implementation
+## EXT2 standalone module (experimental)
+
+`EXT2.so` is a fifth standalone filesystem module built from the repository's
+canonical EXT2 engine. It supports a clean EXT2 filesystem probe, directory
+lookup, inode inspection and file reads. If the host provides a writable,
+flush-capable, partition-bounded device interface, it also supports bounded
+**overwrites inside existing, allocated regular-file blocks**. This is a real
+write path but **not full filesystem write support**: creating files, appending,
+resizing, allocating blocks, changing metadata, journal replay, full defrag and
+formatting are NOT implemented by this `.so`. Unsafe/dirty filesystems and
+unsupported EXT2 features are rejected. A write failure may leave a partially
+modified file; no transaction or rollback is promised.
+
+The native module is compiled from packaged source under
+`/Programs/Filesystems/Sources/ext2/` by
+`/Programs/Filesystems/Helpers/ext2-module-helper` and installs only
+`/System/Filesystems/EXT2.so`. The independent EXT2 Linux kernel and EFI
+reader implementations are left untouched. EXT2.so is not yet a default
+GUI-managed module and has not completed physical-media qualification.
+
 
 The existing source now builds independent read-only `OFS.so`, `FAT16.so`
 and `FAT12.so` artifacts. FAT12 and FAT16 embed the **same classic FAT
