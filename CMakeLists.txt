@@ -718,6 +718,12 @@ if(BUILD_TESTING)
         COMMAND filesystems-native-core-test)
 
     if(TARGET filesystems-bfs-dropin)
+        add_executable(filesystems-bfs-real-mkfs-test
+            tests/bfs_real_mkfs_test.c)
+        target_link_libraries(filesystems-bfs-real-mkfs-test PRIVATE
+            filesystems-bfs-dropin)
+        filesystems_configure(filesystems-bfs-real-mkfs-test)
+
         add_executable(filesystems-bfs-dropin-test
             tests/bfs_dropin_module_test.c)
         target_link_libraries(filesystems-bfs-dropin-test PRIVATE
