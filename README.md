@@ -48,6 +48,23 @@ from being accepted merely because another binary was renamed. This is
 a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
 
+## FAT12/FAT16 independent V2 overwrite capability (experimental)
+
+The existing V1 `FAT12.so` and `FAT16.so` APIs remain **binary-compatible and
+read-only**. Both modules now additionally export an optional V2 interface
+with a real flush-backed, partition-bounded overwrite operation for already
+allocated 8.3 root regular files. This operation re-probes the BPB and disk
+geometry, independently matches the current root entry, preflights the
+allocation chain and refuses read-only files, forged/stale entries, missing
+write/flush callbacks and file extension. The same shared FAT implementation
+is compiled independently into the two separate format-specific `.so` files.
+
+**These are not full read/write filesystems.** V2 cannot create, rename,
+delete, extend, allocate, resize, defragment or format media, nor traverse
+subdirectories or manipulate VFAT long names. On a host I/O failure, writes
+may be partially committed; no transactional rollback is promised. FAT32's
+independent module is unchanged and remains read-only.
+
 ## Current freestanding drop-in implementation
 ## Experimental SCO BFS standalone module
 
@@ -99,8 +116,7 @@ FAT12 has its own compiler helper and manual drag-in path for
 `/System/Filesystems/FAT12.so`, without installing FAT16, .ko, .efi or
 other packages. FAT12, FAT16 and FAT32 now each have graphical
 Install/Remove controls in the single classic FAT family row, with their own
-independent compiler helpers and .so files. All three are read-only; their
-formatting, writes and defragmentation remain to be implemented.
+independent compiler helpers and .so files. All three retain read-only V1 APIs; FAT12 and FAT16 separately expose only bounded existing-data overwrites through V2. Full formatting, writing and defragmentation remain unimplemented.
 
 ## Current FAT32.so implementation
 
