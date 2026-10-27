@@ -643,6 +643,22 @@ void manage_ofs_module_async(const bool remove,
         std::move(completion));
 }
 
+void manage_ext2_dropin_async(const bool remove,
+                               ActionCompletion completion)
+{
+    const std::string helper = application_helper("ext2-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The EXT2.so compiler helper is not installed.");
+        return;
+    }
+    // Does not touch ext2.ko, EFI, APT, partitions or boot configuration.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "EXT2.so removed." :
+                 "EXT2.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void load_module_async(const std::string& module,
                        ActionCompletion completion)
 {
