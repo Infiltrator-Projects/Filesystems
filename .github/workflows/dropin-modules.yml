@@ -1,36 +1,8 @@
 name: Independent freestanding filesystem shared objects
+# One authoritative qualification, invoked by the release-gated build.
+# workflow_dispatch remains available for isolated manual verification.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/dropin-modules.yml"
-      - "native/filesystems/fat/module/**"
-      - "native/filesystems/ofs/module/**"
-      - "native/filesystems/ofs/efi/**"
-      - "native/filesystems/ofs/core/**"
-      - "native/filesystems/ext2/module/**"
-      - "native/filesystems/ext2/core/**"
-      - "native/filesystems/bfs/module/**"
-      - "tests/fat*_module_test.c"
-      - "tests/ofs_dropin_module_test.c"
-      - "tests/ext2_dropin_module_test.c"
-      - "tests/bfs_dropin_module_test.c"
-      - "packaging/linux/*module-helper.sh"
-  pull_request:
-    paths:
-      - ".github/workflows/dropin-modules.yml"
-      - "native/filesystems/fat/module/**"
-      - "native/filesystems/ofs/module/**"
-      - "native/filesystems/ofs/efi/**"
-      - "native/filesystems/ofs/core/**"
-      - "native/filesystems/ext2/module/**"
-      - "native/filesystems/ext2/core/**"
-      - "native/filesystems/bfs/module/**"
-      - "tests/fat*_module_test.c"
-      - "tests/ofs_dropin_module_test.c"
-      - "tests/ext2_dropin_module_test.c"
-      - "tests/bfs_dropin_module_test.c"
-      - "packaging/linux/*module-helper.sh"
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

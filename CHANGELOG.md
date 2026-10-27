@@ -2,6 +2,8 @@
 
 ## 0.5.98 — 2026-10-27 (classic FAT V2 bounded data overwrite)
 
+- Extend standalone ELF/ABI qualification to all six implemented FAT12/FAT16/FAT32/OFS/EXT2/BFS modules and the optional FAT V2 exports; make this one reusable workflow a mandatory release-promotion dependency, rather than an advisory separate action.
+
 - Add independent backwards-compatible V2 exports to FAT12.so, FAT16.so and FAT32.so for existing-file data overwrites only, leaving V1 module structures untouched.
 - Re-probe geometry and compare live root-file identity, preflight allocation chains and require host write/flush callbacks before any in-place overwrite. Refuse readonly file attributes, missing callbacks, attempts to extend a file, and unsupported FAT32 active-FAT configurations.
 - Add synthetic data-readback and rejection tests for all three variants, and fix the ELF smoke test order to check V2 before removing the staged test module. No create, allocation, formatting, repair, defrag, automatic physical-device write or full writable mount support is implied.
