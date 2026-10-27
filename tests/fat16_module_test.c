@@ -35,7 +35,9 @@ static int write_at(void *ctx, uint64_t offset,
                     const void *buf, uint32_t bytes)
 {
     (void)ctx;
-    if (offset > sizeof image || bytes > sizeof image - offset)
+    /* The optional overwrite API must never modify boot, FAT or directory. */
+    if (offset < (uint64_t)DATA_START * SECTOR ||
+        offset > sizeof image || bytes > sizeof image - offset)
         return -1;
     memcpy(image + (size_t)offset, buf, bytes);
     ++recorded_writes;
@@ -177,6 +179,9 @@ int main(void)
     }
 
     fat(5, 0xffffu);
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return failure("V2 attempted write with a corrupt allocation chain");
     if (api->root_file_fragments(&io, &vol, &file, &fragments) == 0)
         return failure("short/corrupt chain accepted");
     fixture();
