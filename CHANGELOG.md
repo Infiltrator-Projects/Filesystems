@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — experimental BFS.so
+
+- Implement independent SCO BFS drop-in with bounded root inode/directory traversal, real contiguous data reading, and flush-backed in-place overwrites of allocated file bytes.
+- Add independent compiler helper, native source packaging, disposable in-memory tests and isolated runner install/drag-in qualification; not a full read/write filesystem implementation.
+- Preserve the independent Linux BFS kernel driver, EFI and boot implementations.
+
 ## Unreleased — experimental EXT2.so
 
 - Add a standalone EXT2 module using the existing canonical engine, with read, directory lookup, bounded overwrites of allocated file blocks and host flush handling; no full read/write, formatting or defrag claim.
