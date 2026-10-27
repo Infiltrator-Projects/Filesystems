@@ -496,6 +496,44 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat32-module-helper)
 
+    # EXT2.so: one independent drop-in, using the SAME portable read/write
+    # canonical engine as kernel/firmware adapters. Writes are constrained to
+    # existing allocated file blocks; no allocator or formatter is advertised.
+    add_library(filesystems-ext2-dropin SHARED
+        native/filesystems/ext2/module/ext2_module.c
+        native/filesystems/ext2/core/ext2_core.c
+        native/filesystems/ext2/core/ext2_engine.c)
+    set_target_properties(filesystems-ext2-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "EXT2")
+    target_include_directories(filesystems-ext2-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/core")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-ext2-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-ext2-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-ext2-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-ext2-dropin)
+    install(FILES
+        native/filesystems/ext2/module/ext2_module.c
+        native/filesystems/ext2/module/ext2_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/module")
+    install(FILES
+        native/filesystems/ext2/core/ext2_core.c
+        native/filesystems/ext2/core/ext2_core.h
+        native/filesystems/ext2/core/ext2_engine.c
+        native/filesystems/ext2/core/ext2_engine.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/core")
+    install(PROGRAMS packaging/linux/ext2-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME ext2-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -589,6 +627,16 @@ if(UNIX)
 endif()
 
 if(BUILD_TESTING)
+    if(TARGET filesystems-ext2-dropin)
+        add_executable(filesystems-ext2-dropin-test
+            tests/ext2_dropin_module_test.c)
+        target_link_libraries(filesystems-ext2-dropin-test PRIVATE
+            filesystems-ext2-dropin)
+        filesystems_configure(filesystems-ext2-dropin-test)
+        add_test(NAME filesystems-ext2-dropin
+            COMMAND filesystems-ext2-dropin-test)
+    endif()
+
     if(TARGET filesystems-ofs-dropin)
         add_executable(filesystems-ofs-dropin-test
             tests/ofs_dropin_module_test.c)
