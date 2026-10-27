@@ -76,13 +76,13 @@ jobs:
             mcopy -n -i "$image" "::/SUBDIR/Verified Café Ünîcode Data.txt" \
               "/tmp/fat-modules/external-$kind.bin"
             python3 - "/tmp/fat-modules/external-$kind.bin" <<'PY'
-import sys
-from pathlib import Path
-data=Path(sys.argv[1]).read_bytes()
-assert len(data)==1000, "Unexpected externally read FAT data length"
-assert data == bytes((i*17+23)&255 for i in range(1000)), "Data mismatches external reader"
-print(sys.argv[1], "INDEPENDENT-DATA-VERIFIED")
-PY
+          import sys
+          from pathlib import Path
+          data=Path(sys.argv[1]).read_bytes()
+          assert len(data)==1000, "Unexpected externally read FAT data length"
+          assert data == bytes((i*17+23)&255 for i in range(1000)), "Data mismatches external reader"
+          print(sys.argv[1], "INDEPENDENT-DATA-VERIFIED")
+          PY
           done
           /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
             /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img cleanup
