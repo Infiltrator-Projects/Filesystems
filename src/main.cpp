@@ -2,6 +2,7 @@
 #include "action_policy.hpp"
 #include "catalog.hpp"
 #include "desktop_actions.hpp"
+#include "installer.hpp"
 #include "probe.hpp"
 
 #include <gio/gio.h>
