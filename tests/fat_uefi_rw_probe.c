@@ -19,6 +19,7 @@
 
 static EFI_GUID loaded_guid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 static EFI_GUID block_guid = EFI_BLOCK_IO_PROTOCOL_GUID;
+static EFI_GUID disk_guid = EFI_DISK_IO_PROTOCOL_GUID;
 static EFI_GUID fs_guid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 static EFI_GUID binding_guid = EFI_DRIVER_BINDING_PROTOCOL_GUID;
 static EFI_GUID fileinfo_guid = EFI_FILE_INFO_ID;
@@ -56,9 +57,30 @@ static void require(EFI_STATUS status,const char *message) {
 }
 static void disconnect_existing(EFI_HANDLE target) {
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs=NULL;
-    (void)BS->DisconnectController(target,NULL,NULL);
+    EFI_OPEN_PROTOCOL_INFORMATION_ENTRY *entries=NULL;
+    EFI_DISK_IO *disk=NULL;
+    EFI_STATUS status;
+    UINTN count=0;
+    /* Connecting may install OVMF's FAT driver as well as DiskIo. Identify
+     * and disconnect only drivers that own DiskIo, leaving its producer in
+     * place. Disconnecting the whole controller also removes DiskIo itself. */
+    (void)BS->ConnectController(target,NULL,NULL,FALSE);
+    require(BS->HandleProtocol(target,&disk_guid,(VOID **)&disk),
+            "FAT_EFI_FAIL missing DiskIo\r\n");
+    status=BS->OpenProtocolInformation(target,&disk_guid,&entries,&count);
+    if (!EFI_ERROR(status)) {
+        for(UINTN i=0;i<count;++i)
+            if(entries[i].Attributes & EFI_OPEN_PROTOCOL_BY_DRIVER)
+                require(BS->DisconnectController(target,entries[i].AgentHandle,NULL),
+                        "FAT_EFI_FAIL disconnect firmware driver\r\n");
+        BS->FreePool(entries);
+    } else if (status!=EFI_NOT_FOUND) {
+        require(status,"FAT_EFI_FAIL enumerate DiskIo owners\r\n");
+    }
     if (!EFI_ERROR(BS->HandleProtocol(target,&fs_guid,(VOID **)&fs)))
         finish("FAT_EFI_FAIL firmware filesystem still bound\r\n",0x11U);
+    require(BS->HandleProtocol(target,&disk_guid,(VOID **)&disk),
+            "FAT_EFI_FAIL DiskIo removed\r\n");
 }
 static EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *get_fs(EFI_HANDLE target) {
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs=NULL;

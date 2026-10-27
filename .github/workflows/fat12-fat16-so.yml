@@ -66,6 +66,12 @@ jobs:
             /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img
           /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
             /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img
+          truncate -s 64M /tmp/fat-modules/fat32.img
+          mkfs.fat -F 32 -I -S 512 -s 1 /tmp/fat-modules/fat32.img
+          for kind in 12 16; do
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind.img" /tmp/fat-modules/fat32.img reject
+          done
           # Independently verify live directory entries, Unicode long names
           # and data, using external mtools instead of our own parser.
           fsck.fat -n /tmp/fat-modules/fat12.img
@@ -102,4 +108,20 @@ jobs:
             /tmp/fat-modules/full16.img /tmp/fat-modules/full12.img full
           fsck.fat -n /tmp/fat-modules/full12.img
           fsck.fat -n /tmp/fat-modules/full16.img
+          # Independently formatted logical 4 KiB sector geometry exercises
+          # the host callback's sector-size contract, not only 512-byte FAT.
+          truncate -s 8M /tmp/fat-modules/fat12-4k.img
+          truncate -s 64M /tmp/fat-modules/fat16-4k.img
+          mkfs.fat -F 12 -I -S 4096 -s 1 /tmp/fat-modules/fat12-4k.img
+          mkfs.fat -F 16 -I -S 4096 -s 1 /tmp/fat-modules/fat16-4k.img
+          for kind in 12 16; do
+            other=12
+            if [[ $kind == 12 ]]; then other=16; fi
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind-4k.img" "/tmp/fat-modules/fat$other-4k.img"
+            fsck.fat -n "/tmp/fat-modules/fat$kind-4k.img"
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind-4k.img" "/tmp/fat-modules/fat$other-4k.img" cleanup
+            fsck.fat -n "/tmp/fat-modules/fat$kind-4k.img"
+          done
           echo "BOTH-PORTABLE-MODULES-GENUINE-DOSFS-RW-INDEPENDENTLY-VERIFIED"

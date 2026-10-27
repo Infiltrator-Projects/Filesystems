@@ -38,6 +38,7 @@ static int die(const char *msg) {fprintf(stderr,"FAT-IMAGE-FAIL: %s\n",msg);retu
 static int setup(const char *path,FILE **f,IfsFatfsIo *io)
 {
     struct stat st;
+    unsigned char bpb[512];
     int fd=open(path,O_RDWR|O_CLOEXEC|O_NOFOLLOW);
     if(fd<0) return -1;
     if(fstat(fd,&st)!=0 || !S_ISREG(st.st_mode) || st.st_size<=0) {
@@ -46,9 +47,10 @@ static int setup(const char *path,FILE **f,IfsFatfsIo *io)
     }
     *f=fdopen(fd,"r+b");
     if(!*f) {close(fd);return -1;}
+    if(fread(bpb,1,sizeof bpb,*f)!=sizeof bpb) {fclose(*f);return -1;}
     io->user=*f;
     io->partition_bytes=(uint64_t)st.st_size;
-    io->sector_bytes=512u;
+    io->sector_bytes=(uint32_t)bpb[11] | (uint32_t)bpb[12]<<8;
     io->read_at=read_at;
     io->write_at=write_at;
     io->flush=flush_at;
@@ -83,6 +85,12 @@ int main(int argc,char **argv) {
     if(fclose(f)!=0) return die("close wrong media");
     if(setup(argv[2],&f,&io)!=0) return die("own image setup");
     if(api->mount(&io)!=0) return die("cannot mount correctly formatted image");
+    if(argc==5 && strcmp(argv[4],"reject")==0) {
+        if(api->unmount()!=0 || fclose(f)!=0 || dlclose(handle)!=0)
+            return die("close after rejecting foreign format");
+        puts("FAT-IMAGE-FOREIGN-REJECTION-PASS");
+        return 0;
+    }
     if(argc==5 && strcmp(argv[4],"full")==0) {
         /* A FatFs seek on full media may succeed at a clipped position.
          * Both operations must fail, and must not overwrite the original. */
