@@ -19,7 +19,12 @@ cp -a "$root/native/filesystems/fat/efi/FatPkg" "$work/edk2/FatPkg"
   cd "$work/edk2"
   export WORKSPACE="$PWD" PYTHON_COMMAND=python3
   make -C BaseTools -j2
+  # EDK2's upstream setup script reads optional variables without guarding
+  # unset status. Initialise tools path and suspend nounset only while sourcing.
+  export EDK_TOOLS_PATH="$PWD/BaseTools"
+  set +u
   source ./edksetup.sh --reconfig
+  set -u
   build -a X64 -t GCC5 -b RELEASE -p FatPkg/FatPkg.dsc
 )
 out="$root/build-fat-efi"
