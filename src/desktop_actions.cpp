@@ -186,6 +186,16 @@ DesktopAction prepare_module_desktop_action(
     return action;
 }
 
+void execute_classic_fat_variant_async(
+    const bool fat12, const bool remove, DesktopActionCompletion completion)
+{
+    if (!completion) return;
+    if (fat12)
+        manage_fat12_module_async(remove, std::move(completion));
+    else
+        manage_fat32_module_async(remove, std::move(completion));
+}
+
 void execute_desktop_action_async(
     DesktopAction action,
     DesktopActionCompletion completion)
