@@ -717,12 +717,14 @@ if(BUILD_TESTING)
         NAME filesystems-native-core
         COMMAND filesystems-native-core-test)
 
-    add_executable(filesystems-bfs-dropin-test
-        tests/bfs_dropin_module_test.c)
-    target_link_libraries(filesystems-bfs-dropin-test PRIVATE
-        filesystems-bfs-dropin)
-    filesystems_configure(filesystems-bfs-dropin-test)
-    add_test(NAME filesystems-bfs-dropin COMMAND filesystems-bfs-dropin-test)
+    if(TARGET filesystems-bfs-dropin)
+        add_executable(filesystems-bfs-dropin-test
+            tests/bfs_dropin_module_test.c)
+        target_link_libraries(filesystems-bfs-dropin-test PRIVATE
+            filesystems-bfs-dropin)
+        filesystems_configure(filesystems-bfs-dropin-test)
+        add_test(NAME filesystems-bfs-dropin COMMAND filesystems-bfs-dropin-test)
+    endif()
 
     add_executable(filesystems-ext2-core-test
         tests/ext2_core_test.c)
