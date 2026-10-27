@@ -36,23 +36,28 @@ for bits in 12 16; do
     esp="$case_dir/esp.img"
     image12="$case_dir/fat12.img"
     image16="$case_dir/fat16.img"
+    image32="$case_dir/fat32.img"
     disk="$case_dir/disk.img"
     truncate -s 32M "$esp"
     truncate -s 1440K "$image12"
     truncate -s 8M "$image16"
+    truncate -s 64M "$image32"
     mkfs.fat -F 16 -I "$esp" >/dev/null
     mkfs.fat -F 12 -I "$image12" >/dev/null
     mkfs.fat -F 16 -I -s 1 "$image16" >/dev/null
+    mkfs.fat -F 32 -I -s 1 "$image32" >/dev/null
     mmd -i "$esp" ::/EFI ::/EFI/BOOT
     mcopy -i "$esp" "$case_dir/BOOTX64.EFI" ::/EFI/BOOT/BOOTX64.EFI
     mcopy -i "$esp" "$driver" "::/FAT$bits.efi"
     truncate -s 128M "$disk"
     sgdisk --clear --new=1:2048:67583 --typecode=1:ef00 \
       --new=2:67584:70463 --typecode=2:8300 \
-      --new=3:71680:88063 --typecode=3:8300 "$disk" >/dev/null
+      --new=3:71680:88063 --typecode=3:8300 \
+      --new=4:88064:219135 --typecode=4:8300 "$disk" >/dev/null
     dd if="$esp" of="$disk" bs=512 seek=2048 conv=notrunc status=none
     dd if="$image12" of="$disk" bs=512 seek=67584 conv=notrunc status=none
     dd if="$image16" of="$disk" bs=512 seek=71680 conv=notrunc status=none
+    dd if="$image32" of="$disk" bs=512 seek=88064 conv=notrunc status=none
     cp "$vars" "$case_dir/vars.fd"
     set +e
     timeout -k 5s 90s qemu-system-x86_64 \
@@ -69,8 +74,11 @@ for bits in 12 16; do
     grep -Fq 'FAT_EFI_PASS read write rename delete flush rebind reject' "$case_dir/serial.log"
     dd if="$disk" of="$case_dir/after12.img" bs=512 skip=67584 count=2880 status=none
     dd if="$disk" of="$case_dir/after16.img" bs=512 skip=71680 count=16384 status=none
+    dd if="$disk" of="$case_dir/after32.img" bs=512 skip=88064 count=131072 status=none
     fsck.fat -n "$case_dir/after12.img"
     fsck.fat -n "$case_dir/after16.img"
+    fsck.fat -n "$case_dir/after32.img"
+    cmp "$image32" "$case_dir/after32.img"
     if [[ $bits == 12 ]]; then
         cmp "$image16" "$case_dir/after16.img"
     else

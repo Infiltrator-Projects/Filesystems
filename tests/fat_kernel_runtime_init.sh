@@ -11,7 +11,7 @@ insmod /fat16.ko || fail 'insmod fat16.ko'
 grep -q '[[:space:]]fat12$' /proc/filesystems || fail 'fat12 registration'
 grep -q '[[:space:]]fat16$' /proc/filesystems || fail 'fat16 registration'
 # Refusing the other format must leave every byte unchanged.
-for item in 'fat12 /dev/vdb' 'fat16 /dev/vda'; do
+for item in 'fat12 /dev/vdb' 'fat16 /dev/vda' 'fat12 /dev/vdc' 'fat16 /dev/vdc'; do
     set -- $item
     before=$(sha256sum "$2")
     if mount -t "$1" "$2" /mnt/test; then

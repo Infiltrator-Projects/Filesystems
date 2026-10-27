@@ -106,7 +106,7 @@ static void verify_data(EFI_FILE_PROTOCOL *root) {
 EFI_STATUS efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE *table) {
     EFI_LOADED_IMAGE *loaded=NULL;
     EFI_DEVICE_PATH *path;
-    EFI_HANDLE driver=NULL,*handles=NULL,own=NULL,other=NULL;
+    EFI_HANDLE driver=NULL,*handles=NULL,own=NULL,other=NULL,fat32=NULL;
     EFI_DRIVER_BINDING_PROTOCOL *binding=NULL;
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs=NULL;
     EFI_FILE_PROTOCOL *root=NULL,*dir=NULL,*file=NULL,*tmp=NULL;
@@ -133,9 +133,10 @@ EFI_STATUS efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE *table) {
             continue;
         if (block->Media->LastBlock+1==OWN_BLOCKS) own=handles[i];
         if (block->Media->LastBlock+1==OTHER_BLOCKS) other=handles[i];
+        if (block->Media->LastBlock+1==131072ULL) fat32=handles[i];
     }
     BS->FreePool(handles);
-    if (!own || !other) finish("FAT_EFI_FAIL target partitions\r\n",0x11U);
+    if (!own || !other || !fat32) finish("FAT_EFI_FAIL target partitions\r\n",0x11U);
     uart("FAT_EFI reject other format\r\n");
     disconnect_existing(other);
     status=binding->Start(binding,other,NULL);
@@ -143,6 +144,12 @@ EFI_STATUS efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE *table) {
     if (!EFI_ERROR(status)) finish("FAT_EFI_FAIL other variant accepted\r\n",0x11U);
     if (!EFI_ERROR(BS->HandleProtocol(other,&fs_guid,(VOID **)&fs)))
         finish("FAT_EFI_FAIL other variant installed filesystem\r\n",0x11U);
+    uart("FAT_EFI reject FAT32\r\n");
+    disconnect_existing(fat32);
+    status=binding->Start(binding,fat32,NULL);
+    if (!EFI_ERROR(status)) finish("FAT_EFI_FAIL FAT32 accepted\r\n",0x11U);
+    if (!EFI_ERROR(BS->HandleProtocol(fat32,&fs_guid,(VOID **)&fs)))
+        finish("FAT_EFI_FAIL FAT32 installed filesystem\r\n",0x11U);
     uart("FAT_EFI bind own format\r\n");
     disconnect_existing(own);
     require(binding->Supported(binding,own,NULL),"FAT_EFI_FAIL own supported\r\n");

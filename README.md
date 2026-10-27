@@ -50,18 +50,21 @@ privileged loading still requires a separately defined trust policy.
 
 ## Current freestanding drop-in implementation
 
-The existing source now builds independent read-only `OFS.so`, `FAT16.so`
-and `FAT12.so` artifacts. FAT12 and FAT16 embed the **same classic FAT
-source implementation** but export independent on-disk format identities,
-packed cluster-chain reading, 8.3 root-file discovery, bounded file reads
-and fragment counts. Neither requires the other to be installed.
+The source builds an independent read-only `OFS.so` and separate
+`FAT12.so` and `FAT16.so` artifacts. Each FAT module retains a legacy V1
+read-only API and also embeds the portable FAT engine behind the V3 API.
+V3 supports long names, nested directories, reading, file creation and
+allocation, writing, truncation, rename and deletion. Callers must provide
+partition-relative I/O and flush callbacks and serialize access to an
+exclusively held volume. Tests use disposable media; this does not establish
+physical-media or crash-recovery qualification.
 
-FAT12 has its own compiler helper and manual drag-in path for
-`/System/Filesystems/FAT12.so`, without installing FAT16, .ko, .efi or
-other packages. FAT12, FAT16 and FAT32 now each have graphical
-Install/Remove controls in the single classic FAT family row, with their own
-independent compiler helpers and .so files. All three are read-only; their
-formatting, writes and defragmentation remain to be implemented.
+The FAT12 and FAT16 compiler helpers build one corresponding module into
+`/System/Filesystems/`, without installing the other variant. Their EFI and
+Linux module candidates have separate build and runtime qualification lanes;
+they are not installed by the `.so` selector. Formatting and the relocation
+and recovery interface required by Defragmenter are not yet available through
+V3. FAT32 retains its existing read-only module.
 
 ## Current EXT2.so implementation (restricted in-place writes)
 
@@ -77,8 +80,8 @@ callbacks. All offsets are partition-relative. The compiled module and its
 synthetic-disk qualification do not establish production write safety on
 physical media.
 
-The four original modules remain read-only; EXT2 is the fifth module build
-target and SCO BFS is the sixth. Format-specific module operation tables still differ. A unified,
+OFS and FAT32 remain read-only; EXT2 and SCO BFS support restricted
+in-place writes, and FAT12/FAT16 add the V3 writable interface described above. Format-specific module operation tables still differ. A unified,
 portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
@@ -106,8 +109,8 @@ The independent `FAT32.so` source implements read-only probing of actual
 FAT32 media, 28-bit FAT entry traversal, root directory cluster chains,
 8.3 root file enumeration, fragmented file reading and fragmentation counts.
 It does not substitute FAT16 semantics. Separate FAT12, FAT16 and OFS modules
-remain intact. FAT32 write, formatting, nested directories, VFAT long names,
-defragmentation and graphical selection remain unfinished.
+remain intact. FAT32 write, formatting, nested directories, VFAT long names and
+defragmentation remain unfinished.
 
 The FAT32 compiler helper builds and installs only `FAT32.so` under
 `/System/Filesystems/`; it neither installs another FAT variant nor a

@@ -75,8 +75,10 @@ jobs:
           set -euo pipefail
           truncate -s 1440K "$RUNNER_TEMP/fat12.img"
           truncate -s 8M "$RUNNER_TEMP/fat16.img"
+          truncate -s 64M "$RUNNER_TEMP/fat32.img"
           mkfs.fat -F 12 -I "$RUNNER_TEMP/fat12.img"
           mkfs.fat -F 16 -I -s 1 "$RUNNER_TEMP/fat16.img"
+          mkfs.fat -F 32 -I -s 1 "$RUNNER_TEMP/fat32.img"
           root="$RUNNER_TEMP/fat-initramfs"
           mkdir -p "$root"/{bin,proc,sys,dev,mnt/test}
           cp /usr/bin/busybox "$root/bin/busybox"
@@ -97,10 +99,12 @@ jobs:
             -append 'console=ttyS0 panic=1 rdinit=/init' \
             -drive "file=$RUNNER_TEMP/fat12.img,format=raw,if=virtio" \
             -drive "file=$RUNNER_TEMP/fat16.img,format=raw,if=virtio" \
+            -drive "file=$RUNNER_TEMP/fat32.img,format=raw,if=virtio" \
             2>&1 | tee "$RUNNER_TEMP/fat-kernel-serial.log"
           grep -Fq 'FAT-KO-RUNTIME-PASS: fat12' "$RUNNER_TEMP/fat-kernel-serial.log"
           grep -Fq 'FAT-KO-RUNTIME-PASS: fat16' "$RUNNER_TEMP/fat-kernel-serial.log"
           ! grep -Fq 'FAT-KO-RUNTIME-FAIL' "$RUNNER_TEMP/fat-kernel-serial.log"
+          fsck.fat -n "$RUNNER_TEMP/fat32.img"
           for bits in 12 16; do
             fsck.fat -n "$RUNNER_TEMP/fat$bits.img"
             mcopy -i "$RUNNER_TEMP/fat$bits.img" '::/tree/Renamed Long Name.txt' "$RUNNER_TEMP/fat$bits-readback.txt"
