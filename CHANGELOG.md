@@ -4,7 +4,7 @@
 
 - Add independent `EXT2.so` using the existing canonical EXT2 engine rather than copying or rewriting on-disk semantics.
 - Expose partition-bounded volume mount, directory lookup/enumeration, regular-file reads and conditional writes confined to already allocated bytes of existing regular files. Writes require explicit write and flush callbacks, a clean supported EXT2 volume and the engine's immutable/append restrictions.
-- Add source-relative one-module compiler for `/System/Filesystems/EXT2.so`, disposable in-memory regression tests and source/ELF identity checks; do not install any `.ko` or EFI driver.
+- Add source-relative one-module compiler for `/System/Filesystems/EXT2.so`, an independent GTK Install/Remove control alongside Linux `ext2.ko` support, disposable in-memory regression tests and source/ELF identity checks; do not install any `.ko` or EFI driver.
 - Not complete general read/write filesystem support: creation, resizing, block allocation, deletion, format, defrag, journaling and safe physical-device coordination remain unfinished. No automatic disk writes are enabled.
 
 
