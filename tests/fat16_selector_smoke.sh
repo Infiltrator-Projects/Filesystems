@@ -39,7 +39,62 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
     echo "FAT16.so has host-linked library dependencies" >&2
     exit 1
 fi
-readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1
+
+sudo "$helper" remove
+[[ ! -e "$module" ]] || { echo "FAT16 removal failed" >&2; exit 1; }
+
+# A binary for another FAT format is never an acceptable replacement.
+foreign=$(find build-desktop -name "FAT12.so" -type f -print -quit)
+[[ -n "$foreign" ]] || { echo "missing foreign module for identity test" >&2; exit 1; }
+sudo install -m 0644 "$foreign" "$module"
+if sudo "$helper" status >/dev/null 2>&1; then
+    echo "FAT16 accepted a mismatched module identity" >&2
+    exit 1
+fi
+sudo "$helper" remove
+
+
+# The copied prebuilt module and a module compiled by Install are discovered
+# through the exact same directory; neither installs a second filesystem.
+prebuilt=$(find build-desktop -name FAT16.so -type f -print -quit)
+[[ -n "$prebuilt" ]] || { echo "prebuilt FAT16.so missing" >&2; exit 1; }
+sudo install -m 0644 "$prebuilt" "$module"
+[[ "$(sudo "$helper" status)" == installed ]] ||
+  { echo "precompiled FAT16.so was not recognised" >&2; exit 1; }
+sudo "$helper" remove
+
+echo 'FAT16-SELECT-COMPILE-COPY-AND-DRAG-PASS'
+ >/dev/null
+# Check the newly built V2 ABI while the image is still installed.
+readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v2
+
+sudo "$helper" remove
+[[ ! -e "$module" ]] || { echo "FAT16 removal failed" >&2; exit 1; }
+
+# A binary for another FAT format is never an acceptable replacement.
+foreign=$(find build-desktop -name "FAT12.so" -type f -print -quit)
+[[ -n "$foreign" ]] || { echo "missing foreign module for identity test" >&2; exit 1; }
+sudo install -m 0644 "$foreign" "$module"
+if sudo "$helper" status >/dev/null 2>&1; then
+    echo "FAT16 accepted a mismatched module identity" >&2
+    exit 1
+fi
+sudo "$helper" remove
+
+
+# The copied prebuilt module and a module compiled by Install are discovered
+# through the exact same directory; neither installs a second filesystem.
+prebuilt=$(find build-desktop -name FAT16.so -type f -print -quit)
+[[ -n "$prebuilt" ]] || { echo "prebuilt FAT16.so missing" >&2; exit 1; }
+sudo install -m 0644 "$prebuilt" "$module"
+[[ "$(sudo "$helper" status)" == installed ]] ||
+  { echo "precompiled FAT16.so was not recognised" >&2; exit 1; }
+sudo "$helper" remove
+
+echo 'FAT16-SELECT-COMPILE-COPY-AND-DRAG-PASS'
+ >/dev/null
+readelf -p .ifsmeta "$module" | grep -F 'IFS-MODULE:fat16:2' >/dev/null
 
 sudo "$helper" remove
 [[ ! -e "$module" ]] || { echo "FAT16 removal failed" >&2; exit 1; }
