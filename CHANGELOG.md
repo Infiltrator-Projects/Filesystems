@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.88 — 2026-10-27
+
+- Add a standalone read-only FAT32.so with real 28-bit FAT and clustered root-directory traversal instead of a renamed FAT16 implementation.
+- Add independent FAT32 volume, root directory, file reading and corruption tests; build/install/drag-in smoke tests and on-demand source packaging.
+- Keep FAT12/FAT16/OFS unchanged; FAT32 GUI, formatting, writing, nested navigation, EFI and defragmentation remain unqualified.
+
+
 ## 0.5.87 — 2026-10-27
 
 - Build independently selectable FAT12.so from a shared freestanding classic FAT core also used by FAT16.so; correctly decode packed FAT12 table entries and reject incorrect format and reserved FAT data.

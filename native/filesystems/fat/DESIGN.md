@@ -23,6 +23,15 @@ Each compiler/selector helper installs **only** its matching `.so` in
 variant, kernel module, firmware driver or external package.
 The FAT12 graphical action and FAT32 implementation are outstanding.
 
+## FAT32.so source and qualification scope
+
+The new independent read-only FAT32.so source decodes the FAT32 BPB, 28-bit
+cluster-chain entries, and the cluster-chain root directory. Its standalone
+test exercises files on fragmented cluster chains, a root spread over two
+clusters, and corrupt/truncated disk metadata. The per-format compiler
+helper builds, installs and removes only FAT32.so. No other FAT module,
+.ko, .efi, formatter or writer is installed.
+
 ## Current state
 
 The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS

@@ -469,6 +469,33 @@ if(UNIX)
         RENAME fat12-module-helper)
 
 
+    # FAT32 has real 28-bit FAT entries and a cluster-chain root directory.
+    add_library(filesystems-fat32-module SHARED
+        native/filesystems/fat/module/fat32_module.c)
+    target_include_directories(filesystems-fat32-module PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+    set_target_properties(filesystems-fat32-module PROPERTIES
+        PREFIX "" OUTPUT_NAME "FAT32")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-fat32-module PRIVATE
+            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-fat32-module PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-fat32-module PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-fat32-module)
+    install(FILES
+        native/filesystems/fat/module/fat32_module.c
+        native/filesystems/fat/module/fat32_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat32")
+    install(PROGRAMS packaging/linux/fat32-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME fat32-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -590,6 +617,16 @@ if(BUILD_TESTING)
         filesystems_configure(filesystems-fat12-module-test)
         add_test(NAME filesystems-fat12-module
             COMMAND filesystems-fat12-module-test)
+    endif()
+
+    if(TARGET filesystems-fat32-module)
+        add_executable(filesystems-fat32-module-test
+            tests/fat32_module_test.c)
+        target_link_libraries(filesystems-fat32-module-test PRIVATE
+            filesystems-fat32-module)
+        filesystems_configure(filesystems-fat32-module-test)
+        add_test(NAME filesystems-fat32-module
+            COMMAND filesystems-fat32-module-test)
     endif()
 
     add_executable(filesystems-catalog-test

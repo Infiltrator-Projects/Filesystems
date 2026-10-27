@@ -52,6 +52,19 @@ other packages. The FAT12 GUI Install action and FAT32.so remain to be
 implemented. Neither FAT variant currently offers formatting, writes or
 defragmentation.
 
+## Current FAT32.so implementation
+
+The independent `FAT32.so` source implements read-only probing of actual
+FAT32 media, 28-bit FAT entry traversal, root directory cluster chains,
+8.3 root file enumeration, fragmented file reading and fragmentation counts.
+It does not substitute FAT16 semantics. Separate FAT12, FAT16 and OFS modules
+remain intact. FAT32 write, formatting, nested directories, VFAT long names,
+defragmentation and graphical selection remain unfinished.
+
+The FAT32 compiler helper builds and installs only `FAT32.so` under
+`/System/Filesystems/`; it neither installs another FAT variant nor a
+kernel or EFI driver.
+
 ## Drop-in filesystem modules — target architecture
 
 The intended native installation model is **one drag-and-drop file per on-media
