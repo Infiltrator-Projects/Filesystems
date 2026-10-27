@@ -2,6 +2,8 @@
 
 ## 0.5.97 — 2026-10-27 (independent SCO BFS.so)
 
+- Centralise the Mint/Debian native-kernel-module coordinator and removal-guard lookup in an explicitly Linux-only host adapter; remove Linux directory assumptions from application probe and installer. Add source/layout and helper-resolution regression tests. No packaging or physical system change.
+
 - Implement a separate SCO BFS filesystem module using repository-owned on-media semantics: root directory enumeration, case-sensitive lookup, bounded contiguous reads and restricted in-place overwrites of existing allocated bytes. The module requires a host flush callback for writes.
 - The safe write policy refuses any incomplete BFS relocation markers, including an individually set source or destination marker.
 - Add trusted one-file build/install helper, packaging, independent synthetic regressions and real mkfs.bfs compatibility tests on disposable CI images. No allocation, create, delete, full filesystem mounting, format, kernel, EFI or physical-media qualification is claimed.

@@ -566,6 +566,7 @@ if(UNIX)
 
     add_library(filesystems-core STATIC
         src/probe.cpp
+        src/platform/linux_host_paths.cpp
         src/action_policy.cpp)
     target_include_directories(filesystems-core
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -879,6 +880,14 @@ if(BUILD_TESTING)
         add_test(
             NAME filesystems-action-policy
             COMMAND filesystems-action-policy-test)
+
+        add_executable(filesystems-linux-host-paths-test
+            tests/linux_host_paths_test.cpp)
+        target_link_libraries(filesystems-linux-host-paths-test
+            PRIVATE filesystems-core)
+        filesystems_configure(filesystems-linux-host-paths-test)
+        add_test(NAME filesystems-linux-host-paths
+            COMMAND filesystems-linux-host-paths-test)
 
         add_executable(filesystems-desktop-actions-test
             tests/desktop_actions_test.cpp)
