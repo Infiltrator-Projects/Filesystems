@@ -1,0 +1,36 @@
+name: FAT12/FAT16 independently built writable EFI drivers
+on:
+  push:
+    branches:
+      - feature/fat12-fat16-genuine-rw-triple-20261028
+    paths:
+      - "native/filesystems/fat/efi/**"
+      - "scripts/build-fat12-fat16-efi.sh"
+      - ".github/workflows/fat12-fat16-efi.yml"
+  pull_request:
+    paths:
+      - "native/filesystems/fat/efi/**"
+      - "scripts/build-fat12-fat16-efi.sh"
+      - ".github/workflows/fat12-fat16-efi.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-fat-efi:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the owned FAT EFI source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install EDK2 build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential nasm uuid-dev acpica-tools python3 python3-setuptools
+      - name: Build independently restricted FAT12 and FAT16 UEFI drivers
+        run: bash scripts/build-fat12-fat16-efi.sh
+      - name: Publish EFI images for further runtime qualification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-uefi-unqualified
+          path: build-fat-efi/*.efi
+          if-no-files-found: error
