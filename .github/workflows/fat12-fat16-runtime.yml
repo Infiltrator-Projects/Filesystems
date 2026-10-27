@@ -24,6 +24,12 @@ jobs:
         run: bash scripts/build-fat12-fat16-efi.sh
       - name: Exercise exact driver bindings against independent writable media
         run: bash scripts/test-fat-uefi-ovmf.sh
+      - name: Preserve the EFI drivers tested by OVMF
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-efi-experimental
+          path: build-fat-efi/*.efi
+          if-no-files-found: error
       - name: Retain firmware logs on failure
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -121,6 +127,12 @@ jobs:
             mcopy -i "$RUNNER_TEMP/fat$bits.img" '::/tree/blocks.bin' "$RUNNER_TEMP/fat$bits-blocks.bin"
             test "$(wc -c < "$RUNNER_TEMP/fat$bits-blocks.bin")" = 131072
           done
+      - name: Preserve the kernel-specific modules tested in QEMU
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-ko-6.12.107-qemu-only
+          path: ${{ runner.temp }}/fat-variants/fat*.ko
+          if-no-files-found: error
       - name: Retain kernel runtime log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

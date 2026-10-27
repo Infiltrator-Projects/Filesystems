@@ -179,6 +179,8 @@ jobs:
             fsck.fat -n "$image"
             mcopy -i "$image" ::/FORMAT/META.TXT /tmp/fat-modules/formatted-readback.txt
             cmp /tmp/fat-modules/format-expected.txt /tmp/fat-modules/formatted-readback.txt
+            # Verify the FAT timestamp with the independent mtools decoder.
+            mdir -i "$image" ::/FORMAT/META.TXT | grep -Eq '2024-02-29[[:space:]]+14:23'
             rm /tmp/fat-modules/formatted-readback.txt
           done
       - name: Run module and formatter operations with ASan and UBSan
@@ -207,3 +209,11 @@ jobs:
           truncate -s 8M /tmp/fat-modules/asan-format16.img
           /tmp/fat-modules/asan-v4_format /tmp/fat-modules/asan12.so /tmp/fat-modules/asan-format12.img 512
           /tmp/fat-modules/asan-v4_format /tmp/fat-modules/asan16.so /tmp/fat-modules/asan-format16.img 512
+      - name: Preserve the tested standalone libraries
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-so-experimental
+          path: |
+            /tmp/fat-modules/FAT12.so
+            /tmp/fat-modules/FAT16.so
+          if-no-files-found: error
