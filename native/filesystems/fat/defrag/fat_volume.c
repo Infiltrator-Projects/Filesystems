@@ -198,6 +198,11 @@ bool fat_geometry_parse(
     if (clusters == 0 || clusters > UINT32_MAX - 1u) {
         return geometry_error(error, error_size, "FAT cluster count is outside the supported range");
     }
+    /* FatFs treats exactly 4085 clusters as FAT12; Linux and UEFI treat it as
+     * FAT16. Do not let the defrag path write a volume with ambiguous width. */
+    if (clusters == 4085u) {
+        return geometry_error(error, error_size, "ambiguous FAT12/FAT16 cluster boundary");
+    }
     geometry->cluster_count = (uint32_t)clusters;
     geometry->fat_type = geometry->cluster_count < 4085 ? FAT_TYPE_12 :
                          geometry->cluster_count < 65525 ? FAT_TYPE_16 : FAT_TYPE_32;
