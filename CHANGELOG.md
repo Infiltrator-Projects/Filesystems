@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.96 — 2026-10-27 (first standalone EXT2 engine adapter)
+
+- Introduce real EXT2.so with independent ABI and canonical EXT2 directory lookup/enumeration, regular-file reads and *constrained* overwrite of existing, allocated file data. Writes require a clean supported volume, explicit read/write device callbacks and a flush callback; no create, resize, sparse allocation, metadata mutation, journalling or transactional crash recovery is claimed.
+- Compile/link the same freestanding module source in CI and through a trusted, application-relative compiler helper. Install only the requested EXT2.so under /System/Filesystems, using the /Programs/Filesystems source/helper namespace.
+- Add read-only and bounded-write synthetic-image regression qualification and a separate graphical EXT2.so selector while retaining independent Linux ext2.ko management. No EFI, root filesystem, partition formatting or live disk changes.
+- This is a fifth standalone .so build target; it is NOT a complete 41-filesystem shared-module implementation.
+
+
 ## 0.5.95 — 2026-10-27 (native application-path regression boundary)
 
 - Protect the native `/Programs/Filesystems` application layout and `/System/Filesystems` one-module destination with source-architecture regression checks.
