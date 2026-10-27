@@ -220,6 +220,153 @@ static int read_file(const IfsFat32Io *io, const IfsFat32Volume *v,
     }
     return 0;
 }
+/* A V2 writer must match an existing root 8.3 entry on live media.
+ * Encode the V1 canonical basename/extension back to the exact 11 on-disk
+ * bytes. This avoids a quadratic root_file() rescanning loop.
+ */
+static int canonical_short_name(const char name[13], uint8_t raw[11])
+{
+    uint32_t at = 0u, ext = 0u, dot = 0u;
+    if (!name || !raw) return -1;
+    for (uint32_t i = 0u; i < 11u; ++i) raw[i] = ' ';
+    for (uint32_t i = 0u; i < 13u; ++i) {
+        const uint8_t character = (uint8_t)name[i];
+        if (character == 0u)
+            return at != 0u ? 0 : -1;
+        if (character == '.') {
+            if (dot || at == 0u || at > 8u) return -1;
+            dot = 1u;
+            continue;
+        }
+        if ((character < 0x20u && !(i == 0u && character == 0xe5u)) ||
+            (character > 0x7eu && !(i == 0u && character == 0xe5u)))
+            return -1;
+        if (dot) {
+            if (ext >= 3u) return -1;
+            raw[8u + ext++] = character;
+        } else {
+            if (at >= 8u) return -1;
+            raw[at++] = character == 0xe5u && i == 0u ? 0x05u : character;
+        }
+    }
+    return -1; /* no NUL in bounded input */
+}
+
+static int live_root_identity_valid(const IfsFat32Io *io,
+                                    const IfsFat32Volume *volume,
+                                    const IfsFat32File *file)
+{
+    uint8_t wanted[11];
+    uint32_t current, matches = 0u;
+    if (!volume || !file || canonical_short_name(file->name, wanted) != 0)
+        return 0;
+    current = volume->root_cluster;
+    for (uint32_t step = 0u; step < volume->cluster_count; ++step) {
+        for (uint32_t index = 0u; index < volume->cluster_bytes / 32u;
+             ++index) {
+            uint8_t raw[32];
+            uint32_t i;
+            if (cluster_read(io, volume, current, index * 32u,
+                             raw, sizeof raw) != 0)
+                return 0;
+            if (raw[0] == 0u) return matches == 1u;
+            if (raw[0] == 0xe5u || raw[11] == 0x0fu ||
+                (raw[11] & 0x08u) != 0u)
+                continue;
+            for (i = 0u; i < 11u && raw[i] == wanted[i]; ++i)
+                ;
+            if (i != 11u) continue;
+            if (raw[11] != file->attributes ||
+                (((uint32_t)rd16(raw + 20) << 16) |
+                    rd16(raw + 26)) != file->first_cluster ||
+                rd32(raw + 28) != file->size_bytes)
+                return 0;
+            if (++matches > 1u) return 0;
+        }
+        uint32_t next;
+        if (fat_entry(io, volume, current, &next) != 0)
+            return 0;
+        if (next >= UINT32_C(0x0ffffff8))
+            return matches == 1u;
+        if (!cluster_valid(volume, next))
+            return 0;
+        current = next;
+    }
+    return 0;
+}
+
+static int overwrite_existing(const IfsFat32WritableIo *io,
+                              const IfsFat32Volume *volume,
+                              const IfsFat32File *file,
+                              uint64_t position,
+                              const void *input, uint32_t size)
+{
+    IfsFat32Volume checked;
+    uint8_t boot[512];
+    uint32_t fragments, cluster, within;
+    uint64_t skip;
+    const uint8_t *source = (const uint8_t *)input;
+    if (!io || !volume || !file || !io->read.read_at ||
+        !io->write_at || !io->flush || (!source && size != 0u) ||
+        (file->attributes & (0x01u | 0x08u | 0x10u)) != 0u ||
+        position > file->size_bytes ||
+        (uint64_t)size > file->size_bytes - position)
+        return -1;
+
+    if (read_at(&io->read, 0u, boot, sizeof boot) != 0 ||
+        rd16(boot + 40u) != 0u || /* nondefault FAT selection unqualified */
+        probe(&io->read, &checked) != 0 ||
+        checked.volume_bytes != volume->volume_bytes ||
+        checked.fat_offset != volume->fat_offset ||
+        checked.data_offset != volume->data_offset ||
+        checked.cluster_bytes != volume->cluster_bytes ||
+        checked.cluster_count != volume->cluster_count ||
+        checked.sectors_per_fat != volume->sectors_per_fat ||
+        checked.root_cluster != volume->root_cluster ||
+        checked.total_sectors != volume->total_sectors ||
+        checked.bytes_per_sector != volume->bytes_per_sector ||
+        checked.sectors_per_cluster != volume->sectors_per_cluster ||
+        checked.fat_copies != volume->fat_copies ||
+        !live_root_identity_valid(&io->read, &checked, file) ||
+        validate_chain(&io->read, &checked, file, &fragments) != 0)
+        return -1;
+
+    if (size == 0u) return 0;
+    cluster = file->first_cluster;
+    skip = position / checked.cluster_bytes;
+    for (uint64_t i = 0u; i < skip; ++i) {
+        uint32_t next;
+        if (next_data_cluster(&io->read, &checked, cluster, &next) != 0)
+            return -1;
+        cluster = next;
+    }
+    within = (uint32_t)(position % checked.cluster_bytes);
+    while (size != 0u) {
+        uint32_t count = checked.cluster_bytes - within;
+        uint64_t offset = checked.data_offset +
+               (uint64_t)(cluster - 2u) * checked.cluster_bytes + within;
+        if (count > size) count = size;
+        if (!cluster_valid(&checked, cluster) ||
+            offset > checked.volume_bytes ||
+            (uint64_t)count > checked.volume_bytes - offset ||
+            offset > io->read.device_bytes ||
+            (uint64_t)count > io->read.device_bytes - offset ||
+            io->write_at(io->read.context, offset, source, count) != 0)
+            return -1;
+        source += count;
+        size -= count;
+        within = 0u;
+        if (size != 0u) {
+            uint32_t next;
+            if (next_data_cluster(&io->read, &checked, cluster, &next) != 0)
+                return -1;
+            cluster = next;
+        }
+    }
+    /* Host I/O errors may have partially committed data; no rollback. */
+    return io->flush(io->read.context) == 0 ? 0 : -1;
+}
+
 /* Non-executed format identity for safe single-file selection. */
 __attribute__((used,section(".ifsmeta")))
 static const char ifs_module_format_identity[] = "IFS-MODULE:fat32:1";
@@ -233,4 +380,19 @@ __attribute__((visibility("default")))
 const IfsFat32Module *infiltrator_filesystem_module_v1(void)
 {
     return &module;
+}
+
+__attribute__((used,section(".ifsmeta")))
+static const char ifs_v2_format_identity[] = "IFS-MODULE:fat32:2";
+static const IfsFat32ModuleV2 module_v2 = {
+    IFS_FAT32_V2_ABI_VERSION,
+    sizeof(IfsFat32ModuleV2),
+    "fat32", "FAT32",
+    IFS_FAT32_V2_CAP_OVERWRITE_EXISTING,
+    &module, overwrite_existing
+};
+__attribute__((visibility("default")))
+const IfsFat32ModuleV2 *infiltrator_filesystem_module_v2(void)
+{
+    return &module_v2;
 }
