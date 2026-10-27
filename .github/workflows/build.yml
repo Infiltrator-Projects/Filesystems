@@ -330,7 +330,17 @@ jobs:
           fi
           kernel_tree="$RUNNER_TEMP/filesystems-kernel-7.0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"
-          git clone --depth 1 --branch v7.0 https://github.com/torvalds/linux.git "$kernel_tree"
+          # Linux v7.0 tag resolves to this pinned upstream commit.
+          # Fetch a source archive instead of a rate-limited smart-HTTP clone.
+          kernel_commit=028ef9c96e96197026887c0f092424679298aae8
+          archive="$RUNNER_TEMP/linux-7.0-$kernel_commit.tar.gz"
+          curl --fail --location --retry 5 --retry-delay 4 \
+            --retry-all-errors --connect-timeout 30 --max-time 600 \
+            "https://codeload.github.com/torvalds/linux/tar.gz/$kernel_commit" \
+            --output "$archive"
+          mkdir -p "$kernel_tree"
+          tar -xzf "$archive" -C "$kernel_tree" --strip-components=1
+          test -f "$kernel_tree/Makefile"
           make -C "$kernel_tree" defconfig
           make -C "$kernel_tree" modules_prepare
 
