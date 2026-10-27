@@ -2,7 +2,6 @@
 #include "action_policy.hpp"
 #include "catalog.hpp"
 #include "desktop_actions.hpp"
-#include "installer.hpp"
 #include "probe.hpp"
 
 #include <gio/gio.h>
@@ -845,7 +844,7 @@ void ext2_dropin_clicked(GtkButton*, gpointer user_data)
     gtk_button_set_label(GTK_BUTTON(row->ext2_dropin_button),
                          remove ? "Removing EXT2.so…" : "Compiling EXT2.so…");
     AppState* app = row->app;
-    fs::manage_ext2_dropin_async(remove,
+    fs::execute_ext2_dropin_async(remove,
         [app](const bool success, const std::string& description) {
             if (app->shutting_down) return;
             if (!success)
