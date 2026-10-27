@@ -41,6 +41,7 @@ int main(int argc,char **argv) {
     struct stat st;
     Disk disk={0};
     uint64_t total,free_before,free_after;
+    uint32_t cluster_bytes;
     void *handle;
     int fd;
     const char payload[]="FAT formatter and metadata verified\n";
@@ -54,6 +55,9 @@ int main(int argc,char **argv) {
     if(!disk.file) return fail("open image");
     io.user=&disk;io.partition_bytes=(uint64_t)st.st_size;
     io.sector_bytes=(uint32_t)strtoul(argv[3],NULL,10);
+    cluster_bytes=io.sector_bytes;
+    if(argc==5 && strcmp(argv[4],"reject")!=0)
+        cluster_bytes=(uint32_t)strtoul(argv[4],NULL,10);
     io.read_at=read_at;io.write_at=write_at;io.flush=flush_at;io.fat_timestamp=time_at;
     handle=dlopen(argv[1],RTLD_NOW|RTLD_LOCAL);
     if(!handle) return fail(dlerror());
@@ -62,13 +66,13 @@ int main(int argc,char **argv) {
     if(!api || api->abi_version!=4u || api->structure_bytes!=sizeof(*api) ||
        !api->v3 || !api->format || !api->set_attributes || !api->set_modified_time || !api->space)
         return fail("missing V4 entry points");
-    if(argc==5) {
-        if(strcmp(argv[4],"reject")!=0 || api->format(&io,io.sector_bytes)==0 || disk.writes!=0)
+    if(argc==5 && strcmp(argv[4],"reject")==0) {
+        if(api->format(&io,io.sector_bytes)==0 || disk.writes!=0)
             return fail("wrong-width format did not fail before writing");
         if(fclose(disk.file)!=0 || dlclose(handle)!=0) return fail("close reject fixture");
         puts("FAT-V4-FORMAT-REJECTION-PASS");return 0;
     }
-    if(api->format(&io,io.sector_bytes)!=0 || disk.writes==0)
+    if(api->format(&io,cluster_bytes)!=0 || disk.writes==0)
         return fail("format image");
     if(api->v3->mount(&io)!=0 || api->space(&total,&free_before)!=0 ||
        !total || total!=free_before ||

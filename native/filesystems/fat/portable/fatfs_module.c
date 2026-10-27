@@ -2,7 +2,7 @@
  * Adapter for source-owned ChaN FatFs R0.16 patch2. One active image per
  * standalone module: caller must ensure exclusive media ownership and never
  * concurrently invoke this ABI. A .so is not a Linux VFS mount or EFI driver.
- * Formatting is a separate capability; no format function advertised.
+ * V4 separately exposes explicitly requested partition formatting.
  */
 #include "fatfs_module.h"
 #include "ff.h"
@@ -110,7 +110,12 @@ static int attach(const IfsFatfsIo *io)
     device = *io;
     bound = 1;
     if (!sector_valid() || f_mount(&volume, "0:", 1) != FR_OK ||
-        volume.fs_type != REQUIRED_FS) {
+        volume.fs_type != REQUIRED_FS || volume.n_fatent<3u ||
+#if IFS_FATFS_ONLY == 12
+        volume.n_fatent-2u>=4085u) {
+#else
+        volume.n_fatent-2u>=65525u) {
+#endif
         (void)f_mount(0, "0:", 0);
         bound = 0;
         return -1;
@@ -306,7 +311,10 @@ static int preview_matches_format(void)
 #if IFS_FATFS_ONLY == 12
     return clusters>0u && clusters<4085u;
 #else
-    return clusters>=4085u && clusters<65525u;
+    /* FatFs classifies exactly 4085 clusters as FAT12, while Linux and
+     * EDK2 classify it as FAT16. Reject that ambiguous boundary BEFORE any
+     * format write instead of producing media our own driver cannot mount. */
+    return clusters>4085u && clusters<65525u;
 #endif
 }
 static int format_volume(const IfsFatfsIo *io,uint32_t cluster_bytes)

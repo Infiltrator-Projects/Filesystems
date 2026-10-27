@@ -8,6 +8,7 @@ on:
       - "native/filesystems/fat/module/fat16_module.c"
       - "tests/fatfs_v3_realimage_test.c"
       - "tests/fatfs_v4_format_test.c"
+      - "tests/fat_boundary_fixture.py"
       - "packaging/linux/fat1*-module-helper.sh"
       - ".github/workflows/fat12-fat16-so.yml"
   pull_request:
@@ -17,6 +18,7 @@ on:
       - "native/filesystems/fat/module/fat16_module.c"
       - "tests/fatfs_v3_realimage_test.c"
       - "tests/fatfs_v4_format_test.c"
+      - "tests/fat_boundary_fixture.py"
       - "packaging/linux/fat1*-module-helper.sh"
       - ".github/workflows/fat12-fat16-so.yml"
   workflow_dispatch:
@@ -78,6 +80,17 @@ jobs:
             /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
               "/tmp/fat-modules/fat$kind.img" /tmp/fat-modules/fat32.img reject
           done
+          python3 tests/fat_boundary_fixture.py /tmp/fat-modules
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/boundary-4085.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/boundary-4085.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/boundary-4084.img /tmp/fat-modules/fat16.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/boundary-4086.img /tmp/fat-modules/fat12.img reject
+          fsck.fat -n /tmp/fat-modules/boundary-4084.img
+          fsck.fat -n /tmp/fat-modules/boundary-4086.img
           # Independently verify live directory entries, Unicode long names
           # and data, using external mtools instead of our own parser.
           fsck.fat -n /tmp/fat-modules/fat12.img
@@ -149,9 +162,13 @@ jobs:
           truncate -s 64M /tmp/fat-modules/new16-4k.img
           /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12-4k.img 4096
           /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new16-4k.img 4096
+          # Shannon's large FAT12 geometry uses 64 KiB clusters on 255 MiB.
+          truncate -s 255M /tmp/fat-modules/new12-255m.img
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12-255m.img 512 65536
           printf 'FAT formatter and metadata verified\n' > /tmp/fat-modules/format-expected.txt
           for image in /tmp/fat-modules/new12.img /tmp/fat-modules/new16.img \
-                       /tmp/fat-modules/new12-4k.img /tmp/fat-modules/new16-4k.img; do
+                       /tmp/fat-modules/new12-4k.img /tmp/fat-modules/new16-4k.img \
+                       /tmp/fat-modules/new12-255m.img; do
             fsck.fat -n "$image"
             mcopy -i "$image" ::/FORMAT/META.TXT /tmp/fat-modules/formatted-readback.txt
             cmp /tmp/fat-modules/format-expected.txt /tmp/fat-modules/formatted-readback.txt

@@ -26,6 +26,9 @@ Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
   formatting with a write-free FAT-width preflight, attributes, modified-time
   updates and free-space reporting. Formatting remains a destructive operation
   and is not atomic if media writes or flushing fail.
+- FatFs and the Linux/EDK2 implementations classify a 4,085-cluster volume
+  differently. The portable modules reject this ambiguous boundary for both
+  FAT12 and FAT16 instead of modifying a volume with an inconsistent identity.
 - Directory moves are checked by on-media ancestry, including case and short
   aliases, to avoid moving a directory inside itself. A failed full-volume
   seek is not reported as a completed write or truncate. On an I/O error or
