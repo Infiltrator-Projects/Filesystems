@@ -763,6 +763,11 @@ if(BUILD_TESTING)
         filesystems_configure(filesystems-minix-dropin-test)
         add_test(NAME filesystems-minix-dropin
             COMMAND filesystems-minix-dropin-test)
+        add_executable(filesystems-minix-real-mkfs-test
+            tests/minix_real_mkfs_test.c)
+        target_link_libraries(filesystems-minix-real-mkfs-test PRIVATE
+            filesystems-minix-dropin)
+        filesystems_configure(filesystems-minix-real-mkfs-test)
     endif()
 
     if(TARGET filesystems-bfs-dropin)

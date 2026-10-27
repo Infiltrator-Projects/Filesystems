@@ -42,6 +42,30 @@ jobs:
           cc $flags $moduleflags -I "$src" "$src/minix_module.c" -o /tmp/ifs-dropins/MINIX.so
           cc $flags -I "$src" tests/minix_dropin_module_test.c "$src/minix_module.c" -o /tmp/ifs-dropins/minix-test
           /tmp/ifs-dropins/minix-test
+      - name: Qualify mkfs.minix V1 V2 V3 independently on disposable files
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends util-linux
+          command -v mkfs.minix
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror \
+            -I native/filesystems/minix/module \
+            tests/minix_real_mkfs_test.c \
+            native/filesystems/minix/module/minix_module.c \
+            -o /tmp/ifs-dropins/minix-real
+          for variant in 1:14 1:30 2:14 2:30 3:60; do
+            IFS=: read -r version names <<< "$variant"
+            image=$(mktemp /tmp/ifs-minix-XXXXXXXX.img)
+            truncate -s 8M "$image"
+            if [[ "$version" == 3 ]]; then
+              mkfs.minix -3 "$image" >/dev/null
+            else
+              mkfs.minix "-$version" -n "$names" "$image" >/dev/null
+            fi
+            /tmp/ifs-dropins/minix-real "$image" "$version" "$names"
+            rm -f "$image"
+          done
       - name: Check ELF identity, ABI exports and freestanding linkage
         shell: bash
         run: |

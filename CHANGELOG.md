@@ -4,7 +4,7 @@
 
 - Implement one freestanding read-only MINIX.so recognizing V1 (14/30-character names), V2 (14/30) and V3 format variants, with bounded superblock, inode bitmap, directory, direct/indirect zone and file access.
 - Add local compiler helper installing MINIX.so only in /System/Filesystems; Linux minix.ko and EFI drivers remain separate.
-- Add disposable V1/V2/V3 disk image tests and require seven isolated ELF modules in release-gated CI. Writes, formatting, repair, hardware media, boot and general dispatch remain unqualified.
+- Add disposable V1/V2/V3 tests and independent mkfs.minix real-image qualification for all five format/name variants, reject forged caller inode mappings, and require seven isolated ELF modules in release-gated CI. Writes, formatting, repair, hardware media, boot and general dispatch remain unqualified.
 
 
 ## 0.5.98 — 2026-10-27 (classic FAT V2 bounded data overwrite)
