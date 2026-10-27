@@ -38,13 +38,21 @@ static void uart(const char *s) {
         outb(0x3f8U,(unsigned char)*s++);
     }
 }
+static void print_status(EFI_STATUS status) {
+    static const char hex[]="0123456789ABCDEF";
+    char text[17];
+    for (unsigned i=0;i<16u;++i)
+        text[i]=hex[((UINT64)status >> ((15u-i)*4u)) & 15u];
+    text[16]='\0';
+    uart(" EFI_STATUS=0x"); uart(text); uart("\r\n");
+}
 static void finish(const char *s,unsigned char code) {
     uart(s);
     outb(0xf4U,code);
     for (;;) __asm__ volatile("pause");
 }
 static void require(EFI_STATUS status,const char *message) {
-    if (EFI_ERROR(status)) finish(message,0x11U);
+    if (EFI_ERROR(status)) {uart(message);print_status(status);finish("",0x11U);}
 }
 static void disconnect_existing(EFI_HANDLE target) {
     EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *fs=NULL;
@@ -109,11 +117,13 @@ EFI_STATUS efi_main(EFI_HANDLE image,EFI_SYSTEM_TABLE *table) {
     uart("FAT_EFI reject other format\r\n");
     disconnect_existing(other);
     status=binding->Start(binding,other,NULL);
+    print_status(status);
     if (!EFI_ERROR(status)) finish("FAT_EFI_FAIL other variant accepted\r\n",0x11U);
     if (!EFI_ERROR(BS->HandleProtocol(other,&fs_guid,(VOID **)&fs)))
         finish("FAT_EFI_FAIL other variant installed filesystem\r\n",0x11U);
     uart("FAT_EFI bind own format\r\n");
     disconnect_existing(own);
+    require(binding->Supported(binding,own,NULL),"FAT_EFI_FAIL own supported\r\n");
     require(binding->Start(binding,own,NULL),"FAT_EFI_FAIL own binding\r\n");
     fs=get_fs(own);
     require(fs->OpenVolume(fs,&root),"FAT_EFI_FAIL root\r\n");

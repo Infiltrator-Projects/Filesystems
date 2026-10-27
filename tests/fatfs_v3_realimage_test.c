@@ -129,6 +129,15 @@ int main(int argc,char **argv) {
        api->unlink("0:/SUBDIR/CHILD/DEEP")!=0 ||
        api->unlink("0:/SUBDIR/CHILD")!=0)
         return die("directory ancestry protection or valid reparent");
+    if(api->mkdir("0:/SUBDIR/Long Directory Name")!=0 ||
+       api->mkdir("0:/SUBDIR/Long Directory Name/CHILD")!=0 ||
+       api->stat("0:/SUBDIR/LONGDI~1/CHILD",&metadata)!=0 ||
+       api->rename("0:/SUBDIR/Long Directory Name",
+                   "0:/subdir/longdi~1/child/LOST")==0 ||
+       api->stat("0:/SUBDIR/Long Directory Name/CHILD",&metadata)!=0 ||
+       api->unlink("0:/SUBDIR/Long Directory Name/CHILD")!=0 ||
+       api->unlink("0:/SUBDIR/Long Directory Name")!=0)
+        return die("directory ancestry through short-name alias");
     if(api->create(longname)!=0 || api->stat(longname,&metadata)!=0 ||
        strcmp(metadata.name,longleaf)!=0) return die("UTF-8 long filename stat");
     /* Extending a file, including a gap created by a seek, must expose
