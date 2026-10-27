@@ -77,7 +77,7 @@ int main(void)
     const IfsFat32Module *api = infiltrator_filesystem_module_v1();
     IfsFat32Io io = {read_at, NULL, sizeof image};
     IfsFat32Volume vol = {0};
-    IfsFat32File file = {{0}};
+    IfsFat32File file = {0};
     uint32_t fragments;
     unsigned char bytes[1200];
     if (!api || api->abi_version != 1u ||

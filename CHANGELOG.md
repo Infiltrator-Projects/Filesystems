@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.89 — 2026-10-27
+
+- Repair strict GCC/Clang -Werror compilation of the independent FAT32 read-only regression fixture. Keep the reader and installer unchanged while rerunning qualification.
+
+
 ## 0.5.88 — 2026-10-27
 
 - Add a standalone read-only FAT32.so with real 28-bit FAT and clustered root-directory traversal instead of a renamed FAT16 implementation.
