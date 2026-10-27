@@ -181,6 +181,47 @@ static int run_variant(uint32_t version, uint32_t name_bytes)
     disk[3u*BS] &= (uint8_t)~2u; /* first data zone bit 1 */
     if (api->entry(&volume, &root, 0u, &dent) == 0)
         return fail("accepted root data from unallocated zone");
+
+    /* Independently exercise the deep pointer trees with sparse logical
+     * files: high offsets do not require allocating gigabytes of media. */
+    fixture(version, name_bytes);
+    {
+        const uint32_t pointers = version == 1u ? 512u : 256u;
+        const uint32_t double_block = 7u + pointers;
+        const uint32_t triple_block = double_block + pointers * pointers;
+        const uint32_t logical_block =
+            version == 1u ? double_block : triple_block;
+        const uint32_t size = (logical_block + 1u) * BS;
+        uint8_t *raw_file = disk + 4u*BS +
+            (version == 1u ? 32u : 64u);
+        uint8_t *sb = disk + BS;
+        w32(sb + (version == 3u ? 16u : 12u), size + BS);
+        w32(raw_file + (version == 1u ? 4u : 8u), size);
+        inode_zone(raw_file, version, 8u, 25u);
+        if (version == 1u) {
+            w16(disk + 25u*BS, 26u);
+            w16(disk + 26u*BS, 27u);
+            disk[27u*BS] = (uint8_t)'D';
+        } else {
+            inode_zone(raw_file, version, 9u, 28u);
+            w32(disk + 28u*BS, 29u);
+            w32(disk + 29u*BS, 30u);
+            w32(disk + 30u*BS, 31u);
+            disk[31u*BS] = (uint8_t)'T';
+        }
+        if (api->mount(&volume, &io) != 0 ||
+            api->inode(&volume, 2u, &file) != 0 ||
+            api->read(&volume, &file,
+                      (uint64_t)logical_block * BS, bytes, 1u) != 0 ||
+            bytes[0] != (uint8_t)(version == 1u ? 'D' : 'T'))
+            return fail("double/triple-indirect deep file mapping failed");
+        /* Corrupt an on-disk indirect pointer: never read outside volume. */
+        if (version == 1u) w16(disk + 26u*BS, 65u);
+        else w32(disk + 30u*BS, 65u);
+        if (api->read(&volume, &file,
+                      (uint64_t)logical_block * BS, bytes, 1u) == 0)
+            return fail("out-of-range deep indirect pointer accepted");
+    }
     return 0;
 }
 int main(void)
