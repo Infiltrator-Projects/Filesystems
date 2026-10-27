@@ -49,7 +49,7 @@ drop-ins include embedded, non-executed format identifiers that prevent
 one format's .so from being accepted merely because it was renamed.
 This is not cryptographic authentication or a UEFI module loader.
 
-The planned general-purpose shared-module ABI and GUI selector for EXT2.so, FAT32 nested folders,
+The planned general-purpose shared-module ABI, FAT32 nested folders,
 long filenames, write/format/defrag operations, shared Defragmenter/
 Test Media integration and FFS.so remain incomplete. Earlier phase
 plans below describe desired capabilities beyond the current
