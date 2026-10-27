@@ -534,6 +534,36 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME ext2-module-helper)
 
+    # SCO BFS has contiguous file data and fixed 512-byte blocks. This
+    # standalone shared module implements real root traversal and in-place
+    # overwrites, independently of the Linux BFS kernel driver.
+    add_library(filesystems-bfs-dropin SHARED
+        native/filesystems/bfs/module/bfs_module.c)
+    set_target_properties(filesystems-bfs-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "BFS")
+    target_include_directories(filesystems-bfs-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/bfs/module")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-bfs-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector
+            -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-bfs-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-bfs-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-bfs-dropin)
+    install(FILES
+        native/filesystems/bfs/module/bfs_module.c
+        native/filesystems/bfs/module/bfs_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/bfs/module")
+    install(PROGRAMS packaging/linux/bfs-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME bfs-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/action_policy.cpp)
@@ -686,6 +716,13 @@ if(BUILD_TESTING)
     add_test(
         NAME filesystems-native-core
         COMMAND filesystems-native-core-test)
+
+    add_executable(filesystems-bfs-dropin-test
+        tests/bfs_dropin_module_test.c)
+    target_link_libraries(filesystems-bfs-dropin-test PRIVATE
+        filesystems-bfs-dropin)
+    filesystems_configure(filesystems-bfs-dropin-test)
+    add_test(NAME filesystems-bfs-dropin COMMAND filesystems-bfs-dropin-test)
 
     add_executable(filesystems-ext2-core-test
         tests/ext2_core_test.c)
