@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "installer.hpp"
 #include "app_resources.hpp"
+#include "linux_host_paths.hpp"
 
 #include "catalog.hpp"
 #include "process_runner.hpp"
@@ -217,7 +218,7 @@ std::string trusted_privileged_executable(const std::string& requested)
     }
 
     /* Absolute helpers are selected by fixed application policy before this
-     * point (for example native_module_helper_path()). Never search PATH for a
+     * point (for example linux_host::native_module_helper_path()). Never search PATH for a
      * privileged executable supplied by the unprivileged process environment. */
     if (g_path_is_absolute(requested.c_str()) &&
         executable_file(requested.c_str())) {
@@ -314,34 +315,6 @@ bool packages_are_catalogued(const std::vector<std::string>& packages,
     }
 
     return true;
-}
-
-std::string native_module_helper_path()
-{
-    static const char* const candidates[] = {
-        "/usr/lib/filesystems/native-module-helper",
-        "/usr/local/lib/filesystems/native-module-helper"
-    };
-
-    for (const char* const path : candidates) {
-        if (executable_file(path)) {
-            return path;
-        }
-    }
-
-    return {};
-}
-
-std::string removal_guard_path()
-{
-    for (const char* const path : {
-             "/usr/lib/filesystems/package-removal-guard",
-             "/usr/local/lib/filesystems/package-removal-guard"}) {
-        if (executable_file(path)) {
-            return path;
-        }
-    }
-    return {};
 }
 
 void destroy_removal_plan(gpointer data)
@@ -544,7 +517,7 @@ void remove_packages_async(
                 return;
             }
 
-            const std::string guard = removal_guard_path();
+            const std::string guard = linux_host::package_removal_guard_path();
             if (guard.empty()) {
                 completion(false, "The installed package-removal guard is unavailable.");
                 return;
@@ -696,7 +669,7 @@ void install_native_module_async(const std::string& filesystem_id,
         return;
     }
 
-    const std::string helper = native_module_helper_path();
+    const std::string helper = linux_host::native_module_helper_path();
     if (helper.empty()) {
         completion(
             false,
@@ -720,7 +693,7 @@ void remove_native_module_async(const std::string& filesystem_id,
         return;
     }
 
-    const std::string helper = native_module_helper_path();
+    const std::string helper = linux_host::native_module_helper_path();
     if (helper.empty()) {
         completion(
             false,
