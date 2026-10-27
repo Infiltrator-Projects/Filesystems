@@ -143,12 +143,18 @@ static int run_variant(uint32_t version, uint32_t name_bytes)
     forged.zone[7] = 65u;
     if (api->read(&volume, &forged, 7u*BS, bytes, 4u) == 0)
         return fail("accepted out-of-volume indirect zone");
-    forged = file;
-    forged.zone[7] = 0u;
+    /* Holes must exist in the real inode on disk, not a forged handle. */
+    if (version == 1u)
+        w16(disk + 4u*BS + 32u + 14u + 7u*2u, 0u);
+    else
+        w32(disk + 4u*BS + 64u + 24u + 7u*4u, 0u);
+    if (api->inode(&volume, 2u, &forged) != 0)
+        return fail("cannot reload sparse inode");
     memset(bytes, 0xa5u, sizeof bytes);
     if (api->read(&volume, &forged, 7u*BS, bytes, 4u) != 0 ||
-        memcmp(bytes, "\0\0\0\0", 4u) != 0)
-        return fail("sparse file hole was not returned as zeroes");
+        bytes[0] != 0u || bytes[1] != 0u ||
+        bytes[2] != 0u || bytes[3] != 0u)
+        return fail("sparse hole was not zero");
     io.device_bytes = sizeof disk - BS;
     /* An image that is shorter than its on-disk declared block count fails. */
     if (api->mount(&volume, &io) == 0)
