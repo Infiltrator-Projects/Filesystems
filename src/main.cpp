@@ -2,7 +2,6 @@
 #include "action_policy.hpp"
 #include "catalog.hpp"
 #include "desktop_actions.hpp"
-#include "installer.hpp"
 #include "probe.hpp"
 
 #include <gio/gio.h>
@@ -818,9 +817,9 @@ void fat_variant_clicked(GtkButton* clicked, gpointer user_data)
     };
     // These are fixed-purpose helper calls: no APT, .ko or EFI mutation.
     if (is12)
-        fs::manage_fat12_module_async(remove, finished);
+        fs::execute_classic_fat_variant_async(true, remove, finished);
     else
-        fs::manage_fat32_module_async(remove, finished);
+        fs::execute_classic_fat_variant_async(false, remove, finished);
 }
 
 GtkWidget* make_label(const char* text,
