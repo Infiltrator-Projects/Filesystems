@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 #include "../native/filesystems/ext2/core/ext2_engine.h"
 #include "../native/filesystems/ext2/efi/reader.h"
+#include "../native/filesystems/ext2/module/ext2_module.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -11,6 +12,7 @@
 typedef struct MemoryDisk {
     unsigned char bytes[BLOCK_SIZE * BLOCK_COUNT];
     unsigned int writes;
+    unsigned int flushes;
 } MemoryDisk;
 
 static void store_le16(unsigned char *p, unsigned int v)
@@ -50,6 +52,12 @@ static int memory_write(
     return 0;
 }
 
+static int memory_flush(void *user)
+{
+    ++((MemoryDisk *)user)->flushes;
+    return 0;
+}
+
 static int fail(const char *message)
 {
     fprintf(stderr, "ext2_engine_test: %s\n", message);
@@ -76,6 +84,11 @@ int main(void)
     IfsExt2Volume volume;
     IfsExt2EfiReader efi_reader;
     IfsExt2EfiFile efi_file;
+    IfsExt2DropInIo drop_io;
+    IfsExt2DropInVolume drop_volume;
+    IfsExt2DropInVolume readonly_volume;
+    IfsExt2Inode drop_root, drop_file;
+    const IfsExt2DropInModule *drop = infiltrator_filesystem_module_v1();
     IfsExt2Inode root;
     IfsExt2Inode file;
     unsigned char scratch[BLOCK_SIZE];
@@ -177,6 +190,59 @@ int main(void)
         memcmp(output, "hAllo", 5U) != 0)
         return fail("written file did not read back");
 
+    /* Verify the actual independent EXT2.so ABI, not just the static core.
+     * Exercise host I/O bounds, directory lookup, readback, overwrite and
+     * compulsory flush on an in-memory disposable filesystem.
+     */
+    drop_io.read_at = memory_read;
+    drop_io.write_at = memory_write;
+    drop_io.flush = memory_flush;
+    drop_io.context = &disk;
+    drop_io.device_bytes = sizeof(disk.bytes);
+    if (!drop || drop->abi_version != 1U ||
+        drop->structure_bytes != sizeof(*drop) ||
+        strcmp(drop->format_id, "ext2") != 0 ||
+        (drop->capabilities & (IFS_EXT2_CAP_FILE_READ |
+                              IFS_EXT2_CAP_EXISTING_WRITE)) !=
+                              (IFS_EXT2_CAP_FILE_READ |
+                               IFS_EXT2_CAP_EXISTING_WRITE))
+        return fail("EXT2.so ABI, identity or capabilities invalid");
+    if (drop->mount(&drop_volume, &drop_io) != IFS_EXT2_OK ||
+        drop->inode(&drop_volume, IFS_EXT2_ROOT_INODE, &drop_root,
+                    scratch, sizeof(scratch)) != IFS_EXT2_OK ||
+        drop->lookup(&drop_volume, &drop_root, "hello", 5U,
+                     &drop_file, scratch, sizeof(scratch)) != IFS_EXT2_OK)
+        return fail("EXT2.so failed valid mount/inode/directory lookup");
+    memset(output, 0, sizeof(output));
+    if (drop->read(&drop_volume, &drop_file, 0U, output, 5U,
+                   scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
+        read_count != 5U || memcmp(output, "hAllo", 5U) != 0)
+        return fail("EXT2.so readback failed");
+    if (drop->overwrite_existing(&drop_volume, &drop_file, 1U, "B", 1U,
+                                 scratch, sizeof(scratch), &written) !=
+                                 IFS_EXT2_OK ||
+        written != 1U || disk.writes != 2U || disk.flushes != 1U)
+        return fail("EXT2.so existing-block write or flush failed");
+    memset(output, 0, sizeof(output));
+    if (drop->read(&drop_volume, &drop_file, 0U, output, 5U,
+                   scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
+        memcmp(output, "hBllo", 5U) != 0)
+        return fail("EXT2.so did not persist overwrite");
+    if (drop->overwrite_existing(&drop_volume, &drop_file, 4U,
+            "OUTSIDE", 7U, scratch, sizeof(scratch), &written) ==
+            IFS_EXT2_OK || disk.writes != 2U)
+        return fail("EXT2.so wrote past allocated file length");
+    drop_io.write_at = NULL;
+    drop_io.flush = NULL;
+    if (drop->mount(&readonly_volume, &drop_io) != IFS_EXT2_OK ||
+        drop->overwrite_existing(&readonly_volume, &drop_file, 0U, "X", 1U,
+              scratch, sizeof(scratch), &written) == IFS_EXT2_OK ||
+        disk.writes != 2U)
+        return fail("EXT2.so permitted writes without host write/flush");
+    drop_io.device_bytes = 4096U;
+    if (drop->mount(&readonly_volume, &drop_io) == IFS_EXT2_OK)
+        return fail("EXT2.so accepted a volume beyond device bounds");
+
     /* EFI reads must reuse canonical EXT2 rules and never write. */
     if (ifs_ext2_efi_open(&efi_reader, &io, sizeof(disk.bytes)) != IFS_EXT2_OK ||
         efi_reader.volume.io.write_at != NULL)
@@ -187,11 +253,11 @@ int main(void)
         return fail("EFI backslash path failed");
     if (ifs_ext2_efi_read(&efi_reader, &efi_file, output, 5U,
                           scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
-        read_count != 5U || memcmp(output, "hAllo", 5U) != 0)
+        read_count != 5U || memcmp(output, "hBllo", 5U) != 0)
         return fail("EFI read did not return canonical file bytes");
     if (ifs_ext2_efi_read(&efi_reader, &efi_file, output, 5U,
                           scratch, sizeof(scratch), &read_count) != IFS_EXT2_OK ||
-        read_count != 0U || disk.writes != 1U)
+        read_count != 0U || disk.writes != 2U)
         return fail("EFI EOF or read-only contract failed");
     if (ifs_ext2_efi_seek(&efi_file, 6U) != IFS_EXT2_ERROR_RANGE)
         return fail("EFI accepted invalid seek");
