@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.90 — 2026-10-27
+
+- Expose independent FAT12 and FAT32 Install/Remove controls alongside FAT16 in the existing classic FAT catalogue row, without adding duplicate filesystem catalogue identities.
+- Probe each .so helper independently; mark missing/untrusted providers unavailable and disable actions while scanning.
+- Route each graphical button to its own fixed-purpose privileged compiler helper that mutates only its selected file under /System/Filesystems. No .ko, EFI, another FAT variant or APT provider is installed.
+- Retain FAT12/FAT16/FAT32 read-only module capability boundaries. FAT32 native .so qualification remains subject to CI.
+
+
 ## 0.5.89 — 2026-10-27
 
 - Repair strict GCC/Clang -Werror compilation of the independent FAT32 read-only regression fixture. Keep the reader and installer unchanged while rerunning qualification.

@@ -523,6 +523,22 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     }
 
     if (descriptor.id == "fat16") {
+        // Keep the three independent FAT .so registrations under the one
+        // stable classic-FAT catalogue family without three fake providers.
+        const auto variant_state = [](const char* helper_name) {
+            const std::string helper = application_helper(helper_name);
+            if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE))
+                return SupportState::Incomplete;
+            const CommandResult status = run_command({helper, "status"});
+            if (status.succeeded() &&
+                status.stdout_text.find("installed") != std::string::npos)
+                return SupportState::Ready;
+            if (status.spawned && status.exit_status == 3)
+                return SupportState::Installable;
+            return SupportState::Incomplete;
+        };
+        result.fat12_dropin_state = variant_state("fat12-module-helper");
+        result.fat32_dropin_state = variant_state("fat32-module-helper");
         // FAT16's selector checks only the single installed .so. Never
         // probe, load or install stock kernel modules or Debian packages.
         const std::string helper = application_helper("fat16-module-helper");

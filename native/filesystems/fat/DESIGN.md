@@ -21,7 +21,7 @@ clusters and support bounded file reading and root fragment counts.
 Each compiler/selector helper installs **only** its matching `.so` in
 `/System/Filesystems/`, with no automatic installation of another FAT
 variant, kernel module, firmware driver or external package.
-The FAT12 graphical action and FAT32 implementation are outstanding.
+FAT12, FAT16 and FAT32 now have separate graphical Install/Remove buttons within the classic FAT catalogue row. Their source and installed .so files remain independent.
 
 ## FAT32.so source and qualification scope
 

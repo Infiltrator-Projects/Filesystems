@@ -597,6 +597,36 @@ void manage_fat16_module_async(const bool remove,
         std::move(completion));
 }
 
+void manage_fat12_module_async(const bool remove,
+                                ActionCompletion completion)
+{
+    const std::string helper = application_helper("fat12-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The FAT12 module compiler helper is not installed.");
+        return;
+    }
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "FAT12.so removed." :
+                 "FAT12.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
+void manage_fat32_module_async(const bool remove,
+                                ActionCompletion completion)
+{
+    const std::string helper = application_helper("fat32-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The FAT32 module compiler helper is not installed.");
+        return;
+    }
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "FAT32.so removed." :
+                 "FAT32.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void manage_ofs_module_async(const bool remove,
                              ActionCompletion completion)
 {

@@ -67,6 +67,8 @@ struct RowState {
     GtkWidget* detail = nullptr;
     GtkWidget* package_button = nullptr;
     GtkWidget* module_button = nullptr;
+    GtkWidget* fat12_button = nullptr;
+    GtkWidget* fat32_button = nullptr;
 };
 
 struct AppState {
@@ -323,6 +325,13 @@ void render_row(RowState* row)
         gtk_widget_set_sensitive(row->module_button, FALSE);
         gtk_button_set_label(GTK_BUTTON(row->module_button), "Scanning…");
         set_button_semantics(row->module_button, false, false);
+        for (GtkWidget* button : {row->fat12_button, row->fat32_button}) {
+            if (button == nullptr) continue;
+            gtk_widget_set_visible(button, TRUE);
+            gtk_widget_set_sensitive(button, FALSE);
+            gtk_button_set_label(GTK_BUTTON(button), "Scanning…");
+            set_button_semantics(button, false, false);
+        }
         return;
     }
 
@@ -341,6 +350,27 @@ void render_row(RowState* row)
     const fs::ModuleActionPolicy module_policy =
         fs::module_action_policy(*row->descriptor, row->probe);
     apply_button_policy(row->module_button, module_policy.button);
+
+    // A single classic-FAT catalogue row offers three independent modules,
+    // without counting each compiled variant as a new product format.
+    const auto render_fat_variant =
+        [](GtkWidget* button, const fs::SupportState state,
+           const char* variant) {
+            if (button == nullptr) return;
+            const bool ready = state == fs::SupportState::Ready;
+            const bool available = state == fs::SupportState::Installable;
+            gtk_widget_set_visible(button, TRUE);
+            const std::string label = (ready ? "Remove " :
+                                       available ? "Install " : "Build unavailable: ") +
+                                      std::string(variant);
+            gtk_button_set_label(GTK_BUTTON(button), label.c_str());
+            gtk_widget_set_sensitive(button, ready || available);
+            set_button_semantics(button, available, ready);
+        };
+    render_fat_variant(row->fat12_button,
+                       row->probe.fat12_dropin_state, "FAT12");
+    render_fat_variant(row->fat32_button,
+                       row->probe.fat32_dropin_state, "FAT32");
 }
 
 bool row_matches_filter(const RowState& row, const ViewFilter filter)
@@ -501,6 +531,10 @@ void set_scan_chrome(AppState* state, const bool running)
         if (running) {
             gtk_widget_set_sensitive(row->package_button, FALSE);
             gtk_widget_set_sensitive(row->module_button, FALSE);
+            if (row->fat12_button != nullptr)
+                gtk_widget_set_sensitive(row->fat12_button, FALSE);
+            if (row->fat32_button != nullptr)
+                gtk_widget_set_sensitive(row->fat32_button, FALSE);
         } else if (row->probed) {
             render_row(row.get());
         }
@@ -748,6 +782,46 @@ void module_clicked(GtkButton*, gpointer user_data)
         });
 }
 
+void fat_variant_clicked(GtkButton* clicked, gpointer user_data)
+{
+    auto* row = static_cast<RowState*>(user_data);
+    if (row == nullptr || row->app == nullptr || !row->probed ||
+        row->descriptor == nullptr || row->descriptor->id != "fat16" ||
+        row->app->shutting_down || row->app->scan_running)
+        return;
+    GtkWidget* button = GTK_WIDGET(clicked);
+    const bool is12 = button == row->fat12_button;
+    if (!is12 && button != row->fat32_button) return;
+    const fs::SupportState observed = is12
+        ? row->probe.fat12_dropin_state
+        : row->probe.fat32_dropin_state;
+    if (observed != fs::SupportState::Ready &&
+        observed != fs::SupportState::Installable)
+        return;
+    const bool remove = observed == fs::SupportState::Ready;
+    const char* format = is12 ? "FAT12" : "FAT32";
+    gtk_widget_set_sensitive(button, FALSE);
+    const std::string message = std::string(remove ? "Removing " :
+                                                "Compiling ") + format + "…";
+    gtk_button_set_label(GTK_BUTTON(button), message.c_str());
+
+    AppState* app = row->app;
+    const auto finished = [app, format](const bool success,
+                                         const std::string& description) {
+        if (app->shutting_down) return;
+        if (!success)
+            show_message(GTK_WINDOW(app->window), GTK_MESSAGE_ERROR,
+                         (std::string(format) + " module operation failed").c_str(),
+                         description);
+        start_scan(app);
+    };
+    // These are fixed-purpose helper calls: no APT, .ko or EFI mutation.
+    if (is12)
+        fs::manage_fat12_module_async(remove, finished);
+    else
+        fs::manage_fat32_module_async(remove, finished);
+}
+
 GtkWidget* make_label(const char* text,
                       const char* css_class,
                       const float xalign = 0.0F)
@@ -804,8 +878,11 @@ GtkWidget* create_row(AppState* state,
     gtk_container_add(GTK_CONTAINER(list_row), outer);
     gtk_widget_set_size_request(actions, 170, -1);
 
+    const std::string display_name = descriptor.id == "fat16"
+        ? "Classic FAT — FAT12 / FAT16 / FAT32"
+        : std::string(descriptor.name);
     GtkWidget* title = make_label(
-        std::string(descriptor.name).c_str(), "fs-row-title");
+        display_name.c_str(), "fs-row-title");
     GtkWidget* family = make_label(
         std::string(descriptor.family).c_str(), "fs-family-badge");
     gtk_box_pack_start(GTK_BOX(heading), title, FALSE, FALSE, 0);
@@ -838,6 +915,16 @@ GtkWidget* create_row(AppState* state,
     gtk_widget_set_halign(row->status, GTK_ALIGN_END);
     row->package_button = gtk_button_new_with_label("Scanning…");
     row->module_button = gtk_button_new_with_label("Scanning…");
+    if (descriptor.id == "fat16") {
+        row->fat12_button = gtk_button_new_with_label("Scanning…");
+        row->fat32_button = gtk_button_new_with_label("Scanning…");
+        gtk_widget_set_no_show_all(row->fat12_button, TRUE);
+        gtk_widget_set_no_show_all(row->fat32_button, TRUE);
+        g_signal_connect(row->fat12_button, "clicked",
+                         G_CALLBACK(fat_variant_clicked), row);
+        g_signal_connect(row->fat32_button, "clicked",
+                         G_CALLBACK(fat_variant_clicked), row);
+    }
     gtk_widget_set_no_show_all(row->package_button, TRUE);
     gtk_widget_set_no_show_all(row->module_button, TRUE);
     g_signal_connect(
@@ -848,6 +935,12 @@ GtkWidget* create_row(AppState* state,
     gtk_box_pack_start(GTK_BOX(actions), row->status, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(actions), row->module_button, FALSE, FALSE, 0);
     gtk_box_pack_end(GTK_BOX(actions), row->package_button, FALSE, FALSE, 0);
+    if (row->fat12_button != nullptr) {
+        gtk_box_pack_end(GTK_BOX(actions),
+                         row->fat12_button, FALSE, FALSE, 0);
+        gtk_box_pack_end(GTK_BOX(actions),
+                         row->fat32_button, FALSE, FALSE, 0);
+    }
 
     gtk_box_pack_start(GTK_BOX(outer), icon, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(outer), middle, TRUE, TRUE, 0);

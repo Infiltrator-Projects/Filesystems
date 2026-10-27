@@ -37,6 +37,8 @@ void remove_packages_async(
     const std::vector<std::string>& approved_planned_packages,
     ActionCompletion completion);
 void manage_fat16_module_async(bool remove, ActionCompletion completion);
+void manage_fat12_module_async(bool remove, ActionCompletion completion);
+void manage_fat32_module_async(bool remove, ActionCompletion completion);
 void manage_ofs_module_async(bool remove, ActionCompletion completion);
 void load_module_async(const std::string& module,
                        ActionCompletion completion);
