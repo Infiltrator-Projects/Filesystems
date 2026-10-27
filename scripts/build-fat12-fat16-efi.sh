@@ -12,7 +12,7 @@ git clone --quiet --filter=blob:none https://github.com/tianocore/edk2.git "$wor
 git -C "$work/edk2" checkout --quiet "$pin"
 # EDK2 provides platform headers/build libraries. The FAT ENGINE and
 # FAT12/FAT16 drivers are OWNED by our checked-out Filesystems source.
-git -C "$work/edk2" submodule update --init --depth 1 -- BaseTools/Source/C/BrotliCompress
+git -C "$work/edk2" submodule update --init --depth 1 -- BaseTools/Source/C/BrotliCompress MdePkg/Library/MipiSysTLib/mipisyst MdePkg/Library/BaseFdtLib/libfdt
 rm -rf "$work/edk2/FatPkg"
 cp -a "$root/native/filesystems/fat/efi/FatPkg" "$work/edk2/FatPkg"
 (
