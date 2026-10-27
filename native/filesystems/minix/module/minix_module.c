@@ -208,6 +208,7 @@ static int read_file(const IfsMinixVolume *v, const IfsMinixInode *f,
                      uint64_t position, void *buffer, uint32_t bytes)
 {
     uint8_t *dst = (uint8_t *)buffer;
+    IfsMinixInode live;
     if (!v || !f || (!dst && bytes) || f->inode_number == 0u ||
         f->inode_number > v->inode_count ||
         ((f->mode & 0xf000u) != IFS_MINIX_MODE_DIRECTORY &&
@@ -216,6 +217,12 @@ static int read_file(const IfsMinixVolume *v, const IfsMinixInode *f,
         f->size_bytes > v->max_file_bytes ||
         position > f->size_bytes || bytes > (uint64_t)f->size_bytes-position)
         return -1;
+    /* Caller-supplied handles cannot grant access to unrelated sectors. */
+    if (get_inode(v, f->inode_number, &live) != 0 ||
+        live.mode != f->mode || live.size_bytes != f->size_bytes)
+        return -1;
+    for (uint32_t i = 0u; i < 10u; ++i)
+        if (live.zone[i] != f->zone[i]) return -1;
     while (bytes) {
         const uint32_t within = (uint32_t)(position % v->block_bytes);
         uint32_t take = v->block_bytes - within, zone;
