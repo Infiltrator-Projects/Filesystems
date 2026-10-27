@@ -67,6 +67,9 @@ subdirectories or manipulate VFAT long names. On a host I/O failure, writes
 may be partially committed; no transactional rollback is promised. FAT32 V2
 also rejects nondefault active-FAT selection until explicitly qualified.
 
+For an explicit 41-format versus standalone-binary count and a record of
+what is *actually* qualified, see the [dated drop-in readiness ledger](docs/DROPIN_MODULE_READINESS_2026-10-27.md).
+
 ## Current freestanding drop-in implementation
 ## Experimental SCO BFS standalone module
 
