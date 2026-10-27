@@ -24,15 +24,20 @@ static int disk_read(void *p,uint64_t off,void *buf,uint32_t len) {
  TestDisk *d=(TestDisk*)p;uint32_t n=0;
  if(!d||d->fd<0||(!buf&&len)||off>d->bytes||len>d->bytes-off)return -1;
  while(n<len) {ssize_t r=pread(d->fd,(char*)buf+n,len-n,(off_t)(off+n));
-   if(r<0&&errno==EINTR)continue;if(r<=0)return -1;n+=(uint32_t)r;}
+   if (r < 0 && errno == EINTR) continue;
+   if (r <= 0) return -1;
+   n += (uint32_t)r;}
  return 0;
 }
 static int disk_write(void *p,uint64_t off,const void *buf,uint32_t len) {
  TestDisk *d=(TestDisk*)p;uint32_t n=0;
  if(!d||d->fd<0||(!buf&&len)||off>d->bytes||len>d->bytes-off)return -1;
  while(n<len) {ssize_t r=pwrite(d->fd,(const char*)buf+n,len-n,(off_t)(off+n));
-   if(r<0&&errno==EINTR)continue;if(r<=0)return -1;n+=(uint32_t)r;}
- if(len)++d->writes;return 0;
+   if (r < 0 && errno == EINTR) continue;
+   if (r <= 0) return -1;
+   n += (uint32_t)r;}
+ if (len) ++d->writes;
+ return 0;
 }
 static int disk_flush(void *p) {TestDisk *d=(TestDisk*)p;
  if(!d||d->fd<0||fsync(d->fd)!=0)return -1;++d->flushes;return 0;
