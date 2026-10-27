@@ -603,7 +603,7 @@ IfsExt2Status ifs_ext2_write_file_existing(
             (byte_offset + (ifs_ext2_u64)byte_count - 1U) /
             volume->block_size;
         ifs_ext2_u64 logical;
-        if (last > UINT32_MAX)
+        if (last > (ifs_ext2_u64)0xffffffffU)
             return IFS_EXT2_ERROR_RANGE;
         for (logical = first; logical <= last; ++logical) {
             ifs_ext2_u64 physical = 0U;
