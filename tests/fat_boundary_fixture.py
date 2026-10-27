@@ -33,3 +33,11 @@ for clusters, width, fat_sectors in ((4084, 12, 12), (4085, 16, 16), (4086, 16, 
 dos1 = bytearray(512)
 dos1[0:3] = b'\xeb\x00\x90'
 (out / 'dos1-boot-sector.img').write_bytes(dos1)
+
+# DOS 1.x 360 KiB floppy: no BPB, two 2-sector FATs, 112 root entries,
+# 2 sectors/cluster and media byte 0xfd (the Linux static geometry table).
+floppy = bytearray(720 * 512)
+floppy[0:3] = b'\xeb\x00\x90'
+for offset in (512, 3 * 512):
+    floppy[offset:offset + 3] = b'\xfd\xff\xff'
+(out / 'dos1-floppy.img').write_bytes(floppy)

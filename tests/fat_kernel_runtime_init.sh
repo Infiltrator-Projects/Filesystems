@@ -43,4 +43,21 @@ for item in 'fat12 /dev/vda' 'fat16 /dev/vdb'; do
     umount /mnt/test || fail "$kind final unmount"
     echo "FAT-KO-RUNTIME-PASS: $kind" > /dev/ttyS0
 done
+# An explicit DOS 1.x request still works for FAT12 despite its absent BPB;
+# FAT16 must reject it without changing the image.
+before=$(sha256sum /dev/vdd)
+if mount -t fat16 -o dos1xfloppy /dev/vdd /mnt/test; then
+    umount /mnt/test || :
+    fail 'fat16 accepted DOS 1.x FAT12 media'
+fi
+after=$(sha256sum /dev/vdd)
+test "$before" = "$after" || fail 'fat16 changed rejected DOS 1.x media'
+mount -t fat12 -o dos1xfloppy /dev/vdd /mnt/test || fail 'fat12 DOS 1.x mount'
+echo 'DOS1 FAT12 works' > /mnt/test/DOS1.TXT || fail 'DOS 1.x write'
+sync
+umount /mnt/test || fail 'DOS 1.x unmount'
+mount -t fat12 -o dos1xfloppy /dev/vdd /mnt/test || fail 'DOS 1.x remount'
+test "$(cat /mnt/test/DOS1.TXT)" = 'DOS1 FAT12 works' || fail 'DOS 1.x readback'
+umount /mnt/test || fail 'DOS 1.x final unmount'
+echo 'FAT-KO-DOS1-PASS' > /dev/ttyS0
 poweroff -f
