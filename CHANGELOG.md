@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.99 — 2026-10-27 (independent read-only MINIX.so)
+
+- Implement one freestanding read-only MINIX.so recognizing V1 (14/30-character names), V2 (14/30) and V3 format variants, with bounded superblock, inode and zone bitmap allocation, directory, direct/indirect zone and file access.
+- Add local compiler helper installing MINIX.so only in /System/Filesystems; Linux minix.ko and EFI drivers remain separate.
+- Add disposable V1/V2/V3 tests and independent mkfs.minix real-image qualification for all five format/name variants, reject forged caller inode mappings, and require seven isolated ELF modules in release-gated CI. Writes, formatting, repair, hardware media, boot and general dispatch remain unqualified.
+
+
 ## 0.5.98 — 2026-10-27 (classic FAT V2 bounded data overwrite)
 
 - Extend standalone ELF/ABI qualification to all six implemented FAT12/FAT16/FAT32/OFS/EXT2/BFS modules and the optional FAT V2 exports; make this one reusable workflow a mandatory release-promotion dependency, rather than an advisory separate action.

@@ -564,6 +564,34 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME bfs-module-helper)
 
+    # Portable read-only Minix V1/V2/V3, not Linux minix.ko.
+    add_library(filesystems-minix-dropin SHARED
+        native/filesystems/minix/module/minix_module.c)
+    set_target_properties(filesystems-minix-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "MINIX")
+    target_include_directories(filesystems-minix-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/minix/module")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-minix-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector
+            -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-minix-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-minix-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-minix-dropin)
+    install(FILES
+        native/filesystems/minix/module/minix_module.c
+        native/filesystems/minix/module/minix_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/minix/module")
+    install(PROGRAMS packaging/linux/minix-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME minix-module-helper)
+
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/platform/linux_host_paths.cpp
@@ -726,6 +754,21 @@ if(BUILD_TESTING)
     add_test(
         NAME filesystems-native-core
         COMMAND filesystems-native-core-test)
+
+    if(TARGET filesystems-minix-dropin)
+        add_executable(filesystems-minix-dropin-test
+            tests/minix_dropin_module_test.c)
+        target_link_libraries(filesystems-minix-dropin-test PRIVATE
+            filesystems-minix-dropin)
+        filesystems_configure(filesystems-minix-dropin-test)
+        add_test(NAME filesystems-minix-dropin
+            COMMAND filesystems-minix-dropin-test)
+        add_executable(filesystems-minix-real-mkfs-test
+            tests/minix_real_mkfs_test.c)
+        target_link_libraries(filesystems-minix-real-mkfs-test PRIVATE
+            filesystems-minix-dropin)
+        filesystems_configure(filesystems-minix-real-mkfs-test)
+    endif()
 
     if(TARGET filesystems-bfs-dropin)
         add_executable(filesystems-bfs-real-mkfs-test
