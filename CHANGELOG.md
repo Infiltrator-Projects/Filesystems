@@ -6,7 +6,7 @@
 - Re-probe geometry and compare live root-file identity, preflight allocation chains and require host write/flush callbacks before any in-place overwrite. Refuse readonly file attributes, missing callbacks, attempts to extend a file, and unsupported FAT32 active-FAT configurations.
 - Add synthetic data-readback and rejection tests for all three variants, and fix the ELF smoke test order to check V2 before removing the staged test module. No create, allocation, formatting, repair, defrag, automatic physical-device write or full writable mount support is implied.
 
-## Unreleased — independent SCO BFS.so drop-in
+## 0.5.97 — 2026-10-27 (independent SCO BFS.so)
 
 - Implement a separate SCO BFS filesystem module using repository-owned on-media semantics: root directory enumeration, case-sensitive lookup, bounded contiguous reads and restricted in-place overwrites of existing allocated bytes. The module requires a host flush callback for writes.
 - The safe write policy refuses any incomplete BFS relocation markers, including an individually set source or destination marker.
