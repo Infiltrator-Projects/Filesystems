@@ -49,6 +49,25 @@ a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
 
 ## Current freestanding drop-in implementation
+## Experimental SCO BFS standalone module
+
+`BFS.so` is an independent freestanding SCO UnixWare Boot File System
+implementation based on the original in-repository Linux BFS disk format
+rules (512-byte blocks, 64-byte inodes, 16-byte directory entries and
+contiguous file blocks). It can open volumes, enumerate/lookup root entries,
+read regular files and overwrite already allocated file bytes when a clean
+filesystem, writable partition-bounded I/O callback and flush callback are
+provided. It is not BeOS BeFS, and it provides **no** file creation,
+delete, rename, append, allocation, directory updates, filesystem formatting
+or defragmentation. Interrupted BFS relocation states disable writing.
+
+The module and on-demand compiler/helper source reside under
+`/Programs/Filesystems`; only selected `BFS.so` belongs under
+`/System/Filesystems`. The Linux BFS kernel module is independent; this
+addition does not change `.ko`, EFI drivers, boot sectors, physical disks or
+native Filesystems GUI action availability. Qualification currently uses
+in-memory fixtures and disposable CI runners, not physical disks.
+
 ## EXT2 standalone module (experimental)
 
 `EXT2.so` is a fifth standalone filesystem module built from the repository's
