@@ -46,10 +46,14 @@ for required in (
     '"DPkg::Tools::Options::" + guard + "::Version=3"',
     'for (const auto& package : approved_planned_packages)',
     'g_shell_quote(package.c_str())',
-    '"/usr/lib/filesystems/package-removal-guard"',
+    'linux_host::package_removal_guard_path()',
 ):
     require(required in installer,
             f"approved removal no longer reaches the APT transaction guard: {required}")
+linux_backend = text("src/platform/linux_host_paths.cpp")
+require('"/usr/lib/filesystems/package-removal-guard"' in linux_backend and
+        '"/usr/local/lib/filesystems/package-removal-guard"' in linux_backend,
+        "Linux-only backend lost trusted APT guard lookup candidates")
 guard = text("src/removal_guard_main.cpp")
 for required in (
     'std::getenv("DPKG_FRONTEND_LOCKED")',
@@ -101,8 +105,10 @@ for required in (
 probe = text("src/probe.cpp")
 require('/updates/infiltrator/' not in probe,
         "product probe reconstructed the kernel authority deployment path")
-require('native-module-helper' in probe and '"status"' in probe,
-        "product probe no longer consumes observed native state through the coordinator")
+require('linux_host::native_module_helper_path()' in probe and '"status"' in probe and
+        '"/usr/lib/filesystems/native-module-helper"' in linux_backend and
+        '"/usr/local/lib/filesystems/native-module-helper"' in linux_backend,
+        "product probe no longer consumes observed native state through the Linux coordinator")
 require('project_native_current' in probe,
         "product probe lost native source-freshness state")
 

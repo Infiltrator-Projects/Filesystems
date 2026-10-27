@@ -113,6 +113,24 @@ for forbidden in (
     require(forbidden not in cmake,
             f"portable filesystem resource regressed to Linux /usr/lib: {forbidden}")
 
+# The Linux helper namespace is confined to a qualified Linux host adapter.
+for source_path in ("src/probe.cpp", "src/installer.cpp"):
+    source = text(source_path)
+    require('#include "linux_host_paths.hpp"' in source,
+            f"{source_path} bypasses the Linux helper boundary")
+    require("/usr/lib/filesystems/" not in source and
+            "/usr/local/lib/filesystems/" not in source,
+            f"{source_path} embeds Linux host helper paths")
+linux_backend = text("src/platform/linux_host_paths.cpp")
+require("#if !defined(__linux__)" in linux_backend,
+        "Linux-only helper backend lacks its platform guard")
+require("src/platform/linux_host_paths.cpp" in cmake,
+        "Linux-only helper backend is missing from the CMake target")
+for helper in ("native-module-helper", "package-removal-guard"):
+    for prefix in ("/usr/lib/filesystems/", "/usr/local/lib/filesystems/"):
+        require(prefix + helper in linux_backend,
+                f"Linux helper path contract lost: {prefix}{helper}")
+
 # Process execution is one mechanism. Probe and installer may apply different
 # policy, but neither may grow a private spawning implementation.
 runner = text("src/process_runner.hpp")
