@@ -410,9 +410,15 @@ if(UNIX)
     # source in CI; installed Filesystems compiles that SAME source when the
     # user selects "Install FAT16". Do not preinstall a module or use APT.
     add_library(filesystems-fat16-module SHARED
-        native/filesystems/fat/module/fat16_module.c)
+        native/filesystems/fat/module/fat16_module.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c)
     target_include_directories(filesystems-fat16-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
+    target_compile_definitions(filesystems-fat16-module PRIVATE IFS_FATFS_ONLY=16)
     set_target_properties(filesystems-fat16-module PROPERTIES
         PREFIX "" OUTPUT_NAME "FAT16")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -435,15 +441,31 @@ if(UNIX)
         native/filesystems/fat/module/fat16_module.c
         native/filesystems/fat/module/fat16_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
+    install(FILES
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ff.h
+        native/filesystems/fat/portable/ffconf.h
+        native/filesystems/fat/portable/diskio.h
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/fatfs_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
     install(PROGRAMS packaging/linux/fat16-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat16-module-helper)
 
     # One shared source engine, two independently compiled and installed .so files.
     add_library(filesystems-fat12-module SHARED
-        native/filesystems/fat/module/fat12_module.c)
+        native/filesystems/fat/module/fat12_module.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c)
     target_include_directories(filesystems-fat12-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
+    target_compile_definitions(filesystems-fat12-module PRIVATE IFS_FATFS_ONLY=12)
     set_target_properties(filesystems-fat12-module PROPERTIES
         PREFIX "" OUTPUT_NAME "FAT12")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -463,6 +485,16 @@ if(UNIX)
         native/filesystems/fat/module/classic_fat_module.h
         native/filesystems/fat/module/fat12_module.c
         native/filesystems/fat/module/fat12_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
+    install(FILES
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ff.h
+        native/filesystems/fat/portable/ffconf.h
+        native/filesystems/fat/portable/diskio.h
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/fatfs_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
     install(PROGRAMS packaging/linux/fat12-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
