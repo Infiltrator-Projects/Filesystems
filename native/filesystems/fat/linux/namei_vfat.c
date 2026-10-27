@@ -23,6 +23,9 @@
 #include <linux/kernel.h>
 #include <linux/iversion.h>
 #include "fat.h"
+#ifdef IFS_FAT_ONLY
+#include "fat_variant_guard.h"
+#endif
 
 static inline unsigned long vfat_d_version(struct dentry *dentry)
 {
@@ -1202,7 +1205,28 @@ static void setup(struct super_block *sb)
 
 static int vfat_fill_super(struct super_block *sb, struct fs_context *fc)
 {
-	int err = fat_fill_super(sb, fc, setup);
+	int err;
+#ifdef IFS_FAT_ONLY
+	struct buffer_head *bh;
+	unsigned int width;
+	struct fat_mount_options *opts = fc->fs_private;
+
+	/* fat_fill_super marks a writable volume dirty before returning. Detect
+	 * the foreign variant first, without writing to the wrong filesystem. */
+	if (!sb_min_blocksize(sb, 512))
+		return -EINVAL;
+	bh = sb_bread(sb, 0);
+	if (!bh)
+		return -EIO;
+	width = ifs_fat_bpb_width((const unsigned char *)bh->b_data);
+	brelse(bh);
+	/* DOS 1.x floppies have no BPB. The upstream core validates their
+	 * geometry when explicitly requested; that format can only be FAT12. */
+	if (width != IFS_FAT_ONLY &&
+	    !(width == 0 && IFS_FAT_ONLY == 12 && opts->dos1xfloppy))
+		return -EINVAL;
+#endif
+	err = fat_fill_super(sb, fc, setup);
 	if (err)
 		return err;
 #ifdef IFS_FAT_ONLY

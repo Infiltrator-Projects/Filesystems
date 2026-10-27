@@ -17,7 +17,10 @@ Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
   `.ko` build alone does not establish portability across kernel versions or
   prove a self-contained filesystem module. If the host FAT core was built
   without VFAT and supplies an empty default I/O charset, the two variant
-  adapters select `iso8859-1`; an existing host default is retained.
+  adapters select `iso8859-1`; an existing host default is retained. A
+  read-only BPB preflight rejects the other FAT width before the shared core
+  marks a writable volume dirty. Explicit DOS 1.x FAT12 floppy fallback is
+  still delegated to the Linux core.
 - `FAT12.so` and `FAT16.so` each compile the complete portable ChaN FatFs
   engine into the individual shared object. The V3 ABI provides directory and
   file read/write, allocation through file growth, creation, deletion, rename
