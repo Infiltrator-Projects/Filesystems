@@ -49,6 +49,12 @@ check_module() {
     "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
         grep -F 'IFS-MODULE:fat16:1' >/dev/null ||
         fatal "FAT16 embedded format identity missing or incorrect"
+    "$elf_checker" -Ws "$file" |
+        grep -F 'infiltrator_filesystem_module_v3' >/dev/null ||
+        fatal "FAT16 writable V3 ABI missing"
+    "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
+        grep -F 'IFS-MODULE:fat16:3' >/dev/null ||
+        fatal "FAT16 embedded writable format identity missing"
 }
 
 # The privileged compiler must never consume untrusted application source.
@@ -90,6 +96,11 @@ case "$1" in
            ! -L "$source_dir/classic_fat_module.c" &&
            ! -L "$source_dir/classic_fat_module.h" ]] ||
             fatal "packaged FAT16 module source missing"
+        for name in ff.c ff.h ffconf.h diskio.h ffunicode.c \
+                    fatfs_libc.c fatfs_module.c fatfs_module.h; do
+            [[ -f "$source_dir/$name" && ! -L "$source_dir/$name" ]] ||
+                fatal "missing/unsafe complete portable FAT16 source: $name"
+        done
         [[ ! -L /System && ! -L "$destination" ]] ||
             fatal "symlinked module directory refused"
         if [[ ! -d /System ]]; then mkdir -m 0755 /System; fi
@@ -102,7 +113,10 @@ case "$1" in
         "$compiler" -std=c11 -O2 -fPIC -fno-stack-protector \
             -fno-builtin -ffreestanding -fvisibility=hidden \
             -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
-            -I "$source_dir" -o "$temporary" "$source_dir/fat16_module.c" ||
+            -DIFS_FATFS_ONLY=16 -I "$source_dir" -o "$temporary" \
+            "$source_dir/fat16_module.c" \
+            "$source_dir/ff.c" "$source_dir/ffunicode.c" \
+            "$source_dir/fatfs_libc.c" "$source_dir/fatfs_module.c" ||
             fatal "FAT16 compilation failed; old module unchanged"
         check_module "$temporary"
         chmod 0644 "$temporary"
