@@ -29,3 +29,7 @@ for clusters, width, fat_sectors in ((4084, 12, 12), (4085, 16, 16), (4086, 16, 
             b'\xf8\xff\xff' if width == 12 else b'\xf8\xff\xff\xff'
         )
     (out / f'boundary-{clusters}.img').write_bytes(image)
+
+dos1 = bytearray(512)
+dos1[0:3] = b'\xeb\x00\x90'
+(out / 'dos1-boot-sector.img').write_bytes(dos1)

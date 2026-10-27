@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 int main(int argc,char **argv)
@@ -13,7 +14,7 @@ int main(int argc,char **argv)
     struct stat st;
     int fd;
     unsigned expected,actual;
-    if (argc!=3) return 2;
+    if (argc!=3 && argc!=4) return 2;
     fd=open(argv[1],O_RDONLY|O_CLOEXEC|O_NOFOLLOW);
     if(fd<0 || fstat(fd,&st)!=0 || !S_ISREG(st.st_mode) || read(fd,b,sizeof b)!=(ssize_t)sizeof b)
         return 2;
@@ -24,6 +25,8 @@ int main(int argc,char **argv)
         fprintf(stderr,"FAT-KO-BPB-FAIL: expected %u got %u\n",expected,actual);
         return 1;
     }
+    if (argc==4 && (strcmp(argv[3],"dos1")!=0 || !ifs_fat_is_dos1_bpb(b)))
+        return 1;
     printf("FAT-KO-BPB-PASS: %u\n",actual);
     return 0;
 }

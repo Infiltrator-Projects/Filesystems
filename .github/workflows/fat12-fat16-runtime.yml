@@ -105,6 +105,7 @@ jobs:
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat-boundary/boundary-4084.img" 12
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat-boundary/boundary-4085.img" 16
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat-boundary/boundary-4086.img" 16
+          "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat-boundary/dos1-boot-sector.img" 0 dos1
           root="$RUNNER_TEMP/fat-initramfs"
           mkdir -p "$root"/{bin,proc,sys,dev,mnt/test}
           cp /usr/bin/busybox "$root/bin/busybox"

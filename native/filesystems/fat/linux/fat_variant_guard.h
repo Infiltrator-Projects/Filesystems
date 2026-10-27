@@ -2,6 +2,18 @@
 #ifndef IFS_FAT_VARIANT_GUARD_H
 #define IFS_FAT_VARIANT_GUARD_H
 
+static inline int ifs_fat_is_dos1_bpb(const unsigned char *b)
+{
+    unsigned int i;
+    if (b[0] != 0xebu || b[2] != 0x90u)
+        return 0;
+    /* Match the Linux core's DOS 1.x check of the absent BPB fields. */
+    for (i = 11u; i <= 27u; ++i)
+        if (b[i] != 0u)
+            return 0;
+    return 1;
+}
+
 /* Width from the BPB, before the Linux FAT core touches writable media.
  * Return 0 for invalid/unknown geometry, otherwise 12, 16 or 32. */
 static inline unsigned int ifs_fat_bpb_width(const unsigned char *b)
