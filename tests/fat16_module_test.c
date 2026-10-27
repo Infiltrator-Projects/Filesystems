@@ -30,6 +30,23 @@ static int read_at(void *ctx, uint64_t offset, void *buf, uint32_t bytes)
     memcpy(buf, image + (size_t)offset, bytes);
     return 0;
 }
+static unsigned recorded_writes, recorded_flushes;
+static int write_at(void *ctx, uint64_t offset,
+                    const void *buf, uint32_t bytes)
+{
+    (void)ctx;
+    if (offset > sizeof image || bytes > sizeof image - offset)
+        return -1;
+    memcpy(image + (size_t)offset, buf, bytes);
+    ++recorded_writes;
+    return 0;
+}
+static int flush(void *ctx)
+{
+    (void)ctx;
+    ++recorded_flushes;
+    return 0;
+}
 static void fat(unsigned cluster, unsigned next)
 {
     p16(image + SECTOR + cluster * 2u, next);
@@ -77,6 +94,8 @@ static int failure(const char *msg)
 int main(void)
 {
     const IfsFat16Module *api = infiltrator_filesystem_module_v1();
+    const IfsClassicFatModuleV2 *v2 = infiltrator_filesystem_module_v2();
+    IfsClassicFatWritableIo writable = {{read_at, NULL, sizeof image}, write_at, flush};
     IfsFat16Io io = {read_at, NULL, sizeof image};
     IfsFat16Volume vol;
     IfsFat16File file;
@@ -108,6 +127,54 @@ int main(void)
             return failure("noncontiguous chain was read incorrectly");
     if (api->read_file(&io, &vol, &file, 2999u, data, 2u) == 0)
         return failure("out-of-bounds file read accepted");
+
+
+    /* V1 stays unchanged. V2 writes only already allocated regular-file data. */
+    if (!v2 || v2->abi_version != IFS_CLASSIC_FAT_V2_ABI_VERSION ||
+        v2->structure_bytes != sizeof(*v2) ||
+        strcmp(v2->format_id, "fat16") != 0 ||
+        v2->readonly_v1 != api ||
+        (v2->capabilities & IFS_CLASSIC_FAT_V2_CAP_OVERWRITE_EXISTING) == 0u)
+        return failure("V2 ABI incorrectly advertised");
+    if (v2->overwrite_existing(&writable, &vol, &file,
+                1022u, "WXYZ", 4u) != 0 ||
+        recorded_writes != 2u || recorded_flushes != 1u ||
+        api->read_file(&io, &vol, &file, 1022u, data, 4u) != 0 ||
+        memcmp(data, "WXYZ", 4u) != 0)
+        return failure("V2 cross-cluster overwrite or flush failed");
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            2999u, "XX", 2u) == 0 ||
+        recorded_writes != 2u)
+        return failure("V2 allowed extension past file size");
+    {
+        IfsClassicFatFile forged = file;
+        forged.first_cluster = 4u;
+        if (v2->overwrite_existing(&writable, &vol, &forged,
+                0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return failure("V2 accepted forged file metadata");
+        forged = file;
+        forged.attributes |= 0x01u;
+        if (v2->overwrite_existing(&writable, &vol, &forged,
+                0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return failure("V2 ignored read-only attribute");
+    }
+    writable.flush = NULL;
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return failure("V2 permitted write without flush");
+    writable.flush = flush;
+    writable.write_at = NULL;
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return failure("V2 permitted write without host writer");
+    writable.write_at = write_at;
+    {
+        IfsClassicFatVolume forged_volume = vol;
+        forged_volume.data_offset += SECTOR;
+        if (v2->overwrite_existing(&writable, &forged_volume, &file,
+                0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return failure("V2 accepted stale/forged volume geometry");
+    }
 
     fat(5, 0xffffu);
     if (api->root_file_fragments(&io, &vol, &file, &fragments) == 0)
