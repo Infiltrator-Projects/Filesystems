@@ -33,6 +33,22 @@ Mutable deployment sets also have explicit owners. `data/native-filesystems.tsv`
 
 Project-native runtime state also has one authority. `packaging/linux/kernel-module-helper.sh` owns the deployment path, selected provider, source freshness and mutation/rollback transaction for each managed native module. The manager and desktop integration consume read-only observations through `native-module-helper`; they do not reconstruct `/lib/modules` project paths or duplicate source-freshness policy. A native module is current only when its recorded source digest matches the exact packaged filesystem core, Linux adapter and shared Linux-kernel adapter inputs used for the build. Package upgrades deliberately preserve a running native module, but a changed native source payload therefore becomes explicitly stale and is presented as **Update native** rather than **Ready**.
 
+## Linux host helper boundary
+
+The current GTK/APT manager is explicitly a **Linux host backend**, not a
+native InfiltratorOS runtime. Its Debian-specific kernel-module coordinator
+and package-removal guard remain under `/usr/lib/filesystems/` (with the
+existing development fallback at `/usr/local/lib/filesystems/`), strictly
+for Linux compatibility. They are neither native application resources nor
+runtime dependencies of standalone FAT/OFS/EXT2/BFS format modules.
+
+Both `src/probe.cpp` and `src/installer.cpp` now request those services
+through `src/linux_host_paths.hpp`; only the Linux-guarded adapter
+`src/platform/linux_host_paths.cpp` knows the paths. A future native OS
+backend must be implemented and qualified independently, never inferred from
+these Linux locations. This change does not claim GTK/APT portability, nor
+install or alter Linux kernel modules, EFI drivers, .so files or media.
+
 ## Core layers
 
 Filesystems is split into backend responsibilities plus presentation shells.

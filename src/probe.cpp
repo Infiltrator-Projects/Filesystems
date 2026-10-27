@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "probe.hpp"
 #include "app_resources.hpp"
+#include "linux_host_paths.hpp"
 #include "process_runner.hpp"
 
 #include <glib.h>
@@ -285,27 +286,11 @@ void load_package_inventory()
     }
 }
 
-std::string native_state_helper_path()
-{
-    static const char* const candidates[] = {
-        "/usr/lib/filesystems/native-module-helper",
-        "/usr/local/lib/filesystems/native-module-helper"
-    };
-
-    for (const char* const candidate : candidates) {
-        if (g_file_test(candidate, G_FILE_TEST_IS_REGULAR) &&
-            g_file_test(candidate, G_FILE_TEST_IS_EXECUTABLE)) {
-            return candidate;
-        }
-    }
-    return {};
-}
-
 NativeModuleObservation query_native_module_state(
     const std::string_view filesystem_id)
 {
     NativeModuleObservation observation;
-    const std::string helper = native_state_helper_path();
+    const std::string helper = linux_host::native_module_helper_path();
     if (helper.empty()) {
         observation.error =
             "The installed native-module state authority is unavailable.";

@@ -37,7 +37,7 @@ The desktop manager may expose formats whose current provider is read-only or to
 | 20 | <a id="support-sfs2"></a>`sfs2` | Amiga SFS2 | Amiga | Read / write | Project-native kernel | `sfs2` | — | Independent Infiltrator SFS2 module. |
 | 21 | <a id="support-pfs3"></a>`pfs3` | Amiga PFS3 | Amiga | Read-only | Project-native kernel | `pfs3` | — | Real disk format retained while project-native mutation support remains unqualified. |
 | 22 | <a id="support-befs"></a>`befs` | BeOS BeFS | BeOS / Haiku | Read-only | Kernel | `befs` | — | Current Linux provider is read-oriented; format itself is a real local disk filesystem. |
-| 23 | <a id="support-bfs"></a>`bfs` | SCO BFS | Unix / Legacy | Variant / kernel dependent | Kernel | `bfs` | — | SCO/UnixWare Boot File System. |
+| 23 | <a id="support-bfs"></a>`bfs` | SCO BFS | Unix / Legacy | Linux kernel variant-dependent; experimental standalone `BFS.so` reads plus existing-data overwrites | Linux kernel and independent `BFS.so` | `bfs` | — | SCO/UnixWare Boot File System, not BeOS BeFS. `.so` uses actual inode/directory/block layout for root enumeration, reads and bounded overwrites with host flush; no file creation, deletion, expansion, allocation, formatting or defrag. |
 | 24 | <a id="support-efs"></a>`efs` | SGI EFS | SGI / Unix | Read-only | Kernel | `efs` | — | SGI Extent File System disk format used before XFS. |
 | 25 | <a id="support-hpfs"></a>`hpfs` | OS/2 HPFS | IBM / OS/2 | Variant / kernel dependent | Kernel | `hpfs` | — | OS/2 High Performance File System; current write capability is kernel-dependent. |
 | 26 | <a id="support-qnx4"></a>`qnx4` | QNX4 filesystem | QNX | Read-only | Kernel | `qnx4` | — | QNX4 local disk format. |
