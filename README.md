@@ -58,9 +58,10 @@ and fragment counts. Neither requires the other to be installed.
 
 FAT12 has its own compiler helper and manual drag-in path for
 `/System/Filesystems/FAT12.so`, without installing FAT16, .ko, .efi or
-other packages. The FAT12 GUI Install action and FAT32.so remain to be
-implemented. Neither FAT variant currently offers formatting, writes or
-defragmentation.
+other packages. FAT12, FAT16 and FAT32 now each have graphical
+Install/Remove controls in the single classic FAT family row, with their own
+independent compiler helpers and .so files. All three are read-only; their
+formatting, writes and defragmentation remain to be implemented.
 
 ## Current FAT32.so implementation
 

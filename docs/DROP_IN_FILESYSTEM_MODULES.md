@@ -26,6 +26,30 @@ An ordinary user places `ffs.so` in that directory. After the file has finished 
 
 The installed folder is a **capability source**, not the same thing as kernel registration. **FAT12, FAT16 and FAT32 are independently selectable, independently installable files: `FAT12.so`, `FAT16.so`, and `FAT32.so`.** They may be grouped as the classic FAT *source-code family*, but there is no combined `fat.so` installation. Clicking **Install FAT12** puts **only** `FAT12.so` in `/System/Filesystems/`: no FAT16 or FAT32 file, registration, runtime dependency or automatic installation. Each binary contains all shared format code it needs. `exfat.so` is a separate format. Amiga OFS (`DOS\0`) and Amiga FFS (`DOS\1`) are distinct identities and must never masquerade as one another. InfiltratorFS is one identity with one module; its format is owned by its separate repository.
 
+## Current engineering implementation (0.5.94)
+
+The source currently builds four standalone **read-only** shared objects:
+`OFS.so`, `FAT12.so`, `FAT16.so` and `FAT32.so`. Their existing
+portable C interfaces provide format checks and limited directory/file
+reads, not formatting, writable mounting, defragmentation or filesystem
+repair. FAT12 and FAT16 reuse one implementation source but compile as
+separate files; FAT32 separately implements 28-bit FAT and a clustered
+root directory, and OFS retains its own independent AmigaDOS reader.
+
+The Filesystems GTK UI exposes the three FAT module selectors in the
+same classic FAT row, plus OFS's distinct selector. The selected module
+is compiled on demand and atomically placed under `/System/Filesystems/`;
+no ordinary selector action installs a kernel or EFI driver. Current
+drop-ins include embedded, non-executed format identifiers that prevent
+one format's .so from being accepted merely because it was renamed.
+This is not cryptographic authentication or a UEFI module loader.
+
+The planned general-purpose shared-module ABI, FAT32 nested folders,
+long filenames, write/format/defrag operations, shared Defragmenter/
+Test Media integration and FFS.so remain incomplete. Earlier phase
+plans below describe desired capabilities beyond the current
+read-only implementation and must not be read as already complete.
+
 ## Filesystems is a selector/compiler, not a driver installer
 
 The target Filesystems **Install <format>** action is deliberately a

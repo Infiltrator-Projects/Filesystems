@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.94 — 2026-10-27
+
+- Correct README and drop-in module design-state descriptions to match verified implementation: independent FAT12/FAT16/FAT32/OFS read-only .so artifacts, graphical classic-FAT selectors and embedded format checks.
+- Explicitly preserve unfinished FFS.so, write/format/defrag, general shared-module ABI and EFI Boot loading milestones rather than treating planned features as delivered.
+
+
 ## 0.5.93 — 2026-10-27
 
 - Embed explicit non-executed per-format ELF metadata into OFS.so, FAT12.so, FAT16.so and FAT32.so, and require format identity during install/status validation.
