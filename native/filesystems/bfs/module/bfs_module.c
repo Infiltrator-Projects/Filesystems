@@ -106,8 +106,7 @@ static int fetch_inode(const IfsBfsVolume *v, uint32_t inode,
     if (type != IFS_BFS_TYPE_DIRECTORY && type != IFS_BFS_TYPE_FILE)
         return -1;
     if (first == 0u) {
-        if (last != 0u || eoff != BFS_BAD_INDEX ||
-            type == IFS_BFS_TYPE_DIRECTORY)
+        if (last != 0u || type == IFS_BFS_TYPE_DIRECTORY)
             return -1;
         size = 0u;
     } else {
