@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — experimental EXT2.so
+
+- Add a standalone EXT2 module using the existing canonical engine, with read, directory lookup, bounded overwrites of allocated file blocks and host flush handling; no full read/write, formatting or defrag claim.
+- Add on-demand guarded EXT2.so compiler/source installation and in-memory read/write/negative-case qualification.
+- No .ko, EFI, boot sector or disk changes.
+
 ## 0.5.95 — 2026-10-27 (native application-path regression boundary)
 
 - Protect the native `/Programs/Filesystems` application layout and `/System/Filesystems` one-module destination with source-architecture regression checks.
