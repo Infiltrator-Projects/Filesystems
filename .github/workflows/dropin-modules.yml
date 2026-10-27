@@ -30,8 +30,8 @@ jobs:
           moduleflags="-fPIC -fno-builtin -fno-stack-protector -ffreestanding -fvisibility=hidden -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now"
           for width in 12 16 32; do
             src=native/filesystems/fat/module
-            cc $flags $moduleflags -I "$src" "$src/fat$width_module.c" -o "/tmp/ifs-dropins/FAT$width.so"
-            cc $flags -I "$src" "tests/fat$width_module_test.c" "$src/fat$width_module.c" -o "/tmp/ifs-dropins/fat$width-test"
+            cc $flags $moduleflags -I "$src" "$src/fat${width}_module.c" -o "/tmp/ifs-dropins/FAT$width.so"
+            cc $flags -I "$src" "tests/fat${width}_module_test.c" "$src/fat${width}_module.c" -o "/tmp/ifs-dropins/fat$width-test"
             "/tmp/ifs-dropins/fat$width-test"
           done
           src=native/filesystems/ofs

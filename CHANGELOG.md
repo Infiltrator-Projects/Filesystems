@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.92 — 2026-10-27
+
+- Correct Bash brace delimiting in the rapid .so CI driver-source paths under set -u, so module build and read-only regression tests execute rather than exiting before compilation.
+
+
 ## 0.5.91 — 2026-10-27
 
 - Add dedicated rapid CI compiling and testing actual OFS.so, FAT12.so, FAT16.so and FAT32.so artifacts independently from lengthy Linux kernel and EFI build pipelines.
