@@ -91,6 +91,13 @@ jobs:
             /tmp/fat-modules/boundary-4086.img /tmp/fat-modules/fat12.img reject
           fsck.fat -n /tmp/fat-modules/boundary-4084.img
           fsck.fat -n /tmp/fat-modules/boundary-4086.img
+          # A believable BPB must not make a truncated backing file writable.
+          dd if=/tmp/fat-modules/fat12.img of=/tmp/fat-modules/truncated12.img bs=512 count=2048 status=none
+          dd if=/tmp/fat-modules/fat16.img of=/tmp/fat-modules/truncated16.img bs=512 count=8192 status=none
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/truncated12.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/truncated16.img reject
           # Independently verify live directory entries, Unicode long names
           # and data, using external mtools instead of our own parser.
           fsck.fat -n /tmp/fat-modules/fat12.img

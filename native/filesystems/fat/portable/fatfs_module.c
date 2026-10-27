@@ -104,6 +104,24 @@ DWORD get_fattime(void)
     return bound && device.fat_timestamp ?
            (DWORD)device.fat_timestamp(device.user) : 0u;
 }
+static int mounted_bounds_valid(void)
+{
+    uint8_t bpb[4096];
+    uint64_t sectors,limit=device.partition_bytes/device.sector_bytes;
+    uint64_t data_end;
+    if ((uint64_t)volume.volbase>=limit ||
+        volume.fatbase<volume.volbase || volume.dirbase<=volume.fatbase ||
+        volume.database<=volume.dirbase ||
+        disk_read(0,bpb,volume.volbase,1)!=RES_OK) return 0;
+    sectors=(uint64_t)bpb[19] | (uint64_t)bpb[20]<<8;
+    if (!sectors)
+        sectors=(uint64_t)bpb[32] | (uint64_t)bpb[33]<<8 |
+                (uint64_t)bpb[34]<<16 | (uint64_t)bpb[35]<<24;
+    if (!sectors || sectors>limit-(uint64_t)volume.volbase) return 0;
+    data_end=(uint64_t)volume.database +
+             (uint64_t)(volume.n_fatent-2u)*volume.csize;
+    return data_end<=(uint64_t)volume.volbase+sectors;
+}
 static int attach(const IfsFatfsIo *io)
 {
     if (bound || selected || !io) return -1;
@@ -111,6 +129,7 @@ static int attach(const IfsFatfsIo *io)
     bound = 1;
     if (!sector_valid() || f_mount(&volume, "0:", 1) != FR_OK ||
         volume.fs_type != REQUIRED_FS || volume.n_fatent<3u ||
+        !mounted_bounds_valid() ||
 #if IFS_FATFS_ONLY == 12
         volume.n_fatent-2u>=4085u) {
 #else
@@ -337,7 +356,8 @@ static int format_volume(const IfsFatfsIo *io,uint32_t cluster_bytes)
     format_preview=0;
     if (f_mkfs("0:",&options,work,sizeof work)!=FR_OK) goto done;
     /* Confirm that the completed on-media result is the named variant. */
-    if (f_mount(&volume,"0:",1)!=FR_OK || volume.fs_type!=REQUIRED_FS)
+    if (f_mount(&volume,"0:",1)!=FR_OK || volume.fs_type!=REQUIRED_FS ||
+        volume.n_fatent<3u || !mounted_bounds_valid())
         goto done;
     good=1;
 done:

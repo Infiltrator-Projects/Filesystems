@@ -36,6 +36,9 @@ Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
   seek is not reported as a completed write or truncate. On an I/O error or
   full volume, partial allocation or extension can still occur; FAT and this
   interface do not guarantee transactional failure atomicity.
+- The portable mount checks that the full volume and its data area fit inside
+  the supplied partition before allowing file operations, including for a
+  believable boot sector on a truncated image.
 
 ## Evidence and remaining gates
 
