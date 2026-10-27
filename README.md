@@ -54,7 +54,9 @@ The source builds an independent read-only `OFS.so` and separate
 `FAT12.so` and `FAT16.so` artifacts. Each FAT module retains a legacy V1
 read-only API and also embeds the portable FAT engine behind the V3 API.
 V3 supports long names, nested directories, reading, file creation and
-allocation, writing, truncation, rename and deletion. Callers must provide
+allocation, writing, truncation, rename and deletion. V4 adds partition formatting, file attributes, modification
+times and free-space queries; formatting checks the requested FAT width before
+writing. Callers must provide
 partition-relative I/O and flush callbacks and serialize access to an
 exclusively held volume. Tests use disposable media; this does not establish
 physical-media or crash-recovery qualification.
@@ -62,9 +64,8 @@ physical-media or crash-recovery qualification.
 The FAT12 and FAT16 compiler helpers build one corresponding module into
 `/System/Filesystems/`, without installing the other variant. Their EFI and
 Linux module candidates have separate build and runtime qualification lanes;
-they are not installed by the `.so` selector. Formatting and the relocation
-and recovery interface required by Defragmenter are not yet available through
-V3. FAT32 retains its existing read-only module.
+they are not installed by the `.so` selector. The relocation and recovery interface required by Defragmenter is not yet
+available. FAT32 retains its existing read-only module.
 
 ## Current EXT2.so implementation (restricted in-place writes)
 

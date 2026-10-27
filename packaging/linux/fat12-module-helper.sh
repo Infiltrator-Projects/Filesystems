@@ -55,6 +55,12 @@ check_module() {
     "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
         grep -F 'IFS-MODULE:fat12:3' >/dev/null ||
         fatal "FAT12 embedded writable format identity missing"
+    "$elf_checker" -Ws "$file" |
+        grep -F 'infiltrator_filesystem_module_v4' >/dev/null ||
+        fatal "FAT12 format and metadata V4 ABI missing"
+    "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
+        grep -F 'IFS-MODULE:fat12:4' >/dev/null ||
+        fatal "FAT12 embedded V4 format identity missing"
 }
 
 # The privileged compiler must never consume untrusted application source.

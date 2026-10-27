@@ -94,7 +94,7 @@ const std::vector<FilesystemIdentity>& filesystem_identities()
 
         {"fat16", "FAT16", "Microsoft / DOS",
          "Classic FAT16 on-disk filesystem. Build one independent FAT16.so module.",
-         "Experimental FAT12 and FAT16 modules provide V3 file and directory reads and writes. Formatting and relocating defragmentation are not yet available."},
+         "Experimental FAT12 and FAT16 modules provide file and directory reads and writes and V4 formatting. Relocating defragmentation is not yet available."},
         {"exfat", "exFAT", "Microsoft",
          "Microsoft removable/local-storage filesystem.",
          "exFAT is represented once; exfat-fuse is not a second filesystem entry."},

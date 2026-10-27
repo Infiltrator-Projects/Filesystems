@@ -7,6 +7,7 @@ on:
       - "native/filesystems/fat/module/fat12_module.c"
       - "native/filesystems/fat/module/fat16_module.c"
       - "tests/fatfs_v3_realimage_test.c"
+      - "tests/fatfs_v4_format_test.c"
       - "packaging/linux/fat1*-module-helper.sh"
       - ".github/workflows/fat12-fat16-so.yml"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "native/filesystems/fat/module/fat12_module.c"
       - "native/filesystems/fat/module/fat16_module.c"
       - "tests/fatfs_v3_realimage_test.c"
+      - "tests/fatfs_v4_format_test.c"
       - "packaging/linux/fat1*-module-helper.sh"
       - ".github/workflows/fat12-fat16-so.yml"
   workflow_dispatch:
@@ -49,11 +51,15 @@ jobs:
             test -s "/tmp/fat-modules/FAT$fs.so"
             readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v1
             readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v3
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v4
             readelf -p .ifsmeta "/tmp/fat-modules/FAT$fs.so" | grep -q "IFS-MODULE:fat$fs:3"
+            readelf -p .ifsmeta "/tmp/fat-modules/FAT$fs.so" | grep -q "IFS-MODULE:fat$fs:4"
             test -z "$(nm -u "/tmp/fat-modules/FAT$fs.so")"
           done
           gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
             -I "$p" tests/fatfs_v3_realimage_test.c -o /tmp/fat-modules/real-test -ldl
+          gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I "$p" tests/fatfs_v4_format_test.c -o /tmp/fat-modules/format-test -ldl
       - name: Test read, write, append, rename, long names and persistence
         shell: bash
         run: |
@@ -125,3 +131,29 @@ jobs:
             fsck.fat -n "/tmp/fat-modules/fat$kind-4k.img"
           done
           echo "BOTH-PORTABLE-MODULES-GENUINE-DOSFS-RW-INDEPENDENTLY-VERIFIED"
+      - name: Validate formatter and metadata using independent FAT tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          truncate -s 1440K /tmp/fat-modules/new12.img
+          truncate -s 8M /tmp/fat-modules/new16.img
+          before12=$(sha256sum /tmp/fat-modules/new12.img)
+          before16=$(sha256sum /tmp/fat-modules/new16.img)
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new16.img 512 reject
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new12.img 512 reject
+          test "$(sha256sum /tmp/fat-modules/new12.img)" = "$before12"
+          test "$(sha256sum /tmp/fat-modules/new16.img)" = "$before16"
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12.img 512
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new16.img 512
+          truncate -s 8M /tmp/fat-modules/new12-4k.img
+          truncate -s 64M /tmp/fat-modules/new16-4k.img
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12-4k.img 4096
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new16-4k.img 4096
+          printf 'FAT formatter and metadata verified\n' > /tmp/fat-modules/format-expected.txt
+          for image in /tmp/fat-modules/new12.img /tmp/fat-modules/new16.img \
+                       /tmp/fat-modules/new12-4k.img /tmp/fat-modules/new16-4k.img; do
+            fsck.fat -n "$image"
+            mcopy -i "$image" ::/FORMAT/META.TXT /tmp/fat-modules/formatted-readback.txt
+            cmp /tmp/fat-modules/format-expected.txt /tmp/fat-modules/formatted-readback.txt
+            rm /tmp/fat-modules/formatted-readback.txt
+          done

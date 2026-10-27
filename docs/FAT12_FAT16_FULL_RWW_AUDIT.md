@@ -22,7 +22,10 @@ Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
   and truncate, with device I/O and flushing supplied by the caller. The
   imported source headers retain their notices. The legacy V1 API remains
   available. V3 currently allows only one active volume per module and callers
-  must serialize access and hold exclusive ownership of the device.
+  must serialize access and hold exclusive ownership of the device. V4 adds
+  formatting with a write-free FAT-width preflight, attributes, modified-time
+  updates and free-space reporting. Formatting remains a destructive operation
+  and is not atomic if media writes or flushing fail.
 - Directory moves are checked by on-media ancestry, including case and short
   aliases, to avoid moving a directory inside itself. A failed full-volume
   seek is not reported as a completed write or truncate. On an I/O error or
@@ -49,7 +52,7 @@ firmware, disk or installed system is touched by these tests.
 
 Outstanding work includes successful runtime qualification on supported Linux
 kernels and UEFI firmware, corrupted and interrupted-media handling, broader
-geometry and fault-injection coverage, metadata and formatting capabilities,
+geometry and fault-injection coverage, broader metadata semantics,
 and package/install integration. V3 does **not** yet expose the block relocation
 and recovery operations required to move Defragmenter's FAT engine into the
 shared libraries. Do not remove that engine, mark this target complete, or

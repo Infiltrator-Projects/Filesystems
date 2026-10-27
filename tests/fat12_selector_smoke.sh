@@ -44,6 +44,7 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
 fi
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
 readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v3$' >/dev/null
+readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v4$' >/dev/null
 
 # Refuse unsafe privileged build input and retain the previously installed SO.
 original_hash=$(sha256sum "$module")

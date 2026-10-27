@@ -22,6 +22,9 @@ static IfsFatfsIo device;
 static FATFS volume;
 static int selected;
 static int bound;
+static int format_preview;
+static int preview_boot_seen;
+static uint8_t preview_boot[512];
 static int sector_valid(void)
 {
     return device.read_at && device.write_at && device.flush &&
@@ -52,6 +55,9 @@ DRESULT disk_read(BYTE pdrv, BYTE *dst, LBA_t sector, UINT count)
 {
     if (pdrv || !dst || !io_valid((uint64_t)sector, count))
         return RES_PARERR;
+    /* Formatting a partition-relative SFD should never read existing media.
+     * Abort the dry-run if a future engine change violates that assumption. */
+    if (format_preview) return RES_ERROR;
     return device.read_at(device.user, (uint64_t)sector*device.sector_bytes,
                           dst, count*device.sector_bytes) == 0 ?
            RES_OK : RES_ERROR;
@@ -60,6 +66,13 @@ DRESULT disk_write(BYTE pdrv, const BYTE *src, LBA_t sector, UINT count)
 {
     if (pdrv || !src || !io_valid((uint64_t)sector, count))
         return RES_PARERR;
+    if (format_preview) {
+        if (sector==0) {
+            for (unsigned i=0;i<sizeof preview_boot;++i) preview_boot[i]=src[i];
+            preview_boot_seen=1;
+        }
+        return RES_OK;
+    }
     return device.write_at(device.user, (uint64_t)sector*device.sector_bytes,
                            src, count*device.sector_bytes) == 0 ?
            RES_OK : RES_ERROR;
@@ -69,6 +82,7 @@ DRESULT disk_ioctl(BYTE pdrv, BYTE command, void *out)
     if (pdrv || !bound || !sector_valid()) return RES_PARERR;
     switch (command) {
     case CTRL_SYNC:
+        if (format_preview) return RES_OK;
         return device.flush(device.user) == 0 ? RES_OK : RES_ERROR;
     case GET_SECTOR_COUNT:
         if (!out) return RES_PARERR;
@@ -264,3 +278,106 @@ static const IfsFatfsModuleV3 module={
 };
 __attribute__((visibility("default")))
 const IfsFatfsModuleV3 *infiltrator_filesystem_module_v3(void) {return &module;}
+
+static uint16_t boot16(unsigned offset)
+{
+    return (uint16_t)((uint16_t)preview_boot[offset] |
+                      (uint16_t)preview_boot[offset+1u]<<8);
+}
+static uint32_t boot32(unsigned offset)
+{
+    return (uint32_t)boot16(offset) | (uint32_t)boot16(offset+2u)<<16;
+}
+static int preview_matches_format(void)
+{
+    uint64_t sectors=boot16(19u), root_sectors, overhead, clusters;
+    unsigned bytes=boot16(11u), sectors_per_cluster=preview_boot[13u];
+    unsigned reserved=boot16(14u), fats=preview_boot[16u];
+    unsigned roots=boot16(17u), fat_sectors=boot16(22u);
+    if (!preview_boot_seen || preview_boot[510]!=0x55u || preview_boot[511]!=0xaau ||
+        bytes!=device.sector_bytes || !sectors_per_cluster ||
+        (sectors_per_cluster & (sectors_per_cluster-1u)) ||
+        !reserved || !fats || !roots || !fat_sectors) return 0;
+    if (!sectors) sectors=boot32(32u);
+    root_sectors=((uint64_t)roots*32u+bytes-1u)/bytes;
+    overhead=(uint64_t)reserved+(uint64_t)fats*fat_sectors+root_sectors;
+    if (sectors<=overhead || sectors>device.partition_bytes/bytes) return 0;
+    clusters=(sectors-overhead)/sectors_per_cluster;
+#if IFS_FATFS_ONLY == 12
+    return clusters>0u && clusters<4085u;
+#else
+    return clusters>=4085u && clusters<65525u;
+#endif
+}
+static int format_volume(const IfsFatfsIo *io,uint32_t cluster_bytes)
+{
+    uint8_t work[4096];
+    MKFS_PARM options={FM_FAT|FM_SFD,2u,1u,512u,0u};
+    int good=0;
+    if (bound || selected || !io) return -1;
+    device=*io;
+    bound=1;
+    if (!sector_valid()) goto done;
+    if (cluster_bytes && (cluster_bytes<device.sector_bytes ||
+        cluster_bytes>(uint64_t)device.sector_bytes*128u ||
+        (cluster_bytes & (cluster_bytes-1u)))) goto done;
+    options.au_size=cluster_bytes;
+    preview_boot_seen=0;
+    format_preview=1;
+    if (f_mkfs("0:",&options,work,sizeof work)!=FR_OK || !preview_matches_format())
+        goto done;
+    format_preview=0;
+    if (f_mkfs("0:",&options,work,sizeof work)!=FR_OK) goto done;
+    /* Confirm that the completed on-media result is the named variant. */
+    if (f_mount(&volume,"0:",1)!=FR_OK || volume.fs_type!=REQUIRED_FS)
+        goto done;
+    good=1;
+done:
+    format_preview=0;
+    (void)f_mount(0,"0:",0);
+    bound=0;
+    return good?0:-1;
+}
+static int set_attributes(const char *path,uint8_t attributes,uint8_t mask)
+{
+    const uint8_t valid=AM_RDO|AM_HID|AM_SYS|AM_ARC;
+    return selected && path && mask && !(mask & (uint8_t)~valid) &&
+           !(attributes & (uint8_t)~valid) &&
+           f_chmod(path,attributes,mask)==FR_OK?0:-1;
+}
+static int set_modified_time(const char *path,uint16_t date,uint16_t time)
+{
+    FILINFO info;
+    unsigned year=1980u+(date>>9),month=(date>>5)&15u,day=date&31u;
+    unsigned hour=time>>11,minute=(time>>5)&63u,second=time&31u;
+    static const uint8_t days[]={0u,31u,28u,31u,30u,31u,30u,31u,31u,30u,31u,30u,31u};
+    unsigned max_day;
+    if (!selected || !path || month<1u || month>12u || !day ||
+        hour>23u || minute>59u || second>29u) return -1;
+    max_day=days[month];
+    if (month==2u && (year%4u==0u && (year%100u!=0u || year%400u==0u))) ++max_day;
+    if (day>max_day) return -1;
+    info.fdate=date; info.ftime=time;
+    return f_utime(path,&info)==FR_OK?0:-1;
+}
+static int volume_space(uint64_t *total,uint64_t *free_bytes)
+{
+    FATFS *fs=0;
+    DWORD free_clusters=0;
+    if (!selected || !total || !free_bytes ||
+        f_getfree("0:",&free_clusters,&fs)!=FR_OK || fs!=&volume ||
+        volume.n_fatent<2u || free_clusters>volume.n_fatent-2u) return -1;
+    *total=(uint64_t)(volume.n_fatent-2u)*volume.csize*device.sector_bytes;
+    *free_bytes=(uint64_t)free_clusters*volume.csize*device.sector_bytes;
+    return 0;
+}
+__attribute__((used,section(".ifsmeta")))
+static const char identity_v4[]="IFS-MODULE:" FS_ID ":4";
+static const IfsFatfsModuleV4 module_v4={
+    IFS_FATFS_MODULE_ABI_V4,sizeof(IfsFatfsModuleV4),FS_ID,
+    IFS_FATFS_CAP_FORMAT | IFS_FATFS_CAP_ATTRIBUTES |
+    IFS_FATFS_CAP_MODIFIED_TIME | IFS_FATFS_CAP_SPACE,
+    &module,format_volume,set_attributes,set_modified_time,volume_space
+};
+__attribute__((visibility("default")))
+const IfsFatfsModuleV4 *infiltrator_filesystem_module_v4(void) {return &module_v4;}
