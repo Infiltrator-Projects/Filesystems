@@ -30,10 +30,11 @@ cp -a "$root/native/filesystems/fat/efi/FatPkg" "$work/edk2/FatPkg"
 out="$root/build-fat-efi"
 mkdir -p "$out"
 for type in 12 16; do
-  module="Fat$type"
-  mapfile -t candidates < <(find "$work/edk2/Build/Fat" -type f -name "$module.efi" | sort)
-  test "${#candidates[@]}" -eq 1 || { echo "Missing/ambiguous $module.efi" >&2; exit 1; }
-  install -m 0644 "${candidates[0]}" "$out/FAT$type.efi"
+  # EDK2 uses upper-case BASE_NAME and also emits staging duplicates.
+  # Copy the one canonical top-level release image, not a wildcard match.
+  image="$work/edk2/Build/Fat/RELEASE_GCC/X64/FAT$type.efi"
+  test -s "$image" || { echo "Missing FAT$type UEFI driver" >&2; exit 1; }
+  install -m 0644 "$image" "$out/FAT$type.efi"
   python3 - "$out/FAT$type.efi" <<'PY'
 import struct, sys
 from pathlib import Path
