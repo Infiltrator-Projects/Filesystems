@@ -26,6 +26,11 @@ jobs:
         run: bash scripts/build-fat12-fat16-efi.sh
       - name: Exercise exact driver bindings against independent writable media
         run: bash scripts/test-fat-uefi-ovmf.sh
+      - name: Exercise FAT12 EFI on a 255 MiB image with 64 KiB clusters
+        run: |
+          FAT_EFI_LARGE_FAT12=1 \
+          FAT_EFI_TEST_OUTPUT="$RUNNER_TEMP/fat-efi-large-qualification" \
+            bash scripts/test-fat-uefi-ovmf.sh
       - name: Preserve the EFI drivers tested by OVMF
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -37,7 +42,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: fat-uefi-runtime-logs
-          path: ${{ runner.temp }}/fat-efi-qualification/**/serial.log
+          path: |
+            ${{ runner.temp }}/fat-efi-qualification/**/serial.log
+            ${{ runner.temp }}/fat-efi-large-qualification/**/serial.log
           if-no-files-found: ignore
   linux-runtime:
     runs-on: ubuntu-24.04
@@ -91,14 +98,17 @@ jobs:
         run: |
           set -euo pipefail
           truncate -s 1440K "$RUNNER_TEMP/fat12.img"
+          truncate -s 255M "$RUNNER_TEMP/fat12-large.img"
           truncate -s 8M "$RUNNER_TEMP/fat16.img"
           truncate -s 64M "$RUNNER_TEMP/fat32.img"
           mkfs.fat -F 12 -I "$RUNNER_TEMP/fat12.img"
+          mkfs.fat -F 12 -I -S 512 -s 128 "$RUNNER_TEMP/fat12-large.img"
           mkfs.fat -F 16 -I -s 1 "$RUNNER_TEMP/fat16.img"
           mkfs.fat -F 32 -I -s 1 "$RUNNER_TEMP/fat32.img"
           cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
             -I native/filesystems/fat/linux tests/fat_linux_width_test.c -o "$RUNNER_TEMP/fat-width-test"
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat12.img" 12
+          "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat12-large.img" 12
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat16.img" 16
           "$RUNNER_TEMP/fat-width-test" "$RUNNER_TEMP/fat32.img" 32
           python3 tests/fat_boundary_fixture.py "$RUNNER_TEMP/fat-boundary"
@@ -129,10 +139,12 @@ jobs:
             -drive "file=$RUNNER_TEMP/fat16.img,format=raw,if=virtio" \
             -drive "file=$RUNNER_TEMP/fat32.img,format=raw,if=virtio" \
             -drive "file=$RUNNER_TEMP/fat-dos1.img,format=raw,if=virtio" \
+            -drive "file=$RUNNER_TEMP/fat12-large.img,format=raw,if=virtio" \
             2>&1 | tee "$RUNNER_TEMP/fat-kernel-serial.log"
           grep -Fq 'FAT-KO-RUNTIME-PASS: fat12' "$RUNNER_TEMP/fat-kernel-serial.log"
           grep -Fq 'FAT-KO-RUNTIME-PASS: fat16' "$RUNNER_TEMP/fat-kernel-serial.log"
           grep -Fq 'FAT-KO-DOS1-PASS' "$RUNNER_TEMP/fat-kernel-serial.log"
+          grep -Fq 'FAT-KO-LARGE-FAT12-PASS' "$RUNNER_TEMP/fat-kernel-serial.log"
           ! grep -Fq 'FAT-KO-RUNTIME-FAIL' "$RUNNER_TEMP/fat-kernel-serial.log"
           fsck.fat -n "$RUNNER_TEMP/fat32.img"
           for bits in 12 16; do
@@ -142,6 +154,9 @@ jobs:
             mcopy -i "$RUNNER_TEMP/fat$bits.img" '::/tree/blocks.bin' "$RUNNER_TEMP/fat$bits-blocks.bin"
             test "$(wc -c < "$RUNNER_TEMP/fat$bits-blocks.bin")" = 131072
           done
+          fsck.fat -n "$RUNNER_TEMP/fat12-large.img"
+          mcopy -i "$RUNNER_TEMP/fat12-large.img" '::/tree/Renamed Long Name.txt' "$RUNNER_TEMP/fat12-large-readback.txt"
+          test "$(cat "$RUNNER_TEMP/fat12-large-readback.txt")" = "fat12 kernel driver survives remount"
       - name: Preserve the kernel-specific modules tested in QEMU
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

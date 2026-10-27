@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# QEMU initramfs only; /dev/vda and /dev/vdb are disposable image files.
+# QEMU initramfs only; all target devices are disposable image files.
 set -eu
 fail() { echo "FAT-KO-RUNTIME-FAIL: $*" > /dev/ttyS0; poweroff -f; exit 1; }
 mount -t proc proc /proc || fail proc
@@ -21,7 +21,7 @@ for item in 'fat12 /dev/vdb' 'fat16 /dev/vda' 'fat12 /dev/vdc' 'fat16 /dev/vdc';
     after=$(sha256sum "$2")
     test "$before" = "$after" || fail "$1 changed rejected medium"
 done
-for item in 'fat12 /dev/vda' 'fat16 /dev/vdb'; do
+for item in 'fat12 /dev/vda' 'fat16 /dev/vdb' 'fat12 /dev/vde'; do
     set -- $item
     kind=$1 device=$2
     mount -t "$kind" "$device" /mnt/test || fail "$kind mount"
@@ -42,6 +42,9 @@ for item in 'fat12 /dev/vda' 'fat16 /dev/vdb'; do
     test ! -e /mnt/test/remove-me || fail "$kind persistent deletion"
     umount /mnt/test || fail "$kind final unmount"
     echo "FAT-KO-RUNTIME-PASS: $kind" > /dev/ttyS0
+    if [ "$device" = /dev/vde ]; then
+        echo 'FAT-KO-LARGE-FAT12-PASS' > /dev/ttyS0
+    fi
 done
 # An explicit DOS 1.x request still works for FAT12 despite its absent BPB;
 # FAT16 must reject it without changing the image.

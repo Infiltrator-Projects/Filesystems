@@ -5,14 +5,17 @@
 #include <efi.h>
 #include <efilib.h>
 
+#ifndef PROBE_FAT12_BLOCKS
+#define PROBE_FAT12_BLOCKS 2880ULL
+#endif
 #if PROBE_FAT_BITS == 12
 #define DRIVER_PATH L"\\FAT12.efi"
-#define OWN_BLOCKS 2880ULL
+#define OWN_BLOCKS PROBE_FAT12_BLOCKS
 #define OTHER_BLOCKS 16384ULL
 #elif PROBE_FAT_BITS == 16
 #define DRIVER_PATH L"\\FAT16.efi"
 #define OWN_BLOCKS 16384ULL
-#define OTHER_BLOCKS 2880ULL
+#define OTHER_BLOCKS PROBE_FAT12_BLOCKS
 #else
 #error "PROBE_FAT_BITS must be 12 or 16"
 #endif
