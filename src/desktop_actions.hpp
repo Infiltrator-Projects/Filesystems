@@ -67,6 +67,10 @@ DesktopAction prepare_module_desktop_action(
 void execute_classic_fat_variant_async(
     bool fat12, bool remove, DesktopActionCompletion completion);
 
+/* Separate EXT2.so action; this does not change native ext2.ko. */
+void execute_ext2_dropin_async(
+    bool remove, DesktopActionCompletion completion);
+
 void execute_desktop_action_async(
     DesktopAction action,
     DesktopActionCompletion completion);
