@@ -15,7 +15,9 @@ Linux `.ko`, and UEFI `.efi`. This development work is not release approval.
   FAT/VFAT implementation. Each variant builds a separately named namespace
   module. **Both depend on a compatible Linux FAT core**, so a successful
   `.ko` build alone does not establish portability across kernel versions or
-  prove a self-contained filesystem module.
+  prove a self-contained filesystem module. If the host FAT core was built
+  without VFAT and supplies an empty default I/O charset, the two variant
+  adapters select `iso8859-1`; an existing host default is retained.
 - `FAT12.so` and `FAT16.so` each compile the complete portable ChaN FatFs
   engine into the individual shared object. The V3 ABI provides directory and
   file read/write, allocation through file growth, creation, deletion, rename

@@ -1244,6 +1244,25 @@ static int vfat_init_fs_context(struct fs_context *fc)
 	if (err)
 		return err;
 
+#ifdef IFS_FAT_ONLY
+	/* The shared FAT core has no default iocharset when its kernel was
+	 * configured without CONFIG_VFAT_FS. Our independent VFAT namespace
+	 * modules still need a usable default; preserve a host-provided value. */
+	{
+		struct fat_mount_options *opts = fc->fs_private;
+
+		if (!opts->iocharset || !opts->iocharset[0]) {
+			char *charset = kstrdup("iso8859-1", GFP_KERNEL);
+
+			if (!charset) {
+				fat_free_fc(fc);
+				fc->fs_private = NULL;
+				return -ENOMEM;
+			}
+			opts->iocharset = charset;
+		}
+	}
+#endif
 	fc->ops = &vfat_context_ops;
 	return 0;
 }
