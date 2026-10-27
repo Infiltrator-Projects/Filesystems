@@ -564,6 +564,20 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
         return result;
     }
 
+    if (descriptor.id == "ext2") {
+        // The standalone user-space .so is independent from Linux ext2.ko.
+        // Preserve native .ko probing and its existing catalogue status.
+        const std::string helper = application_helper("ext2-module-helper");
+        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
+            const CommandResult status = run_command({helper, "status"});
+            if (status.succeeded() &&
+                status.stdout_text.find("installed") != std::string::npos)
+                result.ext2_dropin_state = SupportState::Ready;
+            else if (status.spawned && status.exit_status == 3)
+                result.ext2_dropin_state = SupportState::Installable;
+        }
+    }
+
     result.project_native_module = descriptor.project_native_linux;
     result.module_requirement_met = descriptor.modules.empty();
     result.kernel_state = descriptor.modules.empty()
