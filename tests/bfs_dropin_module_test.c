@@ -49,31 +49,31 @@ static void fixture(void)
 {
     unsigned char *root = disk + SECTOR;
     unsigned char *file = root + 64u;
-    unsigned char *dir = disk + 2u * SECTOR;
+    unsigned char *dir = disk + 3u * SECTOR;
     memset(disk, 0, sizeof(disk));
     writes = flushes = 0u;
     put32(disk + 0, 0x1badfaceu);
-    put32(disk + 4, 2u * SECTOR);  /* First data byte */
+    put32(disk + 4, 2u * SECTOR + 64u); /* 9 inodes, unaligned data offset */
     put32(disk + 8, IMAGE_BYTES - 1u);
     put32(disk + 12, UINT32_MAX); /* No interrupted relocation */
     put32(disk + 16, UINT32_MAX);
 
     put16(root + 0, 2u);
-    put32(root + 4, 2u);
-    put32(root + 8, 2u);
-    put32(root + 12, 2u * SECTOR + 16u - 1u);
+    put32(root + 4, 3u);
+    put32(root + 8, 3u);
+    put32(root + 12, 3u * SECTOR + 16u - 1u);
     put32(root + 16, IFS_BFS_TYPE_DIRECTORY);
 
     put16(file + 0, 3u);
-    put32(file + 4, 3u);
-    put32(file + 8, 4u);
-    put32(file + 12, 3u * SECTOR + 600u - 1u);
+    put32(file + 4, 4u);
+    put32(file + 8, 5u);
+    put32(file + 12, 4u * SECTOR + 600u - 1u);
     put32(file + 16, IFS_BFS_TYPE_FILE);
 
     put16(dir, 3u);
     memcpy(dir + 2, "HELLO.TXT", 9u);
-    memset(disk + 3u * SECTOR, 'A', 512u);
-    memset(disk + 4u * SECTOR, 'B', 512u);
+    memset(disk + 4u * SECTOR, 'A', 512u);
+    memset(disk + 5u * SECTOR, 'B', 512u);
 }
 static int fail(const char *message)
 {
