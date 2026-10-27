@@ -56,6 +56,63 @@ for required in (
 ):
     require(required in cmake, f"Common dependency contract lost boundary: {required}")
 
+# Native InfiltratorOS application ownership must not regress to Linux FHS.
+# On Mint/Debian, /usr/lib/filesystems is reserved exclusively for the
+# Linux kernel/module integration helpers and related Linux build sources.
+# The application, its selector helpers and selectable format source never
+# belong there; they must stay together under the configurable app root.
+resources = text("src/app_resources.hpp")
+require('"/Programs/Filesystems"' in resources,
+        "native application root default is not /Programs/Filesystems")
+for relative in ("src/probe.cpp", "src/installer.cpp"):
+    component = text(relative)
+    for name in ("fat12", "fat16", "fat32", "ofs"):
+        require(f'application_helper("{name}-module-helper")' in component
+                or (relative == "src/probe.cpp" and
+                    'application_helper(helper_name)' in component),
+                f"{relative} lost portable helper discovery: {name}")
+    for forbidden in (
+        "/usr/lib/filesystems/fat16-module-helper",
+        "/usr/lib/filesystems/ofs-module-helper",
+        "/usr/lib/filesystems/fat12-module-helper",
+        "/usr/lib/filesystems/fat32-module-helper",
+    ):
+        require(forbidden not in component,
+                f"{relative} hardcodes a Linux-specific selector path: {forbidden}")
+
+for kind in ("fat12", "fat16", "fat32", "ofs"):
+    helper = text(f"packaging/linux/{kind}-module-helper.sh")
+    require('destination=/System/Filesystems' in helper,
+            f"{kind} module destination is not native")
+    require('BASH_SOURCE[0]' in helper and
+            'source_dir="$self_dir/../Sources/' in helper,
+            f"{kind} helper no longer finds its sources beside the application")
+    require("/usr/lib/filesystems/" not in helper,
+            f"{kind} helper contains a distro-specific source path")
+    require("safe_source_tree()" in helper,
+            f"{kind} helper lost its source trust checks")
+for required in (
+    'set(FILESYSTEMS_APPLICATION_ROOT "/Programs/Filesystems" CACHE PATH',
+    'RUNTIME DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}"',
+    'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"',
+    'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/module"',
+    'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16"',
+    'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/',
+):
+    require(required in cmake,
+            f"native app resource/install contract missing: {required}")
+
+# The only Linux /usr/lib/filesystems exceptions are kernel integration,
+# managed Linux source and package-removal safety (not .so selector resources).
+for forbidden in (
+    'DESTINATION "lib/filesystems/fat16-source"',
+    'DESTINATION "lib/filesystems/ofs-source"',
+    'DESTINATION "lib/filesystems"\n        RENAME fat16-module-helper',
+    'DESTINATION "lib/filesystems"\n        RENAME ofs-module-helper',
+):
+    require(forbidden not in cmake,
+            f"portable filesystem resource regressed to Linux /usr/lib: {forbidden}")
+
 # Process execution is one mechanism. Probe and installer may apply different
 # policy, but neither may grow a private spawning implementation.
 runner = text("src/process_runner.hpp")

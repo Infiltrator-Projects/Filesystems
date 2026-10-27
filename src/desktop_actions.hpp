@@ -63,6 +63,10 @@ DesktopAction prepare_module_desktop_action(
     const FilesystemDescriptor& descriptor,
     const ProbeResult& probe);
 
+/* A fixed-purpose FAT variant action; GTK never calls installer primitives. */
+void execute_classic_fat_variant_async(
+    bool fat12, bool remove, DesktopActionCompletion completion);
+
 void execute_desktop_action_async(
     DesktopAction action,
     DesktopActionCompletion completion);

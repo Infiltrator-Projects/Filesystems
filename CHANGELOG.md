@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.95 — 2026-10-27 (native application-path regression boundary)
+
+- Protect the native `/Programs/Filesystems` application layout and `/System/Filesystems` one-module destination with source-architecture regression checks.
+- Prohibit FAT12/FAT16/FAT32/OFS selector compiler helpers, packaged portable format source, or standalone .so outputs from being installed under `/usr/lib/filesystems`. The Linux-specific kernel transaction source/helpers and Debian package-removal guard retain their existing distro-only compatibility paths; the Mint package continues to work.
+- Explicitly document why `/usr/lib/filesystems` exists only as a Linux packaging exception and must not be created for native InfiltratorOS.
+- No physical disk, boot-sector, EFI, Linux driver or mount changes.
+
 ## 0.5.94 — 2026-10-27
 
 - Correct README and drop-in module design-state descriptions to match verified implementation: independent FAT12/FAT16/FAT32/OFS read-only .so artifacts, graphical classic-FAT selectors and embedded format checks.
