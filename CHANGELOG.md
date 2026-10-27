@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — classic FAT V2 write extension
+
+- Add independent backwards-compatible V2 exports to FAT12.so, FAT16.so and FAT32.so for existing-file data overwrites only, leaving V1 module structures untouched.
+- Re-probe geometry and compare live root-file identity, preflight allocation chains and require host write/flush callbacks before any in-place overwrite. Refuse readonly file attributes, missing callbacks, attempts to extend a file, and unsupported FAT32 active-FAT configurations.
+- Add synthetic data-readback and rejection tests for all three variants, and fix the ELF smoke test order to check V2 before removing the staged test module. No create, allocation, formatting, repair, defrag, automatic physical-device write or full writable mount support is implied.
+
 ## Unreleased — independent SCO BFS.so drop-in
 
 - Implement a separate SCO BFS filesystem module using repository-owned on-media semantics: root directory enumeration, case-sensitive lookup, bounded contiguous reads and restricted in-place overwrites of existing allocated bytes. The module requires a host flush callback for writes.
