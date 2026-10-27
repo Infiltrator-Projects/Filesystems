@@ -37,6 +37,8 @@ static int read_at(const IfsBfsVolume *v, uint64_t offset,
            v->io.read_at(v->io.user, offset, target, count) == 0 ? 0 : -1;
 }
 
+static int fetch_inode(const IfsBfsVolume *, uint32_t, IfsBfsFile *);
+
 static int mount_volume(IfsBfsVolume *v, const IfsBfsIo *io)
 {
     unsigned char b[BFS_SUPER_BYTES];
@@ -74,11 +76,11 @@ static int mount_volume(IfsBfsVolume *v, const IfsBfsIo *io)
      * as a dirty filesystem. This module rejects writes to one.
      */
     {
-        unsigned char raw[BFS_INODE_BYTES];
-        uint64_t inode_offset = BFS_INODE_START;
-        if (read_at(v, inode_offset, raw, sizeof(raw)) != 0 ||
-            le16(raw) != IFS_BFS_ROOT_INODE ||
-            le32(raw + 16) != IFS_BFS_TYPE_DIRECTORY)
+        IfsBfsFile root;
+        if (fetch_inode(v, IFS_BFS_ROOT_INODE, &root) != 0 ||
+            root.type != IFS_BFS_TYPE_DIRECTORY ||
+            root.size_bytes == 0u ||
+            root.size_bytes % BFS_DIRECTORY_BYTES != 0u)
             return -1;
     }
     return 0;
