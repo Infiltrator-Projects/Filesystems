@@ -79,8 +79,12 @@ case "$1" in
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
         [[ -f "$source_dir/fat16_module.c" &&
            -f "$source_dir/fat16_module.h" &&
+           -f "$source_dir/classic_fat_module.c" &&
+           -f "$source_dir/classic_fat_module.h" &&
            ! -L "$source_dir/fat16_module.c" &&
-           ! -L "$source_dir/fat16_module.h" ]] ||
+           ! -L "$source_dir/fat16_module.h" &&
+           ! -L "$source_dir/classic_fat_module.c" &&
+           ! -L "$source_dir/classic_fat_module.h" ]] ||
             fatal "packaged FAT16 module source missing"
         [[ ! -L /System && ! -L "$destination" ]] ||
             fatal "symlinked module directory refused"

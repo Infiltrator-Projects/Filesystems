@@ -38,6 +38,20 @@ Provider choice is subordinate to filesystem identity. NTFS is one filesystem wh
 
 The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`](docs/FILESYSTEMS_MATRIX.md). CI verifies that every compiled catalogue ID appears there exactly once.
 
+## Current freestanding drop-in implementation
+
+The existing source now builds independent read-only `OFS.so`, `FAT16.so`
+and `FAT12.so` artifacts. FAT12 and FAT16 embed the **same classic FAT
+source implementation** but export independent on-disk format identities,
+packed cluster-chain reading, 8.3 root-file discovery, bounded file reads
+and fragment counts. Neither requires the other to be installed.
+
+FAT12 has its own compiler helper and manual drag-in path for
+`/System/Filesystems/FAT12.so`, without installing FAT16, .ko, .efi or
+other packages. The FAT12 GUI Install action and FAT32.so remain to be
+implemented. Neither FAT variant currently offers formatting, writes or
+defragmentation.
+
 ## Drop-in filesystem modules — target architecture
 
 The intended native installation model is **one drag-and-drop file per on-media

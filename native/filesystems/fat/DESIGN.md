@@ -10,6 +10,19 @@ including DOS short-name and VFAT long-filename namespace behaviour. Those are
 format/namespace variants of one filesystem family, not three unrelated host
 implementations.
 
+## FAT12.so and FAT16.so read-only implementation
+
+Both shared objects are built from `module/classic_fat_module.c` plus a
+thin variant selector; there is one codebase but two self-contained formats.
+The FAT12 variant parses packed 12-bit entries correctly, while FAT16
+retains its original 16-bit format constraints. Both reject invalid
+clusters and support bounded file reading and root fragment counts.
+
+Each compiler/selector helper installs **only** its matching `.so` in
+`/System/Filesystems/`, with no automatic installation of another FAT
+variant, kernel module, firmware driver or external package.
+The FAT12 graphical action and FAT32 implementation are outstanding.
+
 ## Current state
 
 The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS

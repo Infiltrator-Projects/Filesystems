@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.87 — 2026-10-27
+
+- Build independently selectable FAT12.so from a shared freestanding classic FAT core also used by FAT16.so; correctly decode packed FAT12 table entries and reject incorrect format and reserved FAT data.
+- Preserve the original FAT16 read-only ABI using a thin variant wrapper and harden the source trust checks in both standalone compiler helpers.
+- Add independent FAT12 read/corruption tests and disposable-runner compiler, drag-in and removal checks; package each variant's full self-contained source set.
+- Neither variant automatically installs another FAT format, .ko or EFI. FAT12 GUI action and FAT32.so are still outstanding.
+
+
 ## 0.5.86 — 2026-10-26 (native application resource layout)
 
 - Install the Filesystems application binary under `/Programs/Filesystems/Filesystems` instead of `/usr/bin/filesystems`, with a tiny Linux-only `/usr/bin/filesystems` launch shim for Mint/Debian desktop compatibility.

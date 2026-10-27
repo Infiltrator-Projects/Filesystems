@@ -430,12 +430,44 @@ if(UNIX)
     endif()
     filesystems_configure(filesystems-fat16-module)
     install(FILES
+        native/filesystems/fat/module/classic_fat_module.c
+        native/filesystems/fat/module/classic_fat_module.h
         native/filesystems/fat/module/fat16_module.c
         native/filesystems/fat/module/fat16_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
     install(PROGRAMS packaging/linux/fat16-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat16-module-helper)
+
+    # One shared source engine, two independently compiled and installed .so files.
+    add_library(filesystems-fat12-module SHARED
+        native/filesystems/fat/module/fat12_module.c)
+    target_include_directories(filesystems-fat12-module PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+    set_target_properties(filesystems-fat12-module PROPERTIES
+        PREFIX "" OUTPUT_NAME "FAT12")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-fat12-module PRIVATE
+            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-fat12-module PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-fat12-module PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-fat12-module)
+    install(FILES
+        native/filesystems/fat/module/classic_fat_module.c
+        native/filesystems/fat/module/classic_fat_module.h
+        native/filesystems/fat/module/fat12_module.c
+        native/filesystems/fat/module/fat12_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
+    install(PROGRAMS packaging/linux/fat12-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME fat12-module-helper)
+
 
     add_library(filesystems-core STATIC
         src/probe.cpp
@@ -548,6 +580,16 @@ if(BUILD_TESTING)
         filesystems_configure(filesystems-fat16-module-test)
         add_test(NAME filesystems-fat16-module
             COMMAND filesystems-fat16-module-test)
+    endif()
+
+    if(TARGET filesystems-fat12-module)
+        add_executable(filesystems-fat12-module-test
+            tests/fat12_module_test.c)
+        target_link_libraries(filesystems-fat12-module-test PRIVATE
+            filesystems-fat12-module)
+        filesystems_configure(filesystems-fat12-module-test)
+        add_test(NAME filesystems-fat12-module
+            COMMAND filesystems-fat12-module-test)
     endif()
 
     add_executable(filesystems-catalog-test
