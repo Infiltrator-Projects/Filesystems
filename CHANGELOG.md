@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — independent SCO BFS.so drop-in
+## 0.5.97 — 2026-10-27 (independent SCO BFS.so)
 
 - Implement a separate SCO BFS filesystem module using repository-owned on-media semantics: root directory enumeration, case-sensitive lookup, bounded contiguous reads and restricted in-place overwrites of existing allocated bytes. The module requires a host flush callback for writes.
 - The safe write policy refuses any incomplete BFS relocation markers, including an individually set source or destination marker.
