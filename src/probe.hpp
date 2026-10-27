@@ -43,6 +43,8 @@ struct ProbeResult {
     // Neither observation changes the FAT16 runtime or any Linux .ko.
     SupportState fat12_dropin_state = SupportState::Incomplete;
     SupportState fat32_dropin_state = SupportState::Incomplete;
+    // Independent EXT2.so state; never masks or replaces ext2.ko state.
+    SupportState ext2_dropin_state = SupportState::Incomplete;
 };
 
 void invalidate_probe_cache();

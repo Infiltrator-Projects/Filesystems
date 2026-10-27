@@ -43,7 +43,7 @@ The complete enumerated contract is maintained in [`docs/FILESYSTEMS_MATRIX.md`]
 Every currently built standalone filesystem .so carries a non-executed
 `.ifsmeta` format identifier. The installed selector checks this ELF
 metadata against the expected filesystem identity **before** reporting
-the file as installed, preventing FAT12.so, FAT16.so, FAT32.so or OFS.so
+the file as installed, preventing FAT12.so, FAT16.so, FAT32.so, OFS.so or EXT2.so
 from being accepted merely because another binary was renamed. This is
 a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
@@ -62,6 +62,26 @@ other packages. FAT12, FAT16 and FAT32 now each have graphical
 Install/Remove controls in the single classic FAT family row, with their own
 independent compiler helpers and .so files. All three are read-only; their
 formatting, writes and defragmentation remain to be implemented.
+
+## Current EXT2.so implementation (restricted in-place writes)
+
+EXT2 now has an independent `EXT2.so` build and a separate Install/Remove
+selector on its existing catalogue row. The binary embeds the canonical EXT2
+engine, not a proxy to `ext2.ko`. Its supported operations include mount,
+directory lookup/enumeration, regular-file reads and **in-place overwrites of
+already allocated bytes of existing regular files** on clean compatible media.
+It does not create, extend, truncate, allocate, delete, replay journals,
+provide transactional recovery or replace the Linux kernel filesystem driver.
+Writes require an explicit writable mount plus host read, write and flush
+callbacks. All offsets are partition-relative. The compiled module and its
+synthetic-disk qualification do not establish production write safety on
+physical media.
+
+The four original modules remain read-only; EXT2 is the fifth module build
+target. Format-specific module operation tables still differ. A unified,
+portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
+**not yet implemented**. Consequently these `.so` artifacts are not yet
+interchangeable with Linux `.ko` or firmware `.efi` drivers.
 
 ## Current FAT32.so implementation
 
@@ -153,8 +173,8 @@ correction does **not** claim Linux integrations are portable kernel drivers.
 
 The native InfiltratorOS Filesystems application lives in
 `/Programs/Filesystems/`, including its executable, compiler helpers,
-`Sources/`, and `Resources/EFI/`. The four current selectable drop-ins
-(FAT12/FAT16/FAT32/OFS) **always** install exactly one compiled module directly
+`Sources/`, and `Resources/EFI/`. The five current selectable drop-ins
+(FAT12/FAT16/FAT32/OFS/EXT2) **always** install exactly one compiled module directly
 under `/System/Filesystems/`, or accept that same module dropped manually.
 Their compiler helpers find packaged source relative to their own installed
 application location. Neither a source tree nor the compiler helper for a
@@ -168,7 +188,7 @@ not part of the native Filesystems application layout and must not be
 installed into a native InfiltratorOS image. The distro-specific
 `/usr/bin/filesystems` file is only a launcher for
 `/Programs/Filesystems/Filesystems`. The Linux-only helpers must never be
-used as a runtime dependency by `FAT16.so` or `OFS.so`.
+used as a runtime dependency by `FAT16.so`, `OFS.so` or `EXT2.so`.
 
 This rule is checked in the source-architecture regression suite. Actual
 kernel `.ko` and EFI `.efi` compilation/deployment remain independently
