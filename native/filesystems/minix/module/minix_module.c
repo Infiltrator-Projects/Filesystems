@@ -42,6 +42,18 @@ static int zone_valid(const IfsMinixVolume *v, uint32_t zone)
 {
     return zone >= v->first_data_zone && zone < v->zone_count;
 }
+static int zone_allocated(const IfsMinixVolume *v, uint32_t zone)
+{
+    uint8_t bitmap;
+    uint64_t bit, offset;
+    if (!zone_valid(v, zone)) return 0;
+    /* Linux Minix bitmap rule: bit 1 maps to first_data_zone. */
+    bit = (uint64_t)zone - v->first_data_zone + 1u;
+    offset = (2u + (uint64_t)v->bitmap_inode_blocks) *
+             v->block_bytes + (bit >> 3);
+    return read_at(v, offset, &bitmap, 1u) == 0 &&
+           (bitmap & (uint8_t)(1u << (bit & 7u))) != 0;
+}
 static int get_inode(const IfsMinixVolume *, uint32_t, IfsMinixInode *);
 static int mount_volume(IfsMinixVolume *v, const IfsMinixIo *io)
 {
@@ -159,12 +171,12 @@ static int indirect(const IfsMinixVolume *v, uint32_t pointer,
     uint64_t pos;
     if (!next || index >= v->block_bytes / v->pointer_bytes) return -1;
     if (!pointer) { *next = 0u; return 0; }
-    if (!zone_valid(v, pointer)) return -1;
+    if (!zone_allocated(v, pointer)) return -1;
     pos = (uint64_t)pointer * v->block_bytes +
           (uint64_t)index * v->pointer_bytes;
     if (read_at(v, pos, raw, v->pointer_bytes) != 0) return -1;
     *next = v->pointer_bytes == 2u ? u16(raw) : u32(raw);
-    if (*next && !zone_valid(v, *next)) return -1;
+    if (*next && !zone_allocated(v, *next)) return -1;
     return 0;
 }
 static int data_zone(const IfsMinixVolume *v, const IfsMinixInode *f,
@@ -200,7 +212,7 @@ static int data_zone(const IfsMinixVolume *v, const IfsMinixInode *f,
             }
         }
     }
-    if (ptr && !zone_valid(v, ptr)) return -1;
+    if (ptr && !zone_allocated(v, ptr)) return -1;
     *zone = ptr;
     return 0;
 }

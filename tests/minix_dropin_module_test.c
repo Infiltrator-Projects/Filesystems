@@ -79,7 +79,7 @@ static void fixture(uint32_t version, uint32_t namelen)
         if (version == 2u) w32(sb + 20u, ZONES);
     }
     disk[2u * BS] = 7u;               /* reserved, root and file inodes */
-    disk[3u * BS] = 0xffu;
+    memset(disk + 3u * BS, 0xffu, BS);
     root = disk + 4u*BS;
     file = root + inode_size;
     inode_init(root, version, 0x41edu, 3u * stride, 8u);
@@ -174,6 +174,13 @@ static int run_variant(uint32_t version, uint32_t name_bytes)
     disk[2u*BS] = 1u;
     if (api->mount(&volume, &io) == 0)
         return fail("unallocated root accepted");
+    fixture(version, name_bytes);
+    if (api->mount(&volume, &io) != 0 ||
+        api->inode(&volume, 1u, &root) != 0)
+        return fail("cannot reload allocation test");
+    disk[3u*BS] &= (uint8_t)~2u; /* first data zone bit 1 */
+    if (api->entry(&volume, &root, 0u, &dent) == 0)
+        return fail("accepted root data from unallocated zone");
     return 0;
 }
 int main(void)
