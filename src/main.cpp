@@ -69,6 +69,7 @@ struct RowState {
     GtkWidget* module_button = nullptr;
     GtkWidget* fat12_button = nullptr;
     GtkWidget* fat32_button = nullptr;
+    GtkWidget* ext2_dropin_button = nullptr;
 };
 
 struct AppState {
@@ -325,7 +326,8 @@ void render_row(RowState* row)
         gtk_widget_set_sensitive(row->module_button, FALSE);
         gtk_button_set_label(GTK_BUTTON(row->module_button), "Scanning…");
         set_button_semantics(row->module_button, false, false);
-        for (GtkWidget* button : {row->fat12_button, row->fat32_button}) {
+        for (GtkWidget* button : {row->fat12_button, row->fat32_button,
+                                  row->ext2_dropin_button}) {
             if (button == nullptr) continue;
             gtk_widget_set_visible(button, TRUE);
             gtk_widget_set_sensitive(button, FALSE);
@@ -371,6 +373,8 @@ void render_row(RowState* row)
                        row->probe.fat12_dropin_state, "FAT12");
     render_fat_variant(row->fat32_button,
                        row->probe.fat32_dropin_state, "FAT32");
+    render_fat_variant(row->ext2_dropin_button,
+                       row->probe.ext2_dropin_state, "EXT2.so");
 }
 
 bool row_matches_filter(const RowState& row, const ViewFilter filter)
@@ -535,6 +539,8 @@ void set_scan_chrome(AppState* state, const bool running)
                 gtk_widget_set_sensitive(row->fat12_button, FALSE);
             if (row->fat32_button != nullptr)
                 gtk_widget_set_sensitive(row->fat32_button, FALSE);
+            if (row->ext2_dropin_button != nullptr)
+                gtk_widget_set_sensitive(row->ext2_dropin_button, FALSE);
         } else if (row->probed) {
             render_row(row.get());
         }
@@ -822,6 +828,32 @@ void fat_variant_clicked(GtkButton* clicked, gpointer user_data)
         fs::execute_classic_fat_variant_async(false, remove, finished);
 }
 
+void ext2_dropin_clicked(GtkButton*, gpointer user_data)
+{
+    auto* row = static_cast<RowState*>(user_data);
+    if (!row || !row->app || !row->probed || !row->descriptor ||
+        row->descriptor->id != "ext2" || row->app->shutting_down ||
+        row->app->scan_running)
+        return;
+    const fs::SupportState observed = row->probe.ext2_dropin_state;
+    if (observed != fs::SupportState::Ready &&
+        observed != fs::SupportState::Installable)
+        return;
+    const bool remove = observed == fs::SupportState::Ready;
+    gtk_widget_set_sensitive(row->ext2_dropin_button, FALSE);
+    gtk_button_set_label(GTK_BUTTON(row->ext2_dropin_button),
+                         remove ? "Removing EXT2.so…" : "Compiling EXT2.so…");
+    AppState* app = row->app;
+    fs::execute_ext2_dropin_async(remove,
+        [app](const bool success, const std::string& description) {
+            if (app->shutting_down) return;
+            if (!success)
+                show_message(GTK_WINDOW(app->window), GTK_MESSAGE_ERROR,
+                             "EXT2.so module operation failed", description);
+            start_scan(app);
+        });
+}
+
 GtkWidget* make_label(const char* text,
                       const char* css_class,
                       const float xalign = 0.0F)
@@ -925,6 +957,15 @@ GtkWidget* create_row(AppState* state,
         g_signal_connect(row->fat32_button, "clicked",
                          G_CALLBACK(fat_variant_clicked), row);
     }
+    if (descriptor.id == "ext2") {
+        row->ext2_dropin_button = gtk_button_new_with_label("Scanning…");
+        gtk_widget_set_no_show_all(row->ext2_dropin_button, TRUE);
+        gtk_widget_set_tooltip_text(row->ext2_dropin_button,
+            "Compile only EXT2.so; ext2.ko, EFI and physical disks are unchanged. "
+            "Write support is restricted to existing allocated file blocks.");
+        g_signal_connect(row->ext2_dropin_button, "clicked",
+                         G_CALLBACK(ext2_dropin_clicked), row);
+    }
     gtk_widget_set_no_show_all(row->package_button, TRUE);
     gtk_widget_set_no_show_all(row->module_button, TRUE);
     g_signal_connect(
@@ -941,6 +982,10 @@ GtkWidget* create_row(AppState* state,
         gtk_box_pack_end(GTK_BOX(actions),
                          row->fat32_button, FALSE, FALSE, 0);
     }
+
+    if (row->ext2_dropin_button != nullptr)
+        gtk_box_pack_end(GTK_BOX(actions), row->ext2_dropin_button,
+                         FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(outer), icon, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(outer), middle, TRUE, TRUE, 0);

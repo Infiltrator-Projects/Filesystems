@@ -63,6 +63,10 @@ Install/Remove controls in the single classic FAT family row, with their own
 independent compiler helpers and .so files. All three are read-only; their
 formatting, writes and defragmentation remain to be implemented.
 
+## EXT2.so — bounded existing-file write preview
+
+The new independent `EXT2.so` wraps the existing canonical EXT2 core and engine; it does not implement a second EXT2 parser. It exposes partition-bounded mount, root lookup, enumeration and regular-file reads. A **conditional existing-file write** function edits only bytes already allocated to a regular file and requires explicit write and flush callbacks plus the engine's clean-volume/feature checks. This is not general writable filesystem support: it cannot allocate blocks, create, delete, resize, format or defragment. Callers are responsible for exclusive disk ownership; Filesystems' compiler/installer does not write a disk, load a kernel module, or touch firmware. `EXT2.so` can be compiled independently by its application-relative helper or dropped manually. A graphical EXT2 `.so` Install/Remove control is implemented alongside, not in place of, existing Linux `ext2.ko` management. A shared cross-format runtime loader remains separate future integration work.
+
 ## Current FAT32.so implementation
 
 The independent `FAT32.so` source implements read-only probing of actual
@@ -153,8 +157,8 @@ correction does **not** claim Linux integrations are portable kernel drivers.
 
 The native InfiltratorOS Filesystems application lives in
 `/Programs/Filesystems/`, including its executable, compiler helpers,
-`Sources/`, and `Resources/EFI/`. The four current selectable drop-ins
-(FAT12/FAT16/FAT32/OFS) **always** install exactly one compiled module directly
+`Sources/`, and `Resources/EFI/`. The five current selectable drop-ins
+(FAT12/FAT16/FAT32/OFS/EXT2) **always** install exactly one compiled module directly
 under `/System/Filesystems/`, or accept that same module dropped manually.
 Their compiler helpers find packaged source relative to their own installed
 application location. Neither a source tree nor the compiler helper for a

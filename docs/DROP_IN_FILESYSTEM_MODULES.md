@@ -26,10 +26,15 @@ An ordinary user places `ffs.so` in that directory. After the file has finished 
 
 The installed folder is a **capability source**, not the same thing as kernel registration. **FAT12, FAT16 and FAT32 are independently selectable, independently installable files: `FAT12.so`, `FAT16.so`, and `FAT32.so`.** They may be grouped as the classic FAT *source-code family*, but there is no combined `fat.so` installation. Clicking **Install FAT12** puts **only** `FAT12.so` in `/System/Filesystems/`: no FAT16 or FAT32 file, registration, runtime dependency or automatic installation. Each binary contains all shared format code it needs. `exfat.so` is a separate format. Amiga OFS (`DOS\0`) and Amiga FFS (`DOS\1`) are distinct identities and must never masquerade as one another. InfiltratorFS is one identity with one module; its format is owned by its separate repository.
 
-## Current engineering implementation (0.5.94)
+## Current engineering implementation (0.5.96)
 
 The source currently builds four standalone **read-only** shared objects:
-`OFS.so`, `FAT12.so`, `FAT16.so` and `FAT32.so`. Their existing
+`OFS.so`, `FAT12.so`, `FAT16.so` and `FAT32.so`, plus an independent
+**conditionally write-capable** `EXT2.so` built around the existing canonical
+EXT2 engine. Its write call is restricted to already allocated byte ranges of
+existing regular files; it requires explicit write and flush callbacks and
+safe EXT2 volume/inode features. This is neither writable mounting nor full
+creation, deletion, resizing, allocation, formatting or defragmentation. Their existing
 portable C interfaces provide format checks and limited directory/file
 reads, not formatting, writable mounting, defragmentation or filesystem
 repair. FAT12 and FAT16 reuse one implementation source but compile as

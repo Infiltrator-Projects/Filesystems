@@ -196,6 +196,13 @@ void execute_classic_fat_variant_async(
         manage_fat32_module_async(remove, std::move(completion));
 }
 
+void execute_ext2_dropin_async(const bool remove,
+                                   DesktopActionCompletion completion)
+{
+    if (!completion) return;
+    manage_ext2_dropin_async(remove, std::move(completion));
+}
+
 void execute_desktop_action_async(
     DesktopAction action,
     DesktopActionCompletion completion)
