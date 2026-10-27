@@ -54,6 +54,9 @@ jobs:
       - name: Prove FAT32 independent compile/install and drag-in
         run: bash tests/fat32_selector_smoke.sh
 
+      - name: Prove EXT2 independent compile/install and drag-in
+        run: bash tests/ext2_selector_smoke.sh
+
       - name: Verify actual APT install, reinstall and purge
         run: bash tests/desktop_package_test.sh dist-desktop/*.deb
 
@@ -524,6 +527,9 @@ jobs:
            grep -Fq './Programs/Filesystems/Helpers/fat12-module-helper' package-contents.txt
            grep -Fq './Programs/Filesystems/Helpers/fat32-module-helper' package-contents.txt
           grep -Fq './Programs/Filesystems/Helpers/ofs-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Helpers/ext2-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Sources/ext2/module/ext2_module.c' package-contents.txt
+          grep -Fq './Programs/Filesystems/Sources/ext2/core/ext2_engine.c' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/fat16-source/' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/ofs-source/' package-contents.txt
           ! grep -Fq '59-infiltrator-filesystems.rules' package-contents.txt
