@@ -66,7 +66,7 @@ require('"/Programs/Filesystems"' in resources,
         "native application root default is not /Programs/Filesystems")
 for relative in ("src/probe.cpp", "src/installer.cpp"):
     component = text(relative)
-    for name in ("fat12", "fat16", "fat32", "ofs"):
+    for name in ("fat12", "fat16", "fat32", "ofs", "ext2"):
         require(f'application_helper("{name}-module-helper")' in component
                 or (relative == "src/probe.cpp" and
                     'application_helper(helper_name)' in component),
@@ -76,11 +76,12 @@ for relative in ("src/probe.cpp", "src/installer.cpp"):
         "/usr/lib/filesystems/ofs-module-helper",
         "/usr/lib/filesystems/fat12-module-helper",
         "/usr/lib/filesystems/fat32-module-helper",
+        "/usr/lib/filesystems/ext2-module-helper",
     ):
         require(forbidden not in component,
                 f"{relative} hardcodes a Linux-specific selector path: {forbidden}")
 
-for kind in ("fat12", "fat16", "fat32", "ofs"):
+for kind in ("fat12", "fat16", "fat32", "ofs", "ext2"):
     helper = text(f"packaging/linux/{kind}-module-helper.sh")
     require('destination=/System/Filesystems' in helper,
             f"{kind} module destination is not native")
@@ -96,6 +97,7 @@ for required in (
     'RUNTIME DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}"',
     'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"',
     'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/module"',
+    'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/module"',
     'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16"',
     'DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/',
 ):
@@ -107,6 +109,7 @@ for required in (
 for forbidden in (
     'DESTINATION "lib/filesystems/fat16-source"',
     'DESTINATION "lib/filesystems/ofs-source"',
+    'DESTINATION "lib/filesystems/ext2-source"',
     'DESTINATION "lib/filesystems"\n        RENAME fat16-module-helper',
     'DESTINATION "lib/filesystems"\n        RENAME ofs-module-helper',
 ):
