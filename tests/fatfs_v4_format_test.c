@@ -47,6 +47,7 @@ int main(int argc,char **argv) {
     const char payload[]="FAT formatter and metadata verified\n";
     uint16_t date=(uint16_t)(((2024u-1980u)<<9)|(2u<<5)|29u);
     uint16_t time=(uint16_t)((14u<<11)|(23u<<5)|28u);
+    uint16_t actual_date=0,actual_time=0;
     if(argc!=4 && argc!=5) return fail("arguments: module image sector-bytes [reject]");
     fd=open(argv[2],O_RDWR|O_CLOEXEC|O_NOFOLLOW);
     if(fd<0 || fstat(fd,&st)!=0 || !S_ISREG(st.st_mode) || st.st_size<=0)
@@ -64,7 +65,8 @@ int main(int argc,char **argv) {
     *(void **)(&resolve)=dlsym(handle,"infiltrator_filesystem_module_v4");
     api=resolve?resolve():NULL;
     if(!api || api->abi_version!=4u || api->structure_bytes!=sizeof(*api) ||
-       !api->v3 || !api->format || !api->set_attributes || !api->set_modified_time || !api->space)
+       !api->v3 || !api->format || !api->set_attributes || !api->set_modified_time ||
+       !api->get_modified_time || !api->space)
         return fail("missing V4 entry points");
     if(argc==5 && strcmp(argv[4],"reject")==0) {
         if(api->format(&io,io.sector_bytes)==0 || disk.writes!=0)
@@ -86,7 +88,9 @@ int main(int argc,char **argv) {
        api->set_attributes("0:/FORMAT/META.TXT",0u,1u)!=0 ||
        api->set_attributes("0:/FORMAT/META.TXT",0u,16u)==0 ||
        api->set_modified_time("0:/FORMAT/META.TXT",(uint16_t)(((2023u-1980u)<<9)|(2u<<5)|29u),time)==0 ||
-       api->set_modified_time("0:/FORMAT/META.TXT",date,time)!=0)
+       api->set_modified_time("0:/FORMAT/META.TXT",date,time)!=0 ||
+       api->get_modified_time("0:/FORMAT/META.TXT",&actual_date,&actual_time)!=0 ||
+       actual_date!=date || actual_time!=time)
         return fail("attributes or validated modification timestamp");
     if(api->v3->unmount()!=0 || flush_at(&disk)!=0 || fclose(disk.file)!=0 || dlclose(handle)!=0)
         return fail("close formatted image");

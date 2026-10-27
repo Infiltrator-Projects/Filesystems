@@ -62,6 +62,7 @@ typedef struct {
     int (*format)(const IfsFatfsIo *, uint32_t cluster_bytes);
     int (*set_attributes)(const char *, uint8_t attributes, uint8_t mask);
     int (*set_modified_time)(const char *, uint16_t fat_date, uint16_t fat_time);
+    int (*get_modified_time)(const char *, uint16_t *fat_date, uint16_t *fat_time);
     int (*space)(uint64_t *total_bytes, uint64_t *free_bytes);
 } IfsFatfsModuleV4;
 const IfsFatfsModuleV4 *infiltrator_filesystem_module_v4(void);

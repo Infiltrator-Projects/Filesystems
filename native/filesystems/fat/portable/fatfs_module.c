@@ -379,13 +379,22 @@ static int volume_space(uint64_t *total,uint64_t *free_bytes)
     *free_bytes=(uint64_t)free_clusters*volume.csize*device.sector_bytes;
     return 0;
 }
+static int get_modified_time(const char *path,uint16_t *date,uint16_t *time)
+{
+    FILINFO info;
+    if (!selected || !path || !date || !time || f_stat(path,&info)!=FR_OK)
+        return -1;
+    *date=info.fdate;
+    *time=info.ftime;
+    return 0;
+}
 __attribute__((used,section(".ifsmeta")))
 static const char identity_v4[]="IFS-MODULE:" FS_ID ":4";
 static const IfsFatfsModuleV4 module_v4={
     IFS_FATFS_MODULE_ABI_V4,sizeof(IfsFatfsModuleV4),FS_ID,
     IFS_FATFS_CAP_FORMAT | IFS_FATFS_CAP_ATTRIBUTES |
     IFS_FATFS_CAP_MODIFIED_TIME | IFS_FATFS_CAP_SPACE,
-    &module,format_volume,set_attributes,set_modified_time,volume_space
+    &module,format_volume,set_attributes,set_modified_time,get_modified_time,volume_space
 };
 __attribute__((visibility("default")))
 const IfsFatfsModuleV4 *infiltrator_filesystem_module_v4(void) {return &module_v4;}
