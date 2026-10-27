@@ -25,7 +25,7 @@ cp -a "$root/native/filesystems/fat/efi/FatPkg" "$work/edk2/FatPkg"
   set +u
   source ./edksetup.sh --reconfig
   set -u
-  build -a X64 -t GCC5 -b RELEASE -p FatPkg/FatPkg.dsc
+  build -a X64 -t GCC -b RELEASE -p FatPkg/FatPkg.dsc
 )
 out="$root/build-fat-efi"
 mkdir -p "$out"
