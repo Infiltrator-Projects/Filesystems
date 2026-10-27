@@ -50,8 +50,8 @@ static int setup(const char *path,FILE **f,IfsFatfsIo *io)
 }
 int main(int argc,char **argv) {
     const IfsFatfsModuleV3 *api;
-    const char *name="0:/SUBDIR/A Genuine Long Filename Example.txt";
-    const char *renamed="0:/SUBDIR/Verified Long Filename Data.txt";
+    const char *name="0:/SUBDIR/Français Über Naming Example.txt";
+    const char *renamed="0:/SUBDIR/Verified Café Ünîcode Data.txt";
     const char *dir="0:/SUBDIR";
     FILE *f=0;
     IfsFatfsIo io;
@@ -60,7 +60,7 @@ int main(int argc,char **argv) {
     void *handle;
     int found=0;
     const IfsFatfsModuleV3 *(*resolve)(void)=0;
-    if(argc!=4) return die("arguments: module own-image other-variant-image");
+    if(argc!=4 && argc!=5) return die("arguments: module own-image other-variant-image [cleanup]");
     handle=dlopen(argv[1],RTLD_NOW|RTLD_LOCAL);
     if(!handle) {fprintf(stderr,"%s\n",dlerror());return die("dlopen");}
     *(void **)(&resolve)=dlsym(handle,"infiltrator_filesystem_module_v3");
@@ -75,6 +75,15 @@ int main(int argc,char **argv) {
     if(fclose(f)!=0) return die("close wrong media");
     if(setup(argv[2],&f,&io)!=0) return die("own image setup");
     if(api->mount(&io)!=0) return die("cannot mount correctly formatted image");
+    if(argc==5) {
+        if(strcmp(argv[4],"cleanup")!=0 ||
+           api->stat(renamed,&metadata)!=0 || metadata.bytes!=1000u ||
+           api->unlink(renamed)!=0 || api->unlink(dir)!=0 ||
+           api->unmount()!=0 || flush_at(f)!=0 || fclose(f)!=0)
+            return die("cleanup persisted media");
+        if(dlclose(handle)!=0) return die("close module after cleanup");
+        return 0;
+    }
     if(api->mkdir(dir)!=0) return die("create nested directory");
     if(api->create(name)!=0) return die("create long-name file");
     for(unsigned i=0;i<sizeof data;i++) data[i]=(uint8_t)((i*17u+23u)&255u);
@@ -90,7 +99,7 @@ int main(int argc,char **argv) {
         const int r=api->directory_entry(dir,i,&entry);
         if(r==1) break;
         if(r!=0) return die("directory enumeration failed");
-        if(strcmp(entry.name,"Verified Long Filename Data.txt")==0) found=1;
+        if(strcmp(entry.name,"Verified Café Ünîcode Data.txt")==0) found=1;
     }
     if(!found) return die("long filename not independently enumerated");
     if(api->unmount()!=0 || flush_at(f)!=0) return die("unmount/flush");
@@ -104,8 +113,8 @@ int main(int argc,char **argv) {
     if(api->unmount()!=0 || api->mount(&io)!=0 ||
        api->stat(renamed,&metadata)!=0 || metadata.bytes!=1000u)
         return die("truncate persistence");
-    if(api->unlink(renamed)!=0 || api->unlink(dir)!=0)
-        return die("delete file and directory");
+    /* Preserve test data for independent mtools/fsck validation; cleanup
+     * is a separate process, not a self-verifier hiding on-disk errors. */
     if(api->unmount()!=0 || flush_at(f)!=0 || fclose(f)!=0)
         return die("final flush");
     if(dlclose(handle)!=0) return die("close module");
