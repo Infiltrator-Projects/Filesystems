@@ -186,6 +186,11 @@ typedef struct {
 #endif
 #endif
 	/* Disk access window for Directory, FAT (and file data at tiny cfg) */
+	/* Zephyr's host supplies FS_FATFS_WINDOW_ALIGNMENT. A standalone
+	 * freestanding FAT module has no Zephyr headers; preserve >=8 alignment. */
+#ifndef FS_FATFS_WINDOW_ALIGNMENT
+#define FS_FATFS_WINDOW_ALIGNMENT 8
+#endif
 	BYTE    win[FF_MAX_SS] __attribute__((aligned(FS_FATFS_WINDOW_ALIGNMENT)));
 } FATFS;
 
