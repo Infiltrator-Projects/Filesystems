@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.101 — 2026-10-29 (single-file filesystem architecture documentation)
+
+- Record one authoritative `.so` per filesystem identity as the final distributed driver for BOOT, the InfiltratorOS kernel and applications.
+- Specify format-neutral BOOT/kernel adapters, module trust, early-root and firmware bootstrap; classify separate format-specific `.ko`/`.efi` work as transitional.
+- No runtime filesystem driver, kernel loader or EFI boot behaviour changes; universal loader compatibility remains unimplemented and separately gated.
+
+
 ## 0.5.100 — 2026-10-28 (MINIX V2 bounded data overwrites)
 
 - Add a genuine optional MINIX V2 ABI with existing-file bounded writes for allocated, regular-file zones across V1/V2/V3 volumes. Leave the V1 read-only interface untouched.
