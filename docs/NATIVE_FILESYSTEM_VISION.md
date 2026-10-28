@@ -1,5 +1,7 @@
 # Native Filesystem Vision and Long-Term Architecture
 
+**Authoritative end-state:** [Unified filesystem module architecture](UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md). One independent `.so` per filesystem identity is the only final user-distributed filesystem driver; BOOT, kernel and applications use it through generic loaders and Common-defined contracts. The separate Linux `.ko` and UEFI `.efi` adapters described below are transitional current mechanisms, **not** three end-user implementations. Existing root/boot compatibility remains until the universal path is qualified.
+
 ## Purpose
 
 Filesystems exists so InfiltratorOS is not permanently tied to one root filesystem. A user installing InfiltratorOS should ultimately be able to choose among qualified real disk filesystems, have the target formatted accordingly, and receive all runtime and boot support required for that choice.
