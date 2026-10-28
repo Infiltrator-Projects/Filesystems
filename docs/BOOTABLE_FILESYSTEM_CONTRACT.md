@@ -1,5 +1,7 @@
 # Bootable filesystem integration contract
 
+**End-state authority:** [Unified single-`.so` filesystem architecture](UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md). The separate `.efi`/`.ko` flow below documents the **currently working transitional path**, not the final architecture. BOOT and the future kernel will be modified to consume the same verified per-format `.so` through generic adapters; no user-facing separate per-format driver products.
+
 This document records the agreed cross-project boot/install target for **Boot**, **Filesystems**, the future **Setup** installer, and **InfiltratorOS**. It is a *target contract*, not a statement that a full installer or InfiltratorOS kernel exists today.
 
 Ownership remains deliberately separate:
@@ -40,7 +42,7 @@ Kernel begins running; UEFI boot-services filesystem access ends
 3. A custom, deliberately modular Linux build is the intended intermediate test environment. Individual filesystem implementations should be selected as loadable modules rather than assumed built into a distribution kernel. Modules required to mount root, plus any needed device drivers, partition parsers, dependencies and loader infrastructure, must be available before mounting root, typically inside a generated initramfs.
 4. The kernel need not support the boot-payload filesystem if it never mounts it. Conversely, choosing OFS for the kernel image does **not** make an ext4 Linux root become OFS. Source and root are independent choices, though Setup may choose the same format for both once qualified.
 
-## Future alternative to per-format EFI drivers
+## Authoritative destination: BOOT and kernel consume one per-format `.so`
 
 The current `.efi` driver sequence above describes the **existing
 transitional Boot integration**, not a permanent requirement to maintain

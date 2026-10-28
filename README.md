@@ -1,5 +1,7 @@
 # Filesystems
 
+**Architecture authority:** [One filesystem → one distributed `.so` → all consumers](docs/UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md). Separate `.ko` and `.efi` implementations are transitional compatibility paths, not the intended final per-format deliverables. The universal BOOT/kernel loaders remain to be implemented and tested.
+
 Filesystems is the InfiltratorOS filesystem capability and integration manager. It owns the catalogue of real persistent local-storage filesystem formats that InfiltratorOS can recognise, install support for and, as each format is qualified, use as the filesystem beneath an InfiltratorOS installation.
 
 The application and repository are named **Filesystems**. **Boot** starts the

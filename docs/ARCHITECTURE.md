@@ -1,5 +1,7 @@
 # Architecture
 
+**Authoritative end-state:** [Unified filesystem module architecture](UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md). One independent `.so` per filesystem identity is the only final user-distributed filesystem driver; BOOT, kernel and applications use it through generic loaders and Common-defined contracts. The separate Linux `.ko` and UEFI `.efi` adapters described below are transitional current mechanisms, **not** three end-user implementations. Existing root/boot compatibility remains until the universal path is qualified.
+
 Filesystems is the shared filesystem-capability backend for both the normal InfiltratorOS desktop manager and the InfiltratorOS installation shell.
 
 ## Scope boundary
