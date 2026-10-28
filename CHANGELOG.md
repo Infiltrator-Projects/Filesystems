@@ -4,6 +4,7 @@
 
 - Build a genuine freestanding read-only Amiga `FFS.so` from canonical FFS DOSType, checksum, directory-hash and raw data-pointer semantics, supporting classic DOS1, international DOS3 and directory-cache DOS5, with filesystem blocks from 512 bytes to 32 KiB.
 - Qualify nested lookup, case-insensitive directory enumeration, cross-block and extension-block reads plus malformed and foreign filesystem rejection on disposable memory images; separate `FFS.so` from `ffs.ko` and EFI implementations.
+- Add independently discoverable FFS.so V2 for preflighted, existing-file, allocated-data overwrites only, requiring host write/flush and a single exclusive volume; no allocation, metadata changes, crash recovery, or production write qualification.
 - Add the package-owned source compiler helper under `/Programs/Filesystems/Helpers` which installs only `/System/Filesystems/FFS.so`; no write, formatter, historic-media interoperability, DOS7/LNFS, EFI, physical drive or Setup qualification is claimed.
 
 

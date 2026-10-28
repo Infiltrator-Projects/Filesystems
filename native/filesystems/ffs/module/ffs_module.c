@@ -264,3 +264,83 @@ const IfsFfsDropInModule *infiltrator_filesystem_module_v1(void)
 {
     return &module;
 }
+
+/* V2 writes only unchanged file data bytes, with the full requested
+ * block-pointer range validated BEFORE the first write. Source metadata,
+ * allocation and directory records must never be rewritten by this API.
+ * The host must hold the volume exclusively against concurrent mutation.
+ */
+static int overwrite_existing(const IfsFfsDropInVolume *volume,
+                              const IfsFfsDropInEntry *file,
+                              const IfsFfsWritableIo *io,
+                              uint32_t position,
+                              const void *source, uint32_t length)
+{
+    IfsFfsDropInVolume live;
+    const uint8_t *input = (const uint8_t *)source;
+    uint32_t offset_in_file, remaining;
+    uint32_t block;
+    if (!volume || !volume->mounted || !file || !io ||
+        !io->read.read_at || !io->write_at || !io->flush ||
+        (!source && length != 0u) ||
+        io->read.read_at != volume->io.read_at ||
+        io->read.context != volume->io.context ||
+        io->read.volume_bytes != volume->io.volume_bytes ||
+        io->read.block_bytes != volume->io.block_bytes ||
+        module_mount(&live, &io->read) != 0 ||
+        live.root_block != volume->root_block ||
+        live.variant_flags != volume->variant_flags ||
+        live.blocks != volume->blocks ||
+        module_read(&live, file, position, 0, 0u) != 0 ||
+        length > file->size - position)
+        return -1;
+    if (!length) return 0;
+
+    /* All blocks in the requested range must resolve cleanly before writes.
+     * A write callback error can still leave earlier data committed. */
+    offset_in_file = position;
+    remaining = length;
+    while (remaining) {
+        const uint32_t within = offset_in_file % live.io.block_bytes;
+        uint32_t count = live.io.block_bytes - within;
+        if (count > remaining) count = remaining;
+        if (map_data(&live, file->block,
+                     offset_in_file / live.io.block_bytes, &block) != 0)
+            return -1;
+        offset_in_file += count;
+        remaining -= count;
+    }
+
+    offset_in_file = position;
+    remaining = length;
+    while (remaining) {
+        const uint32_t within = offset_in_file % live.io.block_bytes;
+        uint32_t count = live.io.block_bytes - within;
+        uint64_t physical_offset;
+        if (count > remaining) count = remaining;
+        if (map_data(&live, file->block,
+                     offset_in_file / live.io.block_bytes, &block) != 0)
+            return -1;
+        physical_offset = (uint64_t)block * live.io.block_bytes + within;
+        if (physical_offset > live.io.volume_bytes ||
+            count > live.io.volume_bytes - physical_offset ||
+            io->write_at(io->read.context, physical_offset, input, count) != 0)
+            return -1;
+        input += count;
+        offset_in_file += count;
+        remaining -= count;
+    }
+    return io->flush(io->read.context) == 0 ? 0 : -1;
+}
+
+__attribute__((used, section(".ifsmeta")))
+static const char format_identity_v2[] = "IFS-MODULE:ffs:2";
+static const IfsFfsDropInModuleV2 module_v2 = {
+    IFS_FFS_DROPIN_V2_ABI_VERSION, sizeof(IfsFfsDropInModuleV2),
+    "ffs", IFS_FFS_V2_CAP_OVERWRITE_EXISTING, &module, overwrite_existing
+};
+__attribute__((visibility("default")))
+const IfsFfsDropInModuleV2 *infiltrator_filesystem_module_v2(void)
+{
+    return &module_v2;
+}

@@ -97,7 +97,11 @@ checksum, international-name folding and block-pointer semantics; it is
 **not** a renamed OFS engine. It reads classic DOS1, international DOS3 and
 directory-cache DOS5 media, with explicit 512..32768-byte filesystem block
 geometry, directory hash lookup/enumeration, raw data blocks and file-header
-extension pointers. The only exported filesystem API is read-only V1.
+extension pointers. The original V1 API is read-only; the optional V2 interface permits
+bounded in-place overwrites of existing regular-file data, after the
+complete target range has been checked, with a required host flush.
+It never allocates or edits filesystem metadata; partial writes after
+I/O errors cannot be rolled back. Full writable mounting remains unqualified.
 DOS7/LNFS, MUFS, writes, formatting, allocation, defragmentation, root
 deployment, boot loading and historic-OS interoperability remain unqualified.
 

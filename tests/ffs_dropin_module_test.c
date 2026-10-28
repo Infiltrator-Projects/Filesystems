@@ -9,6 +9,7 @@
 enum { BLOCKS = 256u, DIR = 4u, HEADER = 5u, EXT = 6u, DATA = 40u };
 static uint8_t *disk;
 static uint32_t bytes, root;
+static uint32_t writes, flushes;
 static void be32(uint8_t *p, uint32_t v)
 { p[0]=(uint8_t)(v>>24);p[1]=(uint8_t)(v>>16);
   p[2]=(uint8_t)(v>>8);p[3]=(uint8_t)v; }
@@ -27,6 +28,17 @@ static int read_at(void *ctx,uint64_t offset,void *out,uint32_t n)
 { (void)ctx;if(offset>(uint64_t)BLOCKS*bytes ||
      n>(uint64_t)BLOCKS*bytes-offset)return -1;
   memcpy(out,disk+(size_t)offset,n);return 0; }
+static int write_at(void *ctx,uint64_t offset,const void *source,uint32_t count)
+{ (void)ctx;
+  if(offset<(uint64_t)DATA*bytes ||
+     offset>(uint64_t)BLOCKS*bytes ||
+     count>(uint64_t)BLOCKS*bytes-offset) return -1;
+  memcpy(disk+(size_t)offset,source,count);
+  ++writes;
+  return 0;
+}
+static int flush_media(void *ctx)
+{ (void)ctx; ++flushes; return 0; }
 static void fixture(uint32_t block_bytes,uint32_t dostype,uint32_t data_blocks)
 {
     const uint32_t slots=block_bytes/4u-56u;
@@ -63,11 +75,20 @@ static int fail(const char *why)
 int main(void)
 {
     const IfsFfsDropInModule *api=infiltrator_filesystem_module_v1();
+    const IfsFfsDropInModuleV2 *v2=infiltrator_filesystem_module_v2();
     IfsFfsDropInIo io={read_at,NULL,0u,0u};
+    IfsFfsWritableIo writable={ {read_at,NULL,0u,0u},
+                                write_at, flush_media };
     IfsFfsDropInVolume v={0};
     IfsFfsDropInEntry rt,dir,file,out;
     IfsFfsDropInDirCursor cursor;
     uint8_t text[8],name[31];
+    if(!v2 || v2->abi_version!=IFS_FFS_DROPIN_V2_ABI_VERSION ||
+       v2->structure_bytes!=sizeof(*v2) ||
+       strcmp(v2->format_id,"ffs")!=0 ||
+       v2->readonly_v1!=api ||
+       !(v2->capabilities&IFS_FFS_V2_CAP_OVERWRITE_EXISTING))
+       return fail("invalid optional FFS V2 ABI");
     if(!api || api->abi_version!=1u ||
         api->structure_bytes!=sizeof(*api) ||
         strcmp(api->format_id,"ffs")!=0 ||
@@ -117,7 +138,29 @@ int main(void)
     if(api->read(&v,&file,72u*512u-2u,text,4u)!=0 ||
        memcmp(text,"TTUU",4u)!=0)
         return fail("extension pointers/raw data");
+    writable.read=io;
+    writes=flushes=0u;
+    if(v2->overwrite_existing(&v,&file,&writable,72u*512u-2u,
+                              "WXYZ",4u)!=0 ||
+       writes!=2u || flushes!=1u ||
+       api->read(&v,&file,72u*512u-2u,text,4u)!=0 ||
+       memcmp(text,"WXYZ",4u)!=0)
+       return fail("V2 cross-extension overwrite and flush");
+    if(v2->overwrite_existing(&v,&file,&writable,file.size-1u,
+                              "AB",2u)==0 || writes!=2u)
+       return fail("V2 permitted file extension");
+    writable.flush=NULL;
+    if(v2->overwrite_existing(&v,&file,&writable,0u,"X",1u)==0)
+       return fail("V2 allowed write without flush");
+    writable.flush=flush_media;
+    writable.write_at=NULL;
+    if(v2->overwrite_existing(&v,&file,&writable,0u,"X",1u)==0)
+       return fail("V2 allowed write without callback");
+    writable.write_at=write_at;
     put(EXT,0u,8u);checksum(EXT);
+    if(v2->overwrite_existing(&v,&file,&writable,72u*512u,
+                              "Q",1u)==0 || writes!=2u)
+       return fail("V2 accepted corrupt extension");
     if(api->read(&v,&file,72u*512u,text,1u)==0)
         return fail("invalid extension type accepted");
     fixture(512u,0x444f5301u,73u);
