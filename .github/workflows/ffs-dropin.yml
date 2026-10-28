@@ -1,0 +1,63 @@
+name: FFS freestanding reader qualification
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ffs-dropin.yml"
+      - "native/filesystems/ffs/core/**"
+      - "native/filesystems/ffs/module/**"
+      - "tests/ffs_dropin_module_test.c"
+      - "packaging/linux/ffs-module-helper.sh"
+  pull_request:
+    paths:
+      - ".github/workflows/ffs-dropin.yml"
+      - "native/filesystems/ffs/core/**"
+      - "native/filesystems/ffs/module/**"
+      - "tests/ffs_dropin_module_test.c"
+      - "packaging/linux/ffs-module-helper.sh"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ffs-isolated-elf:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact FFS source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Build the actual standalone FFS.so
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror \
+            -fPIC -ffreestanding -fno-builtin -fno-stack-protector \
+            -fvisibility=hidden -nostdlib -shared \
+            -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
+            -I native/filesystems/ffs/module \
+            -I native/filesystems/ffs/core \
+            native/filesystems/ffs/module/ffs_module.c \
+            native/filesystems/ffs/core/ffs_core.c \
+            native/filesystems/ffs/core/ffs_primitives.c \
+            -o /tmp/FFS.so
+          readelf -h /tmp/FFS.so | grep -Eq 'Type:.*DYN'
+          readelf -Ws /tmp/FFS.so | grep -F 'infiltrator_filesystem_module_v1'
+          readelf -p .ifsmeta /tmp/FFS.so | grep -F 'IFS-MODULE:ffs:1'
+          if readelf -d /tmp/FFS.so | grep -Eq '[(]NEEDED[)]'; then
+            echo 'FFS.so illegally depends on a host library' >&2
+            exit 1
+          fi
+      - name: Exercise real FFS source on disposable images
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror \
+            -I native/filesystems/ffs/module \
+            -I native/filesystems/ffs/core \
+            tests/ffs_dropin_module_test.c \
+            native/filesystems/ffs/module/ffs_module.c \
+            native/filesystems/ffs/core/ffs_core.c \
+            native/filesystems/ffs/core/ffs_primitives.c \
+            -o /tmp/ffs-module-test
+          /tmp/ffs-module-test
+          bash -n packaging/linux/ffs-module-helper.sh
+          sha256sum /tmp/FFS.so
