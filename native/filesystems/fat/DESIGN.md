@@ -1,98 +1,64 @@
-# FAT12 / FAT16 / FAT32 Design and Ownership
+# FAT12 / FAT16 / FAT32 design and ownership
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+FAT12, FAT16 and FAT32 are related on-disk formats with different allocation
+entry widths. Filesystems presents them as distinct selectable modules. A
+module for one width must not be accepted as another by renaming the file.
 
+## Source in this directory
 
-## Classification
+- `portable/` contains the editable FatFs FAT implementation and the V3/V4
+  standalone adapters. `ff.c` identifies itself as R0.16 with patch 2;
+  `ffunicode.c` identifies an R0.13c conversion implementation adapted to the
+  R0.16 interface. Existing notices remain in the copied source.
+- `module/` contains the legacy V1 FAT12/16 adapters and independent FAT32
+  reader. Each FAT12/16 shared object embeds the common portable sources and
+  exports its own format identity; neither needs the other to be installed.
+- `defrag/` contains the shared FAT relocation and durable recovery engine,
+  its versioned process-host ABI, and the generic host interface declarations.
+- `linux/` contains the actual copied Linux 6.12.107 FAT/VFAT/MSDOS code and
+  the experimental FAT12/FAT16 namespace builds. The two modules depend on a
+  compatible Linux FAT core. They are not self-contained replacement kernels.
+- `efi/FatPkg/` contains the editable TianoCore EnhancedFatDxe source and
+  distinct FAT12/FAT16 build descriptions. The EFI images are independent
+  Driver Binding and Simple File System drivers; the local build uses a pinned
+  EDK2 framework. Exact provenance and qualification are recorded in
+  `docs/FAT12_FAT16_FULL_RWW_AUDIT.md`.
 
-This directory owns the classic FAT filesystem family: FAT12, FAT16 and FAT32,
-including DOS short-name and VFAT long-filename namespace behaviour. Those are
-format/namespace variants of one filesystem family, not three unrelated host
-implementations.
+## FAT12 and FAT16 shared objects
 
-## FAT12.so and FAT16.so read-only implementation
+The V1 API supplies classic FAT probing, root-file reading and fragment counts.
+V3 supplies long names, nested directories, file/directory creation and
+removal, reading, writing, growth, truncation and rename. V4 adds formatting,
+attributes, modified-time read/write and capacity/free-space queries. Its
+formatter tests the resulting FAT width without writing before it formats the
+caller-supplied partition. A failed format may still leave partially formatted
+media if an actual write or flush fails.
 
-Both shared objects are built from `module/classic_fat_module.c` plus a
-thin variant selector; there is one codebase but two self-contained formats.
-The FAT12 variant parses packed 12-bit entries correctly, while FAT16
-retains its original 16-bit format constraints. Both reject invalid
-clusters and support bounded file reading and root fragment counts.
+Each module permits one active volume. Callers provide partition-relative
+reads, writes, flushing and timestamps, must serialize access, and must hold
+exclusive access to writable media. Truncated volumes and the ambiguous
+4,085-cluster boundary are rejected. The selector helpers compile only their
+chosen module into `/System/Filesystems/`; they do not install a kernel module,
+EFI driver, another FAT variant or a separate package.
 
-Each compiler/selector helper installs **only** its matching `.so` in
-`/System/Filesystems/`, with no automatic installation of another FAT
-variant, kernel module, firmware driver or external package.
-FAT12, FAT16 and FAT32 now have separate graphical Install/Remove buttons within the classic FAT catalogue row. Their source and installed .so files remain independent.
+## FAT32 shared object
 
-## FAT32.so source and qualification scope
+`FAT32.so` retains its experimental read-only file API with FAT32 chain
+reading and root-file fragmentation analysis. Its helper installs only that
+module. FAT12/16's V3/V4 operations are not a FAT32 implementation. The
+separate defrag ABI supports journalled FAT32 relocation and recovery.
 
-The new independent read-only FAT32.so source decodes the FAT32 BPB, 28-bit
-cluster-chain entries, and the cluster-chain root directory. Its standalone
-test exercises files on fragmented cluster chains, a root spread over two
-clusters, and corrupt/truncated disk metadata. The per-format compiler
-helper builds, installs and removes only FAT32.so. No other FAT module,
-.ko, .efi, formatter or writer is installed.
+## Qualification and remaining work
 
-## Current state
+Use independent formatters, checkers and readers as well as disposable-image
+and virtual-machine tests. Compilation alone is not runtime qualification.
+The test suites exercise the modules' actual symbols and EFI driver bindings;
+the Linux test boots the actual two modules against a compatible FAT core.
+Check the workflow results for the exact source commit and distinguish QEMU
+results from physical-device or firmware results.
 
-The original Linux FAT adapter remains in **imported-source development state**. The first independent FAT16 module is a separate experimental read-only module under `module/`, compiled on demand to `FAT16.so`. The pinned Linux FAT/VFAT/MS-DOS
-implementation is preserved under `linux/` with upstream licensing
-and provenance. It is not project-authored Filesystems code.
-
-## Current directory contract
-
-The existing imported Linux source remains under `linux/`; the additional
-`module/` directory contains our independently built portable FAT16 module
-and versioned read-only C ABI, without installing or modifying kernel drivers.
-The future `core/`, `linux/`,
-`windows/` and `userspace/` directories appear only with independently
-authored implementation; `kernel/` is not a valid alternate source tree.
-
-CI enforces this boundary and rejects accidental production linkage of the
-imported reference source.
-
-## Target layout
-
-```text
-native/filesystems/fat/
-  DESIGN.md
-  core/                 future complete canonical FAT12/16/32 semantics
-  module/               current self-contained experimental FAT16.so source
-  linux/                thin Linux VFS/module adapter
-  windows/              thin Windows IFS/WDK adapter
-  userspace/            optional adapter over the same core
-  linux/      pinned upstream Linux evidence
-```
-
-## Canonical ownership
-
-The core owns BPB/boot-sector and geometry validation, FAT12/16/32 entry
-encoding, cluster-chain traversal/allocation, FSInfo handling where applicable,
-directory entries, volume labels, timestamps/attributes, short-name rules,
-VFAT long-filename entry chains/checksums and exact mutation/recovery rules.
-
-Linux NLS interfaces, VFS objects, page/buffer cache and mount/module lifetime
-remain adapter concerns.
-
-## Namespace rule
-
-Linux's separate `namei_msdos.c` and `namei_vfat.c` files are reference
-translation units. The project core should model short-name-only and VFAT
-long-name behaviour as explicit namespace policy over the same FAT engine,
-without creating competing FAT implementations.
-
-## Promotion sequence
-
-Start with host-neutral boot/FAT/directory parsing across FAT12/16/32 and
-independent media fixtures. Add mutation only after cluster allocation,
-directory entry publication, FSInfo updates and crash/recovery expectations are
-explicitly qualified.
-
-## Failure policy
-
-Impossible geometry, inconsistent FAT copies, loops/out-of-range cluster
-chains, malformed LFN sequences and contradictory free-space metadata must fail
-closed or be surfaced as corruption according to the operation.
-
-## Copied implementation provenance
-
-The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
+The versioned defrag ABI makes the FAT relocation and recovery engine available
+to Defragmenter's child-process loader. Interrupted journal-stage recovery and
+wrong-target refusal are tested on images; physical power-loss, corrupt-media
+and broader I/O failure behaviour require further qualification. See
+`docs/FAT_DEFRAG_MODULE_ABI.md`.

@@ -1,0 +1,219 @@
+name: FAT12/FAT16 real-image portable read-write verification
+on:
+  push:
+    branches: [feature/fat12-fat16-genuine-rw-triple-20261028]
+    paths:
+      - "native/filesystems/fat/portable/**"
+      - "native/filesystems/fat/module/fat12_module.c"
+      - "native/filesystems/fat/module/fat16_module.c"
+      - "tests/fatfs_v3_realimage_test.c"
+      - "tests/fatfs_v4_format_test.c"
+      - "tests/fat_boundary_fixture.py"
+      - "packaging/linux/fat1*-module-helper.sh"
+      - ".github/workflows/fat12-fat16-so.yml"
+  pull_request:
+    paths:
+      - "native/filesystems/fat/portable/**"
+      - "native/filesystems/fat/module/fat12_module.c"
+      - "native/filesystems/fat/module/fat16_module.c"
+      - "tests/fatfs_v3_realimage_test.c"
+      - "tests/fatfs_v4_format_test.c"
+      - "tests/fat_boundary_fixture.py"
+      - "packaging/linux/fat1*-module-helper.sh"
+      - ".github/workflows/fat12-fat16-so.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fat12-fat16-real-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install genuine independent FAT formatter/checker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dosfstools mtools
+      - name: Compile and check each independent read-write .so
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=native/filesystems/fat/portable
+          m=native/filesystems/fat/module
+          mkdir -p /tmp/fat-modules
+          for fs in 12 16; do
+            gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+              -fPIC -fno-builtin -ffreestanding -fvisibility=hidden \
+              -fno-stack-protector -nostdlib -shared \
+              -Wl,-z,defs,-z,relro,-z,now \
+              -DIFS_FATFS_ONLY="$fs" -I "$p" -I "$m" \
+              "$m/fat${fs}_module.c" "$p/ff.c" "$p/ffunicode.c" \
+              "$p/fatfs_module.c" "$p/fatfs_libc.c" \
+              -o "/tmp/fat-modules/FAT$fs.so"
+            test -s "/tmp/fat-modules/FAT$fs.so"
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v1
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v3
+            readelf -Ws "/tmp/fat-modules/FAT$fs.so" | grep -q infiltrator_filesystem_module_v4
+            readelf -p .ifsmeta "/tmp/fat-modules/FAT$fs.so" | grep -q "IFS-MODULE:fat$fs:3"
+            readelf -p .ifsmeta "/tmp/fat-modules/FAT$fs.so" | grep -q "IFS-MODULE:fat$fs:4"
+            test -z "$(nm -u "/tmp/fat-modules/FAT$fs.so")"
+          done
+          gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I "$p" tests/fatfs_v3_realimage_test.c -o /tmp/fat-modules/real-test -ldl
+          gcc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I "$p" tests/fatfs_v4_format_test.c -o /tmp/fat-modules/format-test -ldl
+      - name: Test read, write, append, rename, long names and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          truncate -s 1440K /tmp/fat-modules/fat12.img
+          truncate -s 64M /tmp/fat-modules/fat16.img
+          mkfs.fat -F 12 -I -S 512 /tmp/fat-modules/fat12.img
+          mkfs.fat -F 16 -I -S 512 /tmp/fat-modules/fat16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img
+          truncate -s 64M /tmp/fat-modules/fat32.img
+          mkfs.fat -F 32 -I -S 512 -s 1 /tmp/fat-modules/fat32.img
+          for kind in 12 16; do
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind.img" /tmp/fat-modules/fat32.img reject
+          done
+          python3 tests/fat_boundary_fixture.py /tmp/fat-modules
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/boundary-4085.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/boundary-4085.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/boundary-4084.img /tmp/fat-modules/fat16.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/boundary-4086.img /tmp/fat-modules/fat12.img reject
+          fsck.fat -n /tmp/fat-modules/boundary-4084.img
+          fsck.fat -n /tmp/fat-modules/boundary-4086.img
+          # A believable BPB must not make a truncated backing file writable.
+          dd if=/tmp/fat-modules/fat12.img of=/tmp/fat-modules/truncated12.img bs=512 count=2048 status=none
+          dd if=/tmp/fat-modules/fat16.img of=/tmp/fat-modules/truncated16.img bs=512 count=8192 status=none
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/truncated12.img reject
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/truncated16.img reject
+          # Independently verify live directory entries, Unicode long names
+          # and data, using external mtools instead of our own parser.
+          fsck.fat -n /tmp/fat-modules/fat12.img
+          fsck.fat -n /tmp/fat-modules/fat16.img
+          for kind in 12 16; do
+            image="/tmp/fat-modules/fat$kind.img"
+            mdir -i "$image" "::/SUBDIR/"
+            mcopy -n -i "$image" "::/SUBDIR/Verified Café Ünîcode Data.txt" \
+              "/tmp/fat-modules/external-$kind.bin"
+            python3 - "/tmp/fat-modules/external-$kind.bin" <<'PY'
+          import sys
+          from pathlib import Path
+          data=Path(sys.argv[1]).read_bytes()
+          assert len(data)==1000, "Unexpected externally read FAT data length"
+          assert data == bytes((i*17+23)&255 for i in range(1000)), "Data mismatches external reader"
+          print(sys.argv[1], "INDEPENDENT-DATA-VERIFIED")
+          PY
+          done
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img cleanup
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img cleanup
+          fsck.fat -n /tmp/fat-modules/fat12.img
+          fsck.fat -n /tmp/fat-modules/fat16.img
+          # On deliberately small full volumes, a clipped seek must not be
+          # reported as a successful write or truncate. Never use real disks.
+          truncate -s 1440K /tmp/fat-modules/full12.img
+          truncate -s 8M /tmp/fat-modules/full16.img
+          mkfs.fat -F 12 -I -S 512 /tmp/fat-modules/full12.img
+          mkfs.fat -F 16 -I -S 512 -s 1 /tmp/fat-modules/full16.img
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT12.so \
+            /tmp/fat-modules/full12.img /tmp/fat-modules/full16.img full
+          /tmp/fat-modules/real-test /tmp/fat-modules/FAT16.so \
+            /tmp/fat-modules/full16.img /tmp/fat-modules/full12.img full
+          fsck.fat -n /tmp/fat-modules/full12.img
+          fsck.fat -n /tmp/fat-modules/full16.img
+          # Independently formatted logical 4 KiB sector geometry exercises
+          # the host callback's sector-size contract, not only 512-byte FAT.
+          truncate -s 8M /tmp/fat-modules/fat12-4k.img
+          truncate -s 64M /tmp/fat-modules/fat16-4k.img
+          mkfs.fat -F 12 -I -S 4096 -s 1 /tmp/fat-modules/fat12-4k.img
+          mkfs.fat -F 16 -I -S 4096 -s 1 /tmp/fat-modules/fat16-4k.img
+          for kind in 12 16; do
+            other=12
+            if [[ $kind == 12 ]]; then other=16; fi
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind-4k.img" "/tmp/fat-modules/fat$other-4k.img"
+            fsck.fat -n "/tmp/fat-modules/fat$kind-4k.img"
+            /tmp/fat-modules/real-test "/tmp/fat-modules/FAT$kind.so" \
+              "/tmp/fat-modules/fat$kind-4k.img" "/tmp/fat-modules/fat$other-4k.img" cleanup
+            fsck.fat -n "/tmp/fat-modules/fat$kind-4k.img"
+          done
+          echo "BOTH-PORTABLE-MODULES-GENUINE-DOSFS-RW-INDEPENDENTLY-VERIFIED"
+      - name: Validate formatter and metadata using independent FAT tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          truncate -s 1440K /tmp/fat-modules/new12.img
+          truncate -s 8M /tmp/fat-modules/new16.img
+          before12=$(sha256sum /tmp/fat-modules/new12.img)
+          before16=$(sha256sum /tmp/fat-modules/new16.img)
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new16.img 512 reject
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new12.img 512 reject
+          test "$(sha256sum /tmp/fat-modules/new12.img)" = "$before12"
+          test "$(sha256sum /tmp/fat-modules/new16.img)" = "$before16"
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12.img 512
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new16.img 512
+          truncate -s 8M /tmp/fat-modules/new12-4k.img
+          truncate -s 64M /tmp/fat-modules/new16-4k.img
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12-4k.img 4096
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT16.so /tmp/fat-modules/new16-4k.img 4096
+          # Shannon's large FAT12 geometry uses 64 KiB clusters on 255 MiB.
+          truncate -s 255M /tmp/fat-modules/new12-255m.img
+          /tmp/fat-modules/format-test /tmp/fat-modules/FAT12.so /tmp/fat-modules/new12-255m.img 512 65536
+          printf 'FAT formatter and metadata verified\n' > /tmp/fat-modules/format-expected.txt
+          for image in /tmp/fat-modules/new12.img /tmp/fat-modules/new16.img \
+                       /tmp/fat-modules/new12-4k.img /tmp/fat-modules/new16-4k.img \
+                       /tmp/fat-modules/new12-255m.img; do
+            fsck.fat -n "$image"
+            mcopy -i "$image" ::/FORMAT/META.TXT /tmp/fat-modules/formatted-readback.txt
+            cmp /tmp/fat-modules/format-expected.txt /tmp/fat-modules/formatted-readback.txt
+            # Verify the FAT timestamp with the independent mtools decoder.
+            mdir -i "$image" ::/FORMAT/META.TXT | grep -Eq '2024-02-29[[:space:]]+14:23'
+            rm /tmp/fat-modules/formatted-readback.txt
+          done
+      - name: Run module and formatter operations with ASan and UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          p=native/filesystems/fat/portable
+          m=native/filesystems/fat/module
+          for fs in 12 16; do
+            gcc -std=c11 -O1 -g -fPIC -fno-builtin -ffreestanding \
+              -fvisibility=hidden -fno-stack-protector -fno-omit-frame-pointer \
+              -fsanitize=address,undefined -shared -Wl,-z,defs \
+              -DIFS_FATFS_ONLY="$fs" -I "$p" -I "$m" \
+              "$m/fat${fs}_module.c" "$p/ff.c" "$p/ffunicode.c" \
+              "$p/fatfs_module.c" "$p/fatfs_libc.c" -o "/tmp/fat-modules/asan$fs.so"
+          done
+          for test in v3_realimage v4_format; do
+            gcc -std=c11 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer \
+              -I "$p" "tests/fatfs_${test}_test.c" -o "/tmp/fat-modules/asan-$test" -ldl
+          done
+          export ASAN_OPTIONS=detect_leaks=0:abort_on_error=1
+          export UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
+          /tmp/fat-modules/asan-v3_realimage /tmp/fat-modules/asan12.so /tmp/fat-modules/fat12.img /tmp/fat-modules/fat16.img
+          /tmp/fat-modules/asan-v3_realimage /tmp/fat-modules/asan16.so /tmp/fat-modules/fat16.img /tmp/fat-modules/fat12.img
+          truncate -s 1440K /tmp/fat-modules/asan-format12.img
+          truncate -s 8M /tmp/fat-modules/asan-format16.img
+          /tmp/fat-modules/asan-v4_format /tmp/fat-modules/asan12.so /tmp/fat-modules/asan-format12.img 512
+          /tmp/fat-modules/asan-v4_format /tmp/fat-modules/asan16.so /tmp/fat-modules/asan-format16.img 512
+      - name: Preserve the tested standalone libraries
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-so-experimental
+          path: |
+            /tmp/fat-modules/FAT12.so
+            /tmp/fat-modules/FAT16.so
+          if-no-files-found: error

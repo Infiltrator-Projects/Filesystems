@@ -406,13 +406,49 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME ofs-module-helper)
 
+    # The FAT defrag engine lives in each independently installable module.
+    # The host provides process, device-safety, and generic Common services;
+    # no host runtime or Common implementation is linked into the module.
+    set(IFS_FAT_DEFRAG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/defrag")
+    set(IFS_FAT_DEFRAG_SOURCES
+        "${IFS_FAT_DEFRAG_ROOT}/writer.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_analysis.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_directory.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_relayout.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_io.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_journal.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_relocation.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_volume.c"
+        "${IFS_FAT_DEFRAG_ROOT}/fat_defrag_module.c")
+    function(filesystems_fat_defrag target bits)
+        target_sources(${target} PRIVATE ${IFS_FAT_DEFRAG_SOURCES})
+        target_include_directories(${target} PRIVATE
+            "${IFS_FAT_DEFRAG_ROOT}" "${IFS_FAT_DEFRAG_ROOT}/host"
+            "${INFILTRATR_COMMON_DIR}/include")
+        target_compile_definitions(${target} PRIVATE
+            _GNU_SOURCE _FILE_OFFSET_BITS=64 IFS_FAT_DEFRAG_BITS=${bits})
+    endfunction()
+    install(DIRECTORY "${IFS_FAT_DEFRAG_ROOT}/"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat-defrag"
+        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    install(DIRECTORY "${INFILTRATR_COMMON_DIR}/include/infiltratr"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat-defrag/include"
+        FILES_MATCHING PATTERN "*.h")
+
     # FAT16 is the first selectable single-file module. Build the exact
     # source in CI; installed Filesystems compiles that SAME source when the
     # user selects "Install FAT16". Do not preinstall a module or use APT.
     add_library(filesystems-fat16-module SHARED
-        native/filesystems/fat/module/fat16_module.c)
+        native/filesystems/fat/module/fat16_module.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c)
     target_include_directories(filesystems-fat16-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
+    target_compile_definitions(filesystems-fat16-module PRIVATE IFS_FATFS_ONLY=16)
+    filesystems_fat_defrag(filesystems-fat16-module 16)
     set_target_properties(filesystems-fat16-module PROPERTIES
         PREFIX "" OUTPUT_NAME "FAT16")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -435,15 +471,32 @@ if(UNIX)
         native/filesystems/fat/module/fat16_module.c
         native/filesystems/fat/module/fat16_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
+    install(FILES
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ff.h
+        native/filesystems/fat/portable/ffconf.h
+        native/filesystems/fat/portable/diskio.h
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/fatfs_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
     install(PROGRAMS packaging/linux/fat16-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat16-module-helper)
 
     # One shared source engine, two independently compiled and installed .so files.
     add_library(filesystems-fat12-module SHARED
-        native/filesystems/fat/module/fat12_module.c)
+        native/filesystems/fat/module/fat12_module.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c)
     target_include_directories(filesystems-fat12-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
+    target_compile_definitions(filesystems-fat12-module PRIVATE IFS_FATFS_ONLY=12)
+    filesystems_fat_defrag(filesystems-fat12-module 12)
     set_target_properties(filesystems-fat12-module PROPERTIES
         PREFIX "" OUTPUT_NAME "FAT12")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -464,6 +517,16 @@ if(UNIX)
         native/filesystems/fat/module/fat12_module.c
         native/filesystems/fat/module/fat12_module.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
+    install(FILES
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ff.h
+        native/filesystems/fat/portable/ffconf.h
+        native/filesystems/fat/portable/diskio.h
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/fatfs_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
     install(PROGRAMS packaging/linux/fat12-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat12-module-helper)
@@ -471,7 +534,9 @@ if(UNIX)
 
     # FAT32 has real 28-bit FAT entries and a cluster-chain root directory.
     add_library(filesystems-fat32-module SHARED
-        native/filesystems/fat/module/fat32_module.c)
+        native/filesystems/fat/module/fat32_module.c
+        native/filesystems/fat/portable/fatfs_libc.c)
+    filesystems_fat_defrag(filesystems-fat32-module 32)
     target_include_directories(filesystems-fat32-module PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
     set_target_properties(filesystems-fat32-module PROPERTIES
@@ -491,6 +556,7 @@ if(UNIX)
     install(FILES
         native/filesystems/fat/module/fat32_module.c
         native/filesystems/fat/module/fat32_module.h
+        native/filesystems/fat/portable/fatfs_libc.c
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat32")
     install(PROGRAMS packaging/linux/fat32-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
@@ -780,6 +846,9 @@ if(BUILD_TESTING)
 
     if(UNIX)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        add_test(NAME filesystems-fat-defrag-architecture
+            COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_defrag_architecture_test.py")
         add_test(NAME filesystems-ofs-image
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/ofs_image_test.py"

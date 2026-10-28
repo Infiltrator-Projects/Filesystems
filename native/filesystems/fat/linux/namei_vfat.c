@@ -23,6 +23,9 @@
 #include <linux/kernel.h>
 #include <linux/iversion.h>
 #include "fat.h"
+#ifdef IFS_FAT_ONLY
+#include "fat_variant_guard.h"
+#endif
 
 static inline unsigned long vfat_d_version(struct dentry *dentry)
 {
@@ -1202,7 +1205,42 @@ static void setup(struct super_block *sb)
 
 static int vfat_fill_super(struct super_block *sb, struct fs_context *fc)
 {
-	return fat_fill_super(sb, fc, setup);
+	int err;
+#ifdef IFS_FAT_ONLY
+	struct buffer_head *bh;
+	unsigned int width, dos1_bpb;
+	struct fat_mount_options *opts = fc->fs_private;
+
+	/* fat_fill_super marks a writable volume dirty before returning. Detect
+	 * the foreign variant first, without writing to the wrong filesystem. */
+	if (!sb_min_blocksize(sb, 512))
+		return -EINVAL;
+	bh = sb_bread(sb, 0);
+	if (!bh)
+		return -EIO;
+	width = ifs_fat_bpb_width((const unsigned char *)bh->b_data);
+	dos1_bpb = ifs_fat_is_dos1_bpb((const unsigned char *)bh->b_data);
+	brelse(bh);
+	/* DOS 1.x floppies have no BPB. The upstream core validates their
+	 * geometry when explicitly requested; that format can only be FAT12. */
+	if (width != IFS_FAT_ONLY &&
+	    !(width == 0 && IFS_FAT_ONLY == 12 && opts->dos1xfloppy && dos1_bpb))
+		return -EINVAL;
+#endif
+	err = fat_fill_super(sb, fc, setup);
+	if (err)
+		return err;
+#ifdef IFS_FAT_ONLY
+	/*
+	 * The original Linux VFAT implementation owns the real file, directory,
+	 * allocation, long-name and read/write operations. Format-specific
+	 * module builds must not register/mount media of the other FAT variants.
+	 * A rejected fill is torn down by get_tree_bdev().
+	 */
+	if (MSDOS_SB(sb)->fat_bits != IFS_FAT_ONLY)
+		return -EINVAL;
+#endif
+	return 0;
 }
 
 static int vfat_get_tree(struct fs_context *fc)
@@ -1231,19 +1269,48 @@ static int vfat_init_fs_context(struct fs_context *fc)
 	if (err)
 		return err;
 
+#ifdef IFS_FAT_ONLY
+	/* The shared FAT core has no default iocharset when its kernel was
+	 * configured without CONFIG_VFAT_FS. Our independent VFAT namespace
+	 * modules still need a usable default; preserve a host-provided value. */
+	{
+		struct fat_mount_options *opts = fc->fs_private;
+
+		if (!opts->iocharset || !opts->iocharset[0]) {
+			char *charset = kstrdup("iso8859-1", GFP_KERNEL);
+
+			if (!charset) {
+				fat_free_fc(fc);
+				fc->fs_private = NULL;
+				return -ENOMEM;
+			}
+			opts->iocharset = charset;
+		}
+	}
+#endif
 	fc->ops = &vfat_context_ops;
 	return 0;
 }
 
+#if defined(IFS_FAT_ONLY) && IFS_FAT_ONLY == 12
+#define IFS_FAT_MODULE_ID "fat12"
+#elif defined(IFS_FAT_ONLY) && IFS_FAT_ONLY == 16
+#define IFS_FAT_MODULE_ID "fat16"
+#elif !defined(IFS_FAT_ONLY)
+#define IFS_FAT_MODULE_ID "vfat"
+#else
+#error "Unsupported isolated Linux FAT module variant"
+#endif
+
 static struct file_system_type vfat_fs_type = {
 	.owner		= THIS_MODULE,
-	.name		= "vfat",
+	.name		= IFS_FAT_MODULE_ID,
 	.kill_sb	= kill_block_super,
 	.fs_flags	= FS_REQUIRES_DEV | FS_ALLOW_IDMAP,
 	.init_fs_context = vfat_init_fs_context,
 	.parameters     = fat_param_spec,
 };
-MODULE_ALIAS_FS("vfat");
+MODULE_ALIAS_FS(IFS_FAT_MODULE_ID);
 
 static int __init init_vfat_fs(void)
 {

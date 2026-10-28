@@ -1,0 +1,57 @@
+name: FAT12/FAT16 Linux VFS kernel module build
+on:
+  push:
+    branches: [feature/fat12-fat16-genuine-rw-triple-20261028]
+    paths:
+      - "native/filesystems/fat/linux/**"
+      - ".github/workflows/fat12-fat16-ko.yml"
+  pull_request:
+    paths:
+      - "native/filesystems/fat/linux/**"
+      - ".github/workflows/fat12-fat16-ko.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-linux-fat-variants:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bc bison flex libelf-dev libssl-dev
+      - name: Prepare pinned Linux 6.12.107 kernel headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v6.12.107 https://github.com/gregkh/linux.git "$RUNNER_TEMP/linux-6.12.107"
+          make -C "$RUNNER_TEMP/linux-6.12.107" defconfig
+          "$RUNNER_TEMP/linux-6.12.107"/scripts/config --file "$RUNNER_TEMP/linux-6.12.107/.config" --module FAT_FS --module VFAT_FS --enable NLS --enable BUFFER_HEAD
+          make -C "$RUNNER_TEMP/linux-6.12.107" olddefconfig
+          make -C "$RUNNER_TEMP/linux-6.12.107" modules_prepare
+      - name: Compile two separate genuine kernel modules (not Linux vfat aliases)
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/infiltrator-fat-kernel"
+          mkdir -p "$stage"
+          cp -a native/filesystems/fat/linux/. "$stage/"
+          cp "$stage/Makefile.variants" "$stage/Makefile"
+          make -C "$RUNNER_TEMP/linux-6.12.107" M="$stage" KBUILD_MODPOST_WARN=1 modules
+          test -s "$stage/fat12.ko"
+          test -s "$stage/fat16.ko"
+          test "$(modinfo -F name "$stage/fat12.ko")" = fat12
+          test "$(modinfo -F name "$stage/fat16.ko")" = fat16
+          test "$(modinfo -F license "$stage/fat12.ko")" = GPL
+          test "$(modinfo -F license "$stage/fat16.ko")" = GPL
+          mkdir -p ko-output
+          cp "$stage/fat12.ko" "$stage/fat16.ko" ko-output/
+          sha256sum ko-output/*.ko
+          echo "COMPILE-ONLY: mount/read-write runtime and kernel dependency resolution not certified"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: fat12-fat16-linux-kernel-unqualified
+          path: ko-output/*.ko
+          if-no-files-found: error
