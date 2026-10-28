@@ -21,6 +21,23 @@ static int io_read(void *u, uint64_t off, void *dst, uint32_t n)
     ++reads;
     return 0;
 }
+static unsigned writes, flushes;
+static int io_write(void *u, uint64_t off, const void *src, uint32_t n)
+{
+    (void)u;
+    /* Only the actual file's allocated data blocks may ever be written. */
+    if (off < 10u * BS || off > sizeof disk || n > sizeof disk - off)
+        return -1;
+    memcpy(disk + (size_t)off, src, n);
+    ++writes;
+    return 0;
+}
+static int io_flush(void *u)
+{
+    (void)u;
+    ++flushes;
+    return 0;
+}
 static int fail(const char *why) { fprintf(stderr, "MINIX: %s\n", why); return 1; }
 static void inode_init(uint8_t *p, uint32_t version, uint16_t mode,
                        uint32_t bytes, uint32_t first)
@@ -139,6 +156,65 @@ static int run_variant(uint32_t version, uint32_t name_bytes)
         return fail("direct/single-indirect read mismatch");
     if (api->read(&volume, &file, 9u*BS+5u, bytes, 1u) == 0)
         return fail("accepted read beyond EOF");
+    {
+        const IfsMinixModuleV2 *v2 = infiltrator_filesystem_module_v2();
+        IfsMinixWritableIo rw = {{io_read, NULL, sizeof disk},
+                                  io_write, io_flush};
+        writes = flushes = 0u;
+        if (!v2 || v2->abi_version != IFS_MINIX_V2_ABI_VERSION ||
+            v2->structure_bytes != sizeof *v2 ||
+            v2->readonly_v1 != api ||
+            v2->capabilities != IFS_MINIX_V2_CAP_OVERWRITE_EXISTING)
+            return fail("V2 ABI/capability compatibility mismatch");
+        if (v2->overwrite_existing(&rw, &volume, &file,
+                                   7u*BS-3u, "wXYZfoo", 7u) != 0 ||
+            writes != 2u || flushes != 1u ||
+            api->read(&volume, &file, 7u*BS-3u, bytes, 7u) != 0 ||
+            memcmp(bytes, "wXYZfoo", 7u) != 0)
+            return fail("V2 existing data cross-zone write/flush mismatch");
+        if (v2->overwrite_existing(&rw, &volume, &file,
+                                   file.size_bytes, "X", 1u) == 0 ||
+            writes != 2u)
+            return fail("V2 wrote beyond existing file end");
+        if (v2->overwrite_existing(&rw, &volume, &root,
+                                   0u, "X", 1u) == 0 || writes != 2u)
+            return fail("V2 wrote directory metadata");
+        forged = file;
+        forged.zone[7] = 65u;
+        if (v2->overwrite_existing(&rw, &volume, &forged,
+                                   7u*BS, "X", 1u) == 0 || writes != 2u)
+            return fail("V2 trusted a forged inode mapping");
+        rw.flush = NULL;
+        if (v2->overwrite_existing(&rw, &volume, &file,
+                                   0u, "X", 1u) == 0 || writes != 2u)
+            return fail("V2 wrote without flush support");
+        rw.flush = io_flush;
+        rw.write_at = NULL;
+        if (v2->overwrite_existing(&rw, &volume, &file,
+                                   0u, "X", 1u) == 0 || writes != 2u)
+            return fail("V2 wrote without explicit writer");
+        rw.write_at = io_write;
+        rw.read.device_bytes = sizeof disk - BS;
+        if (v2->overwrite_existing(&rw, &volume, &file,
+                                   0u, "X", 1u) == 0 || writes != 2u)
+            return fail("V2 ignored truncated partition");
+        rw.read.device_bytes = sizeof disk;
+        /* Never allocate through a hole or write later allocated zones
+         * before learning that the complete write range contains a hole. */
+        if (version == 1u)
+            w16(disk + 4u*BS + 32u + 14u + 7u*2u, 0u);
+        else
+            w32(disk + 4u*BS + 64u + 24u + 7u*4u, 0u);
+        if (api->inode(&volume, 2u, &forged) != 0 ||
+            v2->overwrite_existing(&rw, &volume, &forged,
+                                   7u*BS-3u, "ABCDEFG", 7u) == 0 ||
+            writes != 2u)
+            return fail("V2 failed to preflight sparse destination");
+        fixture(version, name_bytes);
+        if (api->mount(&volume, &io) != 0 ||
+            api->inode(&volume, 2u, &file) != 0)
+            return fail("V2 restored media was not readable");
+    }
     forged = file;
     forged.zone[7] = 65u;
     if (api->read(&volume, &forged, 7u*BS, bytes, 4u) == 0)
