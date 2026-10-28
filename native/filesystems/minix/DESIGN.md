@@ -1,104 +1,82 @@
-# Minix Filesystem Design and Ownership
+# Minix filesystem — implementation and qualification
 
-> **Working source (23 October 2026).** This filesystem's `linux/` directory contains the actual copied Linux implementation source, preserved with its original attribution and available for direct modification. It is not a replaceable research-only reference tree. The old independently-rewrite-first policy and any old directory-layout/refresh language below are historical, not a restriction on editing this working baseline. Only explicitly qualified drivers appear in `data/native-filesystems.tsv`.
+## Format and source authority
 
+Minix V1, V2 and V3 are variants of one on-disk filesystem identity,
+`minix`, not three catalogue entries. The checked-in Linux VFS implementation
+under `native/filesystems/minix/linux/` is original editable Linux source
+with its own attribution. It is a genuine kernel implementation and remains
+subject to independent host-kernel build and runtime qualification.
 
-## Classification
+The portable C module under `native/filesystems/minix/module/` is
+Filesystems' genuine, freestanding userspace engine for parsing Minix V1/V2/V3
+on-media structures. It is **not** a copied Linux kernel binary, a proxy for
+`minix.ko`, or a generic wrapper around `mount`. Both code paths interpret the
+same format but their semantics are not yet consolidated into one shared
+canonical core. That consolidation remains an explicit architectural task.
 
-The Minix filesystem family (v1, v2 and v3) is a conventional local block
-filesystem. Filesystems therefore applies the one-canonical-filesystem
-architecture: format and filesystem semantics belong in a host-neutral core,
-with thin operating-system adapters around that core.
+## Implemented application module
 
-## Current implementation state
+- `MINIX.so` contains the module's C engine, identity metadata and V1
+  read-only entry point. Its V1 ABI is unchanged by later capability additions.
+- The V1 parser validates superblocks, inode allocation, directory records,
+  file sizes, direct zones and single/double/triple-indirect tree mappings
+  as applicable to the media version.
+- The V2 entry point independently advertises a *restricted* existing-file
+  overwrite operation, not a general writable filesystem.
+- V2 requires an allocated regular file, unchanged live inode pointers and
+  geometry, complete destination-zone preflight, range-bounded write callbacks,
+  and a successful host flush. Sparse holes, metadata/directory writes,
+  file extension, missing flush or untrusted caller inode pointers are refused.
+- The host is responsible for exclusive medium ownership, ensuring read/write
+  callbacks access the same partition and preventing concurrent metadata
+  changes. Once a callback begins writing, failures can leave partially
+  committed data: V2 does not implement rollback or crash recovery.
+- The app-owned source and compile helper install under
+  `/Programs/Filesystems/Sources/minix/module` and
+  `/Programs/Filesystems/Helpers/minix-module-helper`; the selected binary
+  goes directly to `/System/Filesystems/MINIX.so`. Selecting MINIX does
+  not install a Linux kernel driver, EFI image or unrelated filesystem.
 
-Minix is currently **imported-source development state**.
+## Independent qualifications
 
-Filesystems does not claim the imported Linux Minix implementation as
-project-authored code. The pinned upstream source is retained unchanged beneath
-`linux/` as compatibility, format and failure-behaviour evidence.
+`tests/minix_dropin_module_test.c` constructs versioned media and exercises
+directory traversal, direct and indirect blocks, sparse reads, corrupt
+allocation metadata and V2 existing-data writes/refusals. The synthetic
+writer tests cross allocated zone boundaries and checks that an attempted
+operation spanning an unallocated hole performs **no data writes**.
 
-The upstream filenames, licences, copyrights and implementation boundaries are
-preserved. Moving the tree out of the retired `kernel/` staging path and into
-`linux/` is provenance/layout hygiene only; it is not a rewrite.
+`tests/minix_real_mkfs_test.c` checks independently generated disposable
+`mkfs.minix` images for V1 14/30-character, V2 14/30-character, and V3
+60-character directory formats. The separate release-gated workflow compiles
+the actual freestanding `MINIX.so`, requires both versioned ELF symbols,
+the matching nonexecuted `.ifsmeta` identity records and no dynamic
+`NEEDED` dependencies. Real `mkfs.minix` tests currently qualify **reads**
+and superblock/directory interoperability, not V2 on-media writes.
 
-## Current layout
+Linux `minix.ko` has its own kernel build/runtime qualification and is
+not implicitly substituted for this application `.so`.
 
-```text
-native/filesystems/minix/
-  DESIGN.md
-  reference/
-    linux/               pinned upstream Linux Minix evidence
-```
+## Unfinished work — do not mark complete
 
-When independent implementation begins, project-owned code is added beside the
-reference tree:
+General file creation, allocation, extension, truncation, deletion, rename,
+permissions/ownership changes, timestamps, link management, full writable
+mount behaviour, metadata journalling, recovery and physical-device write
+qualification are **not** supplied by the standalone module.
 
-```text
-native/filesystems/minix/
-  DESIGN.md
-  core/                  canonical Minix v1/v2/v3 format semantics
-  linux/                 thin Linux VFS/module adapter
-  windows/               thin Windows IFS/WDK adapter when implemented
-  userspace/             optional image/qualification adapter
-  linux/       preserved upstream evidence
-```
+A Minix-specific `.efi` firmware driver, root-filesystem bootstrap, and
+cross-product common load/dispatch ABI are not completed. The Linux module
+and the freestanding `.so` are distinct ABI artifacts and cannot simply
+be renamed to obtain firmware support.
 
-## Canonical-core ownership
+The canonical engine must ultimately reconcile shared format semantics
+between the userspace engine, Linux VFS adapter and future EFI reader without
+copying diverging rules into three independent implementations.
 
-The future core owns Minix-defined host-neutral behaviour including:
+## Preservation
 
-- v1/v2/v3 superblock and geometry decoding;
-- inode and zone/block addressing;
-- inode/zone allocation bitmaps;
-- directory record and filename semantics;
-- direct and indirect tree mapping;
-- timestamps, modes and filesystem-defined metadata;
-- free-space/inode accounting;
-- corruption and range validation;
-- exact mutation and recovery/ordering rules for any supported writer.
-
-Linux VFS objects, buffer/page-cache mechanics, mount/module lifetime and Linux
-credential/error translation belong only in the Linux adapter.
-
-## Version rule
-
-Minix v1, v2 and v3 are variants of one filesystem family. Their format
-differences must be explicit state in one canonical Minix engine rather than
-three unrelated host implementations.
-
-## File-boundary rule
-
-Upstream files such as `inode.c`, `namei.c`, `bitmap.c` and
-`itree_*.c` remain unchanged only under `linux/`.
-
-Project-authored source must be cut around Filesystems responsibilities
-and portable Minix invariants. Moving, renaming, merging or recommenting copied
-Linux source is never evidence that it has crossed the authorship boundary.
-
-## Promotion sequence
-
-1. define the supported Minix v1/v2/v3 media variants and limits;
-2. implement bounded host-neutral superblock/inode/bitmap decoding;
-3. implement read-only directory and file traversal against independent images;
-4. qualify malformed geometry, bitmaps, inode references and indirect trees;
-5. add a thin Linux adapter over the canonical core;
-6. add mutation only after allocation/publication/recovery rules are explicitly
-   implemented and destructively qualified;
-7. add Windows against the same canonical core when ready.
-
-## Failure policy
-
-Impossible geometry, invalid bitmap references, out-of-range zones/inodes,
-malformed directory entries, cyclic/invalid indirect trees and unsupported
-format state must fail closed.
-
-## Copied implementation provenance
-
-The editable `linux/` source contains original implementation code copied from the pinned Linux v6.12.107 source baseline. Original copyright, licence and attribution remain part of that code. Source refresh is not automatic and must never replace Filesystems modifications. Promotion into a managed native module requires its own host-integration and runtime qualification.
-
-## Completion rule
-
-The current tree is reference evidence only. Minix is not a Filesystems
-native implementation until a canonical project-authored engine and applicable
-adapter are independently implemented and qualified.
+Keep Linux VFS integration and its original attribution. Do not overwrite
+working FAT12/FAT16 V3/V4 sources, defragmentation code, kernel modules,
+EFI drivers, existing boot partitions or active filesystem volumes as part
+of Minix development. Use disposable media and independently qualified
+replacements before any production storage migration.
