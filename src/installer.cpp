@@ -648,6 +648,22 @@ void manage_ext2_dropin_async(const bool remove,
         std::move(completion));
 }
 
+void manage_minix_dropin_async(const bool remove,
+                                ActionCompletion completion)
+{
+    const std::string helper = application_helper("minix-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The MINIX.so compiler helper is not installed.");
+        return;
+    }
+    // Never change Linux minix.ko, EFI or any physical media.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "MINIX.so removed." :
+                 "MINIX.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void load_module_async(const std::string& module,
                        ActionCompletion completion)
 {

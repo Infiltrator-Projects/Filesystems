@@ -563,6 +563,19 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
         }
     }
 
+    if (descriptor.id == "minix") {
+        // MINIX.so is not Linux minix.ko.
+        const std::string helper = application_helper("minix-module-helper");
+        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
+            const CommandResult status = run_command({helper, "status"});
+            if (status.succeeded() &&
+                status.stdout_text.find("installed") != std::string::npos)
+                result.minix_dropin_state = SupportState::Ready;
+            else if (status.spawned && status.exit_status == 3)
+                result.minix_dropin_state = SupportState::Installable;
+        }
+    }
+
     if (descriptor.id == "ffs") {
         // A separately selected FFS.so; keep existing ffs.ko probing intact.
         const std::string helper = application_helper("ffs-module-helper");
