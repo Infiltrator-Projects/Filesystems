@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.100 — 2026-10-28 (MINIX V2 bounded data overwrites)
+
+- Add a genuine optional MINIX V2 ABI with existing-file bounded writes for allocated, regular-file zones across V1/V2/V3 volumes. Leave the V1 read-only interface untouched.
+- Re-validate live superblock/inode metadata, preflight every destination zone and reject holes, metadata, forged inode maps, out-of-bounds regions and missing write/flush callbacks. No allocations or rollback are claimed on I/O failure.
+- Exercise cross-zone writes, V1 readback and negative mutation cases in synthetic image tests; require V2 symbol and metadata in standalone CI. No production physical-media write qualification.
+
 ## 0.5.99 — 2026-10-28 (MINIX V1/V2/V3 standalone engine)
 
 - Integrate the genuine, separately compiled read-only MINIX.so and its GUI selector on top of FAT12/FAT16 V3/V4 and the qualified 0.5.98 EFI/kernel packaging. Port the existing source and tests without replacing any FAT implementation.

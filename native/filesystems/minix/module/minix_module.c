@@ -314,6 +314,95 @@ static int directory_lookup(const IfsMinixVolume *v,
     }
     return 1;
 }
+/* Validate every destination block before the first mutation. The live
+ * filesystem geometry and complete inode zone pointers must match the
+ * previously observed file. Sparse holes may not be materialised by V2.
+ * The host must guarantee exclusive medium access and identical callbacks.
+ */
+static int overwrite_existing(const IfsMinixWritableIo *io,
+                              const IfsMinixVolume *expected,
+                              const IfsMinixInode *file,
+                              uint64_t position, const void *input,
+                              uint32_t length)
+{
+    IfsMinixVolume live_volume;
+    IfsMinixInode live_file;
+    const uint8_t *source = (const uint8_t *)input;
+    uint64_t cursor, remaining;
+    if (!io || !expected || !file || !io->read.read_at ||
+        !io->write_at || !io->flush || (!source && length != 0u) ||
+        (file->mode & 0xf000u) != IFS_MINIX_MODE_REGULAR ||
+        position > file->size_bytes ||
+        (uint64_t)length > file->size_bytes - position ||
+        mount_volume(&live_volume, &io->read) != 0)
+        return -1;
+
+    if (live_volume.volume_bytes != expected->volume_bytes ||
+        live_volume.version != expected->version ||
+        live_volume.inode_count != expected->inode_count ||
+        live_volume.zone_count != expected->zone_count ||
+        live_volume.first_data_zone != expected->first_data_zone ||
+        live_volume.block_bytes != expected->block_bytes ||
+        live_volume.inode_bytes != expected->inode_bytes ||
+        live_volume.directory_bytes != expected->directory_bytes ||
+        live_volume.name_bytes != expected->name_bytes ||
+        live_volume.inode_table_block != expected->inode_table_block ||
+        live_volume.max_file_bytes != expected->max_file_bytes ||
+        live_volume.bitmap_inode_blocks != expected->bitmap_inode_blocks ||
+        live_volume.bitmap_zone_blocks != expected->bitmap_zone_blocks ||
+        live_volume.pointer_bytes != expected->pointer_bytes ||
+        get_inode(&live_volume, file->inode_number, &live_file) != 0 ||
+        live_file.mode != file->mode ||
+        live_file.size_bytes != file->size_bytes)
+        return -1;
+    for (uint32_t i = 0u; i < 10u; ++i)
+        if (live_file.zone[i] != file->zone[i]) return -1;
+
+    if (length == 0u) return 0;
+
+    /* First pass: no write until every destination zone is allocated,
+     * mapped, and fully inside both the partition and the host device. */
+    cursor = position;
+    remaining = length;
+    while (remaining != 0u) {
+        uint32_t zone, within, count;
+        uint64_t offset;
+        within = (uint32_t)(cursor % live_volume.block_bytes);
+        count = live_volume.block_bytes - within;
+        if ((uint64_t)count > remaining) count = (uint32_t)remaining;
+        if (data_zone(&live_volume, &live_file,
+                      cursor / live_volume.block_bytes, &zone) != 0 ||
+            zone == 0u || !zone_allocated(&live_volume, zone))
+            return -1;
+        offset = (uint64_t)zone * live_volume.block_bytes + within;
+        if (!bytes_ok(&live_volume, offset, count)) return -1;
+        cursor += count;
+        remaining -= count;
+    }
+
+    cursor = position;
+    remaining = length;
+    while (remaining != 0u) {
+        uint32_t zone, within, count;
+        uint64_t offset;
+        within = (uint32_t)(cursor % live_volume.block_bytes);
+        count = live_volume.block_bytes - within;
+        if ((uint64_t)count > remaining) count = (uint32_t)remaining;
+        if (data_zone(&live_volume, &live_file,
+                      cursor / live_volume.block_bytes, &zone) != 0 ||
+            zone == 0u || !zone_allocated(&live_volume, zone))
+            return -1;
+        offset = (uint64_t)zone * live_volume.block_bytes + within;
+        if (!bytes_ok(&live_volume, offset, count) ||
+            io->write_at(io->read.user, offset, source, count) != 0)
+            return -1;
+        cursor += count;
+        source += count;
+        remaining -= count;
+    }
+    return io->flush(io->read.user) == 0 ? 0 : -1;
+}
+
 __attribute__((used, section(".ifsmeta")))
 static const char module_identity[] = "IFS-MODULE:minix:1";
 static const IfsMinixModule module = {
@@ -327,4 +416,18 @@ __attribute__((visibility("default")))
 const IfsMinixModule *infiltrator_filesystem_module_v1(void)
 {
     return &module;
+}
+
+__attribute__((used, section(".ifsmeta")))
+static const char module_identity_v2[] = "IFS-MODULE:minix:2";
+static const IfsMinixModuleV2 module_v2 = {
+    IFS_MINIX_V2_ABI_VERSION, sizeof(IfsMinixModuleV2),
+    "minix", "Minix V1/V2/V3 bounded existing-file overwrite",
+    IFS_MINIX_V2_CAP_OVERWRITE_EXISTING, &module,
+    overwrite_existing
+};
+__attribute__((visibility("default")))
+const IfsMinixModuleV2 *infiltrator_filesystem_module_v2(void)
+{
+    return &module_v2;
 }

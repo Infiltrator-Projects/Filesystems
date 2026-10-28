@@ -101,8 +101,14 @@ selected `/System/Filesystems/MINIX.so` from application-owned sources.
 
 The installed MINIX module is independent of Linux `minix.ko`. Synthetic
 images and separately formatted `mkfs.minix` images provide source and
-interoperability coverage. **Writes, allocation, formatting, recovery,
-root-boot support and a native UEFI driver are not implemented by MINIX.so.**
+interoperability coverage. The V1 interface remains read-only. Optional V2 permits **only flush-backed,
+bounded overwrites of existing, allocated bytes in regular files**. It
+revalidates live geometry and inode pointers, checks the entire destination
+before the first write, and refuses sparse holes, directory writes, growth
+and missing flush callbacks. The host must guarantee exclusive access and
+identical read/write media. **File creation, allocation, deletion, formatting,
+recovery, general writable mounting, root boot and a native UEFI driver
+remain unimplemented in MINIX.so.**
 The working Linux driver remains separate and unchanged.
 
 ## Current SCO BFS.so implementation (restricted in-place writes)

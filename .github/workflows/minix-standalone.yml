@@ -30,7 +30,9 @@ jobs:
           file=/tmp/ifs-minix-qualification/MINIX.so
           readelf -h "$file" | grep -Eq 'Type:.*DYN'
           readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v1' >/dev/null
+          readelf -Ws "$file" | grep -F 'infiltrator_filesystem_module_v2' >/dev/null
           readelf -p .ifsmeta "$file" | grep -F 'IFS-MODULE:minix:1' >/dev/null
+          readelf -p .ifsmeta "$file" | grep -F 'IFS-MODULE:minix:2' >/dev/null
           if readelf -d "$file" | grep -Eq '[(]NEEDED[)]'; then
             echo "MINIX.so has a forbidden runtime shared-library dependency" >&2
             exit 1

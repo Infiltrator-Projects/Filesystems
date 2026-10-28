@@ -54,4 +54,35 @@ typedef struct {
                 uint64_t, void *, uint32_t);
 } IfsMinixModule;
 const IfsMinixModule *infiltrator_filesystem_module_v1(void);
+
+/* Optional V2 API: only allocated bytes of existing REGULAR files can
+ * be overwritten. V1 remains byte-for-byte compatible and read-only.
+ * Caller owns exclusive volume access and guarantees that read/write/flush
+ * address the SAME underlying medium, without concurrent metadata mutation.
+ * No rollback is claimed after a failed host I/O operation.
+ */
+#define IFS_MINIX_V2_ABI_VERSION 2u
+#define IFS_MINIX_V2_CAP_OVERWRITE_EXISTING UINT64_C(8)
+typedef int (*IfsMinixWriteAt)(void *user, uint64_t offset,
+                              const void *buffer, uint32_t bytes);
+typedef int (*IfsMinixFlush)(void *user);
+typedef struct {
+    IfsMinixIo read;
+    IfsMinixWriteAt write_at;
+    IfsMinixFlush flush;
+} IfsMinixWritableIo;
+typedef struct {
+    uint32_t abi_version, structure_bytes;
+    const char *format_id, *format_name;
+    uint64_t capabilities;
+    const IfsMinixModule *readonly_v1;
+    /* 0 = complete write+flush, -1 = rejected/failed; partial writes
+     * may have occurred on I/O failure. Never changes allocation metadata. */
+    int (*overwrite_existing)(const IfsMinixWritableIo *,
+                              const IfsMinixVolume *,
+                              const IfsMinixInode *,
+                              uint64_t position, const void *bytes,
+                              uint32_t length);
+} IfsMinixModuleV2;
+const IfsMinixModuleV2 *infiltrator_filesystem_module_v2(void);
 #endif
