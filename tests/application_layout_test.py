@@ -17,14 +17,23 @@ for path in ["src/installer.cpp", "src/probe.cpp"]:
     assert '#include "linux_host_paths.hpp"' in source
     assert '/usr/lib/filesystems/' not in source
     assert '/usr/local/lib/filesystems/' not in source
-    for name in ["fat16-module-helper", "ofs-module-helper", "ext2-module-helper", "ffs-module-helper"]:
+    for name in ["fat16-module-helper", "ofs-module-helper", "ext2-module-helper", "minix-module-helper", "ffs-module-helper"]:
         assert f'application_helper("{name}")' in source
         assert f'/usr/lib/filesystems/{name}' not in source
-for fs in ["fat16", "ofs", "ext2", "bfs", "ffs"]:
+for fs in ["fat16", "ofs", "ext2", "bfs", "minix", "ffs"]:
     shell = (root / f"packaging/linux/{fs}-module-helper.sh").read_text()
     assert 'source_dir="$self_dir/../Sources/' + fs + '"' in shell
     assert "/usr/lib/filesystems/" not in shell
     assert re.search(r'destination=/System/Filesystems\s', shell)
+# Minix has a distinct module and a dedicated GUI install/remove action.
+for path, name in (
+    ("src/main.cpp", "minix_dropin_button"),
+    ("src/probe.hpp", "minix_dropin_state"),
+    ("src/desktop_actions.cpp", "execute_minix_dropin_async"),
+    ("src/installer.cpp", "manage_minix_dropin_async"),
+):
+    assert name in (root / path).read_text(), path
+assert 'OUTPUT_NAME "MINIX"' in cmake
 # Linux compatibility helpers have one host-specific owner, not an app path.
 linux_backend = (root / "src/platform/linux_host_paths.cpp").read_text()
 assert 'src/platform/linux_host_paths.cpp' in cmake
