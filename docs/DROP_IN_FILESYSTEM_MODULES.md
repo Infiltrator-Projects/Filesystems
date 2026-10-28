@@ -1,5 +1,7 @@
 # Drop-in filesystem modules: target product architecture
 
+**Canonical decision:** [Unified filesystem module architecture](UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md) governs this document. There is one deployed `.so` per filesystem identity, consumed by BOOT, the kernel and applications through generic adapters. Any description below of separate Linux/EFI drivers is a **current transitional limitation**, not the required final end-user product.
+
 **Status: agreed architectural direction, not a claim of implemented runtime support.** This is the target for Filesystems, Boot, Defragmenter, Defragmenter Test Media, Files, and Setup. Existing filesystem modules, qualified Boot drivers, Linux mounts and physical partitions must remain untouched until their replacements have independent qualification.
 
 ## User-facing contract: one file, drag and drop
@@ -119,7 +121,7 @@ A module may support detection only, read-only inspection, formatting or defragm
 
 The module ABI must define: format ID and variants; ABI version/size and architecture; feature/capability bitset; immutable machine-readable description and limits; opaque per-volume handles; bounded positioned host-I/O callbacks; allocation, memory, logging and cancellation callbacks; explicit read-only versus write authority; deterministic errors; object ownership and lifetime rules; and version negotiation. The exposed metadata is parsed **without first executing arbitrary code**, and is authenticated before enabling privileged functionality. The binary carries its own metadata (no sidecar registry).
 
-The single-file requirement applies to the **installed application-facing format module**. Source code may remain multi-file, and host adaptations are compiled for their execution environments. It does **not** imply that a Linux `.ko`, Windows `.sys`, or firmware image is interchangeable with an ordinary Linux shared object.
+The **single-file requirement applies to the entire user-distributed filesystem driver**, not only its application-facing component. Source code may remain multi-file; BOOT and kernel provide generic environment adapters. A conventional Linux `.so` is not directly interchangeable with a Linux `.ko`, Windows `.sys` or firmware image; those runtime constraints must be resolved by a verified module profile or generic loader, **not by making three filesystem-specific drivers permanent products**. See [the authoritative architecture](UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md).
 
 ## Boot: load the same module instead of a separate filesystem implementation
 
