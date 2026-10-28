@@ -17,6 +17,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # MINIX.so uses its own real mkfs.minix V1/V2/V3 runtime qualification.
+  # Never substitute stock minix.ko or a format-only metadata smoke test.
+  minix-standalone:
+    uses: ./.github/workflows/minix-standalone.yml
+
   fat-driver-runtime:
     uses: ./.github/workflows/fat12-fat16-runtime.yml
     with:
@@ -498,6 +503,7 @@ jobs:
 
   publish-release:
     needs:
+      - minix-standalone
       - desktop-integration
       - source-boundary
       - linux
@@ -564,6 +570,8 @@ jobs:
            grep -Fq './Programs/Filesystems/Helpers/fat32-module-helper' package-contents.txt
           grep -Fq './Programs/Filesystems/Helpers/ofs-module-helper' package-contents.txt
           grep -Fq './Programs/Filesystems/Helpers/bfs-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Helpers/minix-module-helper' package-contents.txt
+          grep -Fq './Programs/Filesystems/Sources/minix/module/minix_module.c' package-contents.txt
           grep -Fq './Programs/Filesystems/Sources/bfs/module/bfs_module.c' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/fat16-source/' package-contents.txt
           ! grep -Fq './usr/lib/filesystems/ofs-source/' package-contents.txt

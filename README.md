@@ -90,6 +90,21 @@ portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
 
+## Current independent MINIX.so implementation
+
+`MINIX.so` is an independently compiled freestanding, read-only filesystem
+engine covering Minix V1/V2 (14/30-character directory variants) and V3
+(60-character names). It parses real superblocks, inode allocation and
+direct/indirect zone references, with bounded directory/file reads. Its
+`/Programs/Filesystems/Helpers/minix-module-helper` builds the single
+selected `/System/Filesystems/MINIX.so` from application-owned sources.
+
+The installed MINIX module is independent of Linux `minix.ko`. Synthetic
+images and separately formatted `mkfs.minix` images provide source and
+interoperability coverage. **Writes, allocation, formatting, recovery,
+root-boot support and a native UEFI driver are not implemented by MINIX.so.**
+The working Linux driver remains separate and unchanged.
+
 ## Current SCO BFS.so implementation (restricted in-place writes)
 
 `BFS.so` is an independent freestanding module for **SCO UnixWare Boot File

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.99 — 2026-10-28 (MINIX V1/V2/V3 standalone engine)
+
+- Integrate the genuine, separately compiled read-only MINIX.so and its GUI selector on top of FAT12/FAT16 V3/V4 and the qualified 0.5.98 EFI/kernel packaging. Port the existing source and tests without replacing any FAT implementation.
+- Add native package sources and helper for the MINIX module, with independent mkfs.minix V1/V2/V3 interoperability qualification. Make that qualification mandatory for release promotion.
+- Preserve the kernel Minix VFS driver independently; no unqualified MINIX writes, formatter, EFI reader, root boot or physical-disk changes are claimed.
+
+
 ## 0.5.97 — 2026-10-27 (independent SCO BFS.so)
 
 - Centralise the Mint/Debian native-kernel-module coordinator and removal-guard lookup in an explicitly Linux-only host adapter; remove Linux directory assumptions from application probe and installer. Add source/layout and helper-resolution regression tests. No packaging or physical system change.
