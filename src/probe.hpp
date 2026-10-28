@@ -45,6 +45,8 @@ struct ProbeResult {
     SupportState fat32_dropin_state = SupportState::Incomplete;
     // Independent EXT2.so state; never masks or replaces ext2.ko state.
     SupportState ext2_dropin_state = SupportState::Incomplete;
+    // FFS.so is independent of the existing Linux ffs.ko.
+    SupportState ffs_dropin_state = SupportState::Incomplete;
 };
 
 void invalidate_probe_cache();

@@ -563,6 +563,19 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
         }
     }
 
+    if (descriptor.id == "ffs") {
+        // A separately selected FFS.so; keep existing ffs.ko probing intact.
+        const std::string helper = application_helper("ffs-module-helper");
+        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
+            const CommandResult status = run_command({helper, "status"});
+            if (status.succeeded() &&
+                status.stdout_text.find("installed") != std::string::npos)
+                result.ffs_dropin_state = SupportState::Ready;
+            else if (status.spawned && status.exit_status == 3)
+                result.ffs_dropin_state = SupportState::Installable;
+        }
+    }
+
     result.project_native_module = descriptor.project_native_linux;
     result.module_requirement_met = descriptor.modules.empty();
     result.kernel_state = descriptor.modules.empty()

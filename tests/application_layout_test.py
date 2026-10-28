@@ -17,10 +17,10 @@ for path in ["src/installer.cpp", "src/probe.cpp"]:
     assert '#include "linux_host_paths.hpp"' in source
     assert '/usr/lib/filesystems/' not in source
     assert '/usr/local/lib/filesystems/' not in source
-    for name in ["fat16-module-helper", "ofs-module-helper", "ext2-module-helper"]:
+    for name in ["fat16-module-helper", "ofs-module-helper", "ext2-module-helper", "ffs-module-helper"]:
         assert f'application_helper("{name}")' in source
         assert f'/usr/lib/filesystems/{name}' not in source
-for fs in ["fat16", "ofs", "ext2", "bfs"]:
+for fs in ["fat16", "ofs", "ext2", "bfs", "ffs"]:
     shell = (root / f"packaging/linux/{fs}-module-helper.sh").read_text()
     assert 'source_dir="$self_dir/../Sources/' + fs + '"' in shell
     assert "/usr/lib/filesystems/" not in shell

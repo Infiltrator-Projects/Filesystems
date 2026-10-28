@@ -102,8 +102,8 @@ DOS7/LNFS, MUFS, writes, formatting, allocation, defragmentation, root
 deployment, boot loading and historic-OS interoperability remain unqualified.
 
 Its standalone `FFS.so` build, root-owned `/System/Filesystems/FFS.so`
-installer and disposal-only corruption/geometry tests are independent of
-the existing `ffs.ko` Linux driver. The installer lives under
+installer, independent GUI Install/Remove control and disposable
+corruption/geometry tests are independent of the existing `ffs.ko` Linux driver. The installer lives under
 `/Programs/Filesystems/Helpers/ffs-module-helper` and compiles from
 `/Programs/Filesystems/Sources/ffs/`. This feature is not a claim of
 finished `.ko` or `.efi` support; the current Linux driver is unchanged.

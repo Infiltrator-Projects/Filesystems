@@ -616,6 +616,22 @@ void manage_ofs_module_async(const bool remove,
         std::move(completion));
 }
 
+void manage_ffs_dropin_async(const bool remove,
+                             ActionCompletion completion)
+{
+    const std::string helper = application_helper("ffs-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The FFS.so compiler helper is not installed.");
+        return;
+    }
+    // Separate FFS.so lifecycle; never touches ffs.ko, EFI, APT or a disk.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "FFS.so removed." :
+                 "FFS.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void manage_ext2_dropin_async(const bool remove,
                                ActionCompletion completion)
 {
