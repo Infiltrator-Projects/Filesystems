@@ -21,6 +21,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(FILESYSTEMS_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
 option(FILESYSTEMS_BUILD_EFI_DRIVERS "Build independent x86-64 EFI filesystem drivers" OFF)
+set(FILESYSTEMS_FAT_EFI_PREBUILT_DIR "" CACHE PATH
+    "Directory containing runtime-qualified FAT12/FAT16 EFI drivers")
+set(FILESYSTEMS_FAT_KO_REFERENCE_DIR "" CACHE PATH
+    "Directory containing FAT12/FAT16 kernel modules for the qualified test kernel")
 
 # Application-owned executable and resources live in the native namespace.
 # Linux may keep a minimal /usr/bin launcher and distro-specific integration,
@@ -322,6 +326,33 @@ if(UNIX)
             DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
         install(FILES "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
             DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/experimental")
+
+        # The release build consumes the *same* images used in the OVMF
+        # runtime tests. For independent source builds, build them locally.
+        if(FILESYSTEMS_FAT_EFI_PREBUILT_DIR)
+            set(FILESYSTEMS_FAT_EFI_DIR "${FILESYSTEMS_FAT_EFI_PREBUILT_DIR}")
+        else()
+            set(FILESYSTEMS_FAT_EFI_DIR "${FILESYSTEMS_EFI_OUTPUT}/fat")
+            file(GLOB_RECURSE FILESYSTEMS_FAT_EFI_SOURCES CONFIGURE_DEPENDS
+                "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/efi/*")
+            add_custom_command(
+                OUTPUT "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
+                       "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi"
+                COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-fat12-fat16-efi.sh"
+                    "${FILESYSTEMS_FAT_EFI_DIR}"
+                DEPENDS ${FILESYSTEMS_FAT_EFI_SOURCES}
+                    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-fat12-fat16-efi.sh"
+                VERBATIM)
+            add_custom_target(filesystems-fat-efi-drivers ALL DEPENDS
+                "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
+                "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi")
+        endif()
+        install(FILES "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
+                      "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi"
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
+        install(FILES native/filesystems/fat/efi/EDK2-LICENSE.txt
+                      native/filesystems/fat/efi/EDK2-CREDITS.txt
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
         install(FILES
             firmware/uefi/filesystems/LICENSE.txt
             firmware/uefi/filesystems/LICENSE_GPL.txt
@@ -691,6 +722,24 @@ if(UNIX)
     install(PROGRAMS packaging/linux/native-module-helper.sh
         DESTINATION "lib/filesystems"
         RENAME native-module-helper)
+    # Source and build helper are application-owned. The build helper never
+    # installs or loads a kernel module. These two reference .ko files were
+    # built for the qualification VM's kernel and are not generic host drivers.
+    install(DIRECTORY "native/filesystems/fat/linux/"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat/kernel"
+        PATTERN "*.o" EXCLUDE PATTERN "*.ko" EXCLUDE
+        PATTERN "*.mod" EXCLUDE PATTERN "*.mod.c" EXCLUDE
+        PATTERN "Module.symvers" EXCLUDE PATTERN "modules.order" EXCLUDE)
+    install(FILES native/filesystems/fat/DESIGN.md
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat")
+    install(PROGRAMS packaging/linux/fat-kernel-build.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME fat-kernel-build)
+    if(FILESYSTEMS_FAT_KO_REFERENCE_DIR)
+        install(FILES "${FILESYSTEMS_FAT_KO_REFERENCE_DIR}/fat12.ko"
+                      "${FILESYSTEMS_FAT_KO_REFERENCE_DIR}/fat16.ko"
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/Kernel/6.12.107-qemu-test-only")
+    endif()
     install(PROGRAMS packaging/linux/kernel-module-helper.sh
         DESTINATION "lib/filesystems"
         RENAME kernel-module-helper)

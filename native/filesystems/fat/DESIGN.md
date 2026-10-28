@@ -48,6 +48,29 @@ reading and root-file fragmentation analysis. Its helper installs only that
 module. FAT12/16's V3/V4 operations are not a FAT32 implementation. The
 separate defrag ABI supports journalled FAT32 relocation and recovery.
 
+## Driver distribution
+
+The release package contains the FAT12 and FAT16 EFI drivers tested with
+OVMF in `/Programs/Filesystems/Resources/EFI/drivers_x64/`. It also contains
+the exact Linux 6.12.107 QEMU test modules under
+`/Programs/Filesystems/Resources/Kernel/6.12.107-qemu-test-only/`. Those
+reference modules match the qualification VM's kernel configuration; they
+must not be assumed compatible with a different host kernel.
+
+The corresponding Linux sources and `fat-kernel-build` helper are included in
+the package. To build one module for a compatible, prepared kernel build tree:
+
+```
+/Programs/Filesystems/Helpers/fat-kernel-build 12 OUTPUT_DIRECTORY KERNEL_BUILD_DIRECTORY
+```
+
+Replace `12` with `16` for FAT16. The kernel build directory may be omitted
+to use the running kernel's headers. The helper writes only the selected
+module into an existing output directory; it does not install or load it.
+The kernel must provide a compatible FAT core. Building against another kernel
+does not itself establish compatibility; the included runtime qualification
+uses the specified 6.12.107 kernel and disposable virtual disks.
+
 ## Qualification and remaining work
 
 Use independent formatters, checkers and readers as well as disposable-image

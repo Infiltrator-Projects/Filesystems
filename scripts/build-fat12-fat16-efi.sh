@@ -27,7 +27,7 @@ cp -a "$root/native/filesystems/fat/efi/FatPkg" "$work/edk2/FatPkg"
   set -u
   build -a X64 -t GCC -b RELEASE -p FatPkg/FatPkg.dsc
 )
-out="$root/build-fat-efi"
+out="${1:-$root/build-fat-efi}"
 mkdir -p "$out"
 for type in 12 16; do
   # EDK2 uses upper-case BASE_NAME and also emits staging duplicates.

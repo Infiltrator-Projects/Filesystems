@@ -18,6 +18,8 @@ with tempfile.TemporaryDirectory() as name:
     subprocess.run(['dpkg-deb', '-x', str(args.package), str(root)], check=True)
     expected = {
         'Programs/Filesystems/Resources/EFI/drivers_x64/ext4_x64.efi',
+        'Programs/Filesystems/Resources/EFI/drivers_x64/FAT12.efi',
+        'Programs/Filesystems/Resources/EFI/drivers_x64/FAT16.efi',
         'Programs/Filesystems/Resources/EFI/experimental/OFS_x64.efi',
     }
     actual = {p.relative_to(root).as_posix() for p in root.rglob('*')

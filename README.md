@@ -221,6 +221,14 @@ kernel `.ko` and EFI `.efi` compilation/deployment remain independently
 qualified operations: clicking **Install FAT16** or **Install OFS** is not
 permission to mutate a kernel, EFI partition or boot configuration.
 
+The package includes FAT12/FAT16 EFI binaries tested with OVMF, their Linux
+kernel build sources, and the exact Linux 6.12.107 QEMU test modules. Those
+reference `.ko` files are specific to the test kernel; the included
+`/Programs/Filesystems/Helpers/fat-kernel-build` can build a selected module
+against a compatible prepared kernel tree. See the packaged
+`/Programs/Filesystems/Sources/fat/DESIGN.md` for the build and qualification
+limits.
+
 ## OFS standalone module without losing kernel or EFI outputs
 
 OFS now has a **parallel** read-only `OFS.so` drop-in adapter assembled

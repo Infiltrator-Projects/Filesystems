@@ -17,7 +17,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  fat-driver-runtime:
+    uses: ./.github/workflows/fat12-fat16-runtime.yml
+    with:
+      sha: ${{ github.sha }}
+
   desktop-integration:
+    needs: fat-driver-runtime
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -33,13 +39,26 @@ jobs:
             build-essential cmake ninja-build pkg-config libgtk-3-dev dpkg-dev python3 gnu-efi binutils \
             policykit-1 udev libudisks2-0 gnome-disk-utility xvfb xauth util-linux-extra
 
+      - name: Retrieve the EFI drivers that passed OVMF tests
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: fat12-fat16-efi-experimental
+          path: ${{ runner.temp }}/qualified-fat-efi
+
+      - name: Retrieve the kernel modules tested in QEMU
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: fat12-fat16-ko-6.12.107-qemu-only
+          path: ${{ runner.temp }}/qualified-fat-ko
+
       - name: Build and test the single main package
         run: |
-          cmake -S . -B build-desktop -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DFILESYSTEMS_BUILD_EFI_DRIVERS=ON
+          cmake -S . -B build-desktop -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DFILESYSTEMS_BUILD_EFI_DRIVERS=ON -DFILESYSTEMS_FAT_EFI_PREBUILT_DIR="$RUNNER_TEMP/qualified-fat-efi" -DFILESYSTEMS_FAT_KO_REFERENCE_DIR="$RUNNER_TEMP/qualified-fat-ko"
           cmake --build build-desktop
           ctest --test-dir build-desktop --output-on-failure
           cpack --config build-desktop/CPackConfig.cmake -G DEB -B dist-desktop
           python3 tests/efi_payload_test.py --package dist-desktop/Filesystems-$(cat VERSION)-amd64.deb
+          python3 tests/fat_driver_payload_test.py --package dist-desktop/Filesystems-$(cat VERSION)-amd64.deb --efi-dir "$RUNNER_TEMP/qualified-fat-efi" --ko-dir "$RUNNER_TEMP/qualified-fat-ko"
           python3 tests/application_layout_test.py
 
       - name: Prove OFS standalone compile/install and manual drag-in on disposable runner
@@ -534,6 +553,7 @@ jobs:
           test "$(dpkg-deb -f "dist/$deb" Version)" = "$version"
           python3 tests/udisks_display_test.py --package "dist/$deb"
           python3 tests/efi_payload_test.py --package "dist/$deb"
+          python3 tests/fat_driver_payload_test.py --package "dist/$deb"
           dpkg-deb -c "dist/$deb" > package-contents.txt
           grep -Fq './usr/bin/fsinspect' package-contents.txt
           grep -Fq '/desktop/templates/ofs.so' package-contents.txt

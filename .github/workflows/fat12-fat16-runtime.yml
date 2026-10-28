@@ -8,8 +8,15 @@ on:
       - 'tests/fat_kernel_runtime_init.sh'
       - 'tests/fat_linux_width_test.c'
       - 'tests/fat_boundary_fixture.py'
+      - 'packaging/linux/fat-kernel-build.sh'
       - '.github/workflows/fat12-fat16-runtime.yml'
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      sha:
+        description: Exact commit SHA to qualify
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -18,6 +25,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ inputs.sha || github.sha }}
       - name: Install build and isolated firmware test tools
         run: |
           sudo apt-get update
@@ -51,6 +60,8 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ inputs.sha || github.sha }}
       - name: Install kernel, QEMU and independent FAT media tools
         run: |
           sudo apt-get update
@@ -88,9 +99,8 @@ jobs:
           set -euo pipefail
           stage="$RUNNER_TEMP/fat-variants"
           mkdir -p "$stage"
-          cp -a native/filesystems/fat/linux/. "$stage/"
-          cp "$stage/Makefile.variants" "$stage/Makefile"
-          make -C "$RUNNER_TEMP/linux-fat" M="$stage" modules
+          bash packaging/linux/fat-kernel-build.sh 12 "$stage" "$RUNNER_TEMP/linux-fat"
+          bash packaging/linux/fat-kernel-build.sh 16 "$stage" "$RUNNER_TEMP/linux-fat"
           test "$(modinfo -F name "$stage/fat12.ko")" = fat12
           test "$(modinfo -F name "$stage/fat16.ko")" = fat16
       - name: Create independent images and isolated initramfs
