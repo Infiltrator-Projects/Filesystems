@@ -90,6 +90,24 @@ portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
 
+## Independent Amiga FFS.so reader (development branch)
+
+The independent FFS drop-in uses this repository's own FFS DOSType,
+checksum, international-name folding and block-pointer semantics; it is
+**not** a renamed OFS engine. It reads classic DOS1, international DOS3 and
+directory-cache DOS5 media, with explicit 512..32768-byte filesystem block
+geometry, directory hash lookup/enumeration, raw data blocks and file-header
+extension pointers. The only exported filesystem API is read-only V1.
+DOS7/LNFS, MUFS, writes, formatting, allocation, defragmentation, root
+deployment, boot loading and historic-OS interoperability remain unqualified.
+
+Its standalone `FFS.so` build, root-owned `/System/Filesystems/FFS.so`
+installer and disposal-only corruption/geometry tests are independent of
+the existing `ffs.ko` Linux driver. The installer lives under
+`/Programs/Filesystems/Helpers/ffs-module-helper` and compiles from
+`/Programs/Filesystems/Sources/ffs/`. This feature is not a claim of
+finished `.ko` or `.efi` support; the current Linux driver is unchanged.
+
 ## Current SCO BFS.so implementation (restricted in-place writes)
 
 `BFS.so` is an independent freestanding module for **SCO UnixWare Boot File

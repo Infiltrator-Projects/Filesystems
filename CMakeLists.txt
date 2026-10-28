@@ -471,6 +471,9 @@ if(UNIX)
         native/filesystems/ffs/core/ffs_primitives.c
         native/filesystems/ffs/core/ffs_primitives.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ffs/core")
+    install(PROGRAMS packaging/linux/ffs-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME ffs-module-helper)
 
     # The FAT defrag engine lives in each independently installable module.
     # The host provides process, device-safety, and generic Common services;
