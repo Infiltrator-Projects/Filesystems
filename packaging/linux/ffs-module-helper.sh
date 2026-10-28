@@ -49,6 +49,12 @@ check_module() {
     "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
         grep -F 'IFS-MODULE:ffs:1' >/dev/null ||
         fatal "FFS embedded format identity missing or incorrect"
+    "$elf_checker" -Ws "$file" |
+        grep -F 'infiltrator_filesystem_module_v2' >/dev/null ||
+        fatal "FFS V2 entry point missing"
+    "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
+        grep -F 'IFS-MODULE:ffs:2' >/dev/null ||
+        fatal "FFS V2 embedded identity missing"
     if "$elf_checker" -d "$file" | grep -Eq '[(]NEEDED[)]'; then
         fatal "FFS.so must not depend on any host shared library"
     fi

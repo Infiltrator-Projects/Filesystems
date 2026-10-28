@@ -41,7 +41,9 @@ jobs:
             -o /tmp/FFS.so
           readelf -h /tmp/FFS.so | grep -Eq 'Type:.*DYN'
           readelf -Ws /tmp/FFS.so | grep -F 'infiltrator_filesystem_module_v1'
+          readelf -Ws /tmp/FFS.so | grep -F 'infiltrator_filesystem_module_v2'
           readelf -p .ifsmeta /tmp/FFS.so | grep -F 'IFS-MODULE:ffs:1'
+          readelf -p .ifsmeta /tmp/FFS.so | grep -F 'IFS-MODULE:ffs:2'
           if readelf -d /tmp/FFS.so | grep -Eq '[(]NEEDED[)]'; then
             echo 'FFS.so illegally depends on a host library' >&2
             exit 1
