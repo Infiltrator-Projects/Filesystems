@@ -45,6 +45,7 @@ struct ProbeResult {
     SupportState fat32_dropin_state = SupportState::Incomplete;
     // Independent EXT2.so state; never masks or replaces ext2.ko state.
     SupportState ext2_dropin_state = SupportState::Incomplete;
+    SupportState minix_dropin_state = SupportState::Incomplete;
 };
 
 void invalidate_probe_cache();
