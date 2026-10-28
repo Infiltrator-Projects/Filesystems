@@ -833,8 +833,10 @@ if(BUILD_TESTING)
     if(TARGET filesystems-ffs-dropin)
         add_executable(filesystems-ffs-dropin-test
             tests/ffs_dropin_module_test.c)
+        # The test constructs its disposable fixture using canonical
+        # checksum/hash functions that are intentionally hidden inside FFS.so.
         target_link_libraries(filesystems-ffs-dropin-test PRIVATE
-            filesystems-ffs-dropin)
+            filesystems-ffs-dropin infiltratr-fs-ffs-core)
         filesystems_configure(filesystems-ffs-dropin-test)
         add_test(NAME filesystems-ffs-dropin
             COMMAND filesystems-ffs-dropin-test)
