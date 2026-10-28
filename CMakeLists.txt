@@ -437,6 +437,41 @@ if(UNIX)
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME ofs-module-helper)
 
+    # Independent AmigaDOS FFS raw-data reader. No OFS engine is reused.
+    # This does NOT install or replace ffs.ko or a UEFI driver.
+    add_library(filesystems-ffs-dropin SHARED
+        native/filesystems/ffs/module/ffs_module.c
+        native/filesystems/ffs/core/ffs_core.c
+        native/filesystems/ffs/core/ffs_primitives.c)
+    set_target_properties(filesystems-ffs-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "FFS")
+    target_include_directories(filesystems-ffs-dropin PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ffs/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ffs/core")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-ffs-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector
+            -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-ffs-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-ffs-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-ffs-dropin)
+    install(FILES
+        native/filesystems/ffs/module/ffs_module.c
+        native/filesystems/ffs/module/ffs_module.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ffs/module")
+    install(FILES
+        native/filesystems/ffs/core/ffs_core.c
+        native/filesystems/ffs/core/ffs_core.h
+        native/filesystems/ffs/core/ffs_primitives.c
+        native/filesystems/ffs/core/ffs_primitives.h
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ffs/core")
+
     # The FAT defrag engine lives in each independently installable module.
     # The host provides process, device-safety, and generic Common services;
     # no host runtime or Common implementation is linked into the module.
@@ -790,6 +825,16 @@ if(BUILD_TESTING)
         filesystems_configure(filesystems-ofs-dropin-test)
         add_test(NAME filesystems-ofs-dropin
             COMMAND filesystems-ofs-dropin-test)
+    endif()
+
+    if(TARGET filesystems-ffs-dropin)
+        add_executable(filesystems-ffs-dropin-test
+            tests/ffs_dropin_module_test.c)
+        target_link_libraries(filesystems-ffs-dropin-test PRIVATE
+            filesystems-ffs-dropin)
+        filesystems_configure(filesystems-ffs-dropin-test)
+        add_test(NAME filesystems-ffs-dropin
+            COMMAND filesystems-ffs-dropin-test)
     endif()
 
     if(TARGET filesystems-fat16-module)
