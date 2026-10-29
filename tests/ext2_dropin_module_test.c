@@ -128,6 +128,11 @@ int main(void)
     store_le32(gd + 0x04U, 4U);
     store_le32(gd + 0x08U, 5U);
 
+    /* EXT2 bitmap: block 7 is bit 6 of group zero (first_data=1).
+     * A real writer must refuse data blocks not marked allocated.
+     */
+    disk.bytes[BLOCK_SIZE * 3U] |= 1U << 6;
+
     make_inode(inode_table + 128U, 0x41EDU, BLOCK_SIZE, 6U);
     make_inode(inode_table + 256U, 0x81A4U, 5U, 7U);
 
@@ -208,6 +213,44 @@ int main(void)
                   sizeof(scratch), &read_count) != IFS_EXT2_OK ||
         memcmp(data, "hAllo", 5U) != 0)
         return fail("written bytes did not read back");
+
+    /* Real EXT2 metadata must never be overwritten by a corrupt file
+     * block pointer, even if that address is inside the partition.
+     */
+    {
+        const unsigned before = disk.writes;
+        store_le32(inode_table + 256U + 0x28U, 5U); /* inode table block */
+        if (api->write_existing(&volume, 3U, 0U, "X", 1U,
+                                scratch, sizeof(scratch), &written)
+              == IFS_EXT2_OK || disk.writes != before)
+            return fail("metadata block pointer allowed overwrite");
+        store_le32(inode_table + 256U + 0x28U, 7U);
+
+        disk.bytes[BLOCK_SIZE * 3U] &= (unsigned char)~(1U << 6);
+        if (api->write_existing(&volume, 3U, 0U, "X", 1U,
+                                scratch, sizeof(scratch), &written)
+              == IFS_EXT2_OK || disk.writes != before)
+            return fail("free/unallocated data block allowed overwrite");
+        disk.bytes[BLOCK_SIZE * 3U] |= 1U << 6;
+
+        /* First data block valid, second is a sparse hole: preflight
+         * the whole request and refuse before modifying the first.
+         */
+        store_le32(inode_table + 256U + 0x04U, 1100U);
+        if (api->write_existing(&volume, 3U, 0U, "Y", 1U,
+                                scratch, sizeof(scratch), &written)
+               != IFS_EXT2_OK)
+            return fail("updated allocated-file metadata not readable");
+        const unsigned after_one = disk.writes;
+        unsigned char span[1100];
+        memset(span, 'Z', sizeof(span));
+        if (api->write_existing(&volume, 3U, 0U, span,
+                                sizeof(span), scratch, sizeof(scratch),
+                                &written) == IFS_EXT2_OK ||
+            disk.writes != after_one)
+            return fail("sparse tail caused partial write");
+        store_le32(inode_table + 256U + 0x04U, 5U);
+    }
 
     io.volume_bytes = sizeof(disk.bytes) - 1U;
     if (api->mount(&volume, &io, 1) == IFS_EXT2_OK)

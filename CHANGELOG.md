@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.103 — 2026-10-29 (EXT2.so independent-media safety qualification)
+
+- Preflight entire EXT2 existing-file overwrite ranges against the actual block bitmap and reserved group metadata before any mutation, refusing forged or unallocated block references.
+- Extend synthetic regression tests for unsafe allocation metadata and unallocated data targets.
+- Compile the independent freestanding EXT2.so and qualify cross-block read/write/flush persistence using a disposable mke2fs/debugfs image; verify results independently with debugfs, cmp and e2fsck.
+- No change to EFI, kernel registration, ESP, physical block devices, or unsupported EXT2 create/delete/resize operations.
+
 ## 0.5.101 — 2026-10-29 (single-file filesystem architecture documentation)
 
 - Record one authoritative `.so` per filesystem identity as the final distributed driver for BOOT, the InfiltratorOS kernel and applications.

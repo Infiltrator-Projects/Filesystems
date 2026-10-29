@@ -22,6 +22,10 @@ jobs:
   minix-standalone:
     uses: ./.github/workflows/minix-standalone.yml
 
+  # Block publication until independently formatted EXT2 media passes.
+  ext2-independent:
+    uses: ./.github/workflows/ext2-independent-media.yml
+
   fat-driver-runtime:
     uses: ./.github/workflows/fat12-fat16-runtime.yml
     with:
@@ -504,6 +508,7 @@ jobs:
   publish-release:
     needs:
       - minix-standalone
+      - ext2-independent
       - desktop-integration
       - source-boundary
       - linux
