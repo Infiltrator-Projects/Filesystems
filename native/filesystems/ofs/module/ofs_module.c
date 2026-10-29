@@ -83,17 +83,14 @@ static int module_overwrite_existing(IfsOfsDropInVolume *volume,
 {
     IfsOfsEfiVolume refreshed = {0};
     uint8_t block[512], persisted[512];
-    uint32_t index, block_number, expected_sum, i;
-    uint64_t device_offset;
+    uint32_t block_number, expected_sum, done = 0U;
     const uint8_t *data = (const uint8_t *)source;
     if (!volume || !file || !source || !write_at || !sync ||
         !volume->io.read_at || file->type != IFS_OFS_EFI_FILE ||
-        length == 0U || position >= file->size ||
-        length > file->size - position || length > 488U ||
-        (position % 488U) + length > 488U)
+        !length || position >= file->size ||
+        length > file->size - position)
         return -1;
-    /* Re-detect the same media identity before permitting any mutation.
-     * A stale mount after hot-swap or format change must fail closed. */
+    /* Re-detect the same media identity before permitting any mutation. */
     if (volume->reader.opaque != &volume->io ||
         volume->reader.read_block != block_read ||
         ifs_ofs_efi_mount(&refreshed, volume->reader.blocks,
@@ -101,34 +98,55 @@ static int module_overwrite_existing(IfsOfsDropInVolume *volume,
         refreshed.root != volume->reader.root ||
         refreshed.variant_flags != volume->reader.variant_flags)
         return -1;
-    if (ifs_ofs_efi_resolve_file_block(&volume->reader, file, position,
-                                       &block_number, block) != 0)
-        return -1;
-    device_offset = (uint64_t)block_number * UINT64_C(512);
-    if (device_offset > volume->io.volume_bytes ||
-        UINT64_C(512) > volume->io.volume_bytes - device_offset)
-        return -1;
-    index = 24U + position % 488U;
-    for (i = 0U; i < length; ++i)
-        block[index + i] = data[i];
-    expected_sum = ifs_ofs_checksum_word_value(block, 512U, 5U);
-    block[20] = (uint8_t)(expected_sum >> 24);
-    block[21] = (uint8_t)(expected_sum >> 16);
-    block[22] = (uint8_t)(expected_sum >> 8);
-    block[23] = (uint8_t)expected_sum;
-    if (ifs_ofs_block_checksum(block, 512U) != 0U)
-        return -1;
-    /* Host must exclusively own/unmount or lock the volume. Failure can
-     * leave one block partially written; never advertise atomic writes. */
-    if (write_at(volume->io.context, device_offset, block, 512U) != 0 ||
-        sync(volume->io.context) != 0 ||
-        volume->io.read_at(volume->io.context, device_offset,
-                           persisted, 512U) != 0 ||
-        ifs_ofs_block_checksum(persisted, 512U) != 0U)
-        return -1;
-    for (i = 0U; i < 512U; ++i)
-        if (block[i] != persisted[i])
+    /* Validate the *entire* destination chain first. An invalid trailing
+     * block must never cause an earlier valid block to be overwritten. */
+    for (uint32_t checked = 0U; checked < length;) {
+        uint32_t at = position + checked;
+        uint32_t count = 488U - at % 488U;
+        uint64_t offset;
+        if (count > length - checked) count = length - checked;
+        if (ifs_ofs_efi_resolve_file_block(&volume->reader, file, at,
+                                           &block_number, block) != 0)
             return -1;
+        offset = (uint64_t)block_number * UINT64_C(512);
+        if (offset > volume->io.volume_bytes ||
+            UINT64_C(512) > volume->io.volume_bytes - offset)
+            return -1;
+        checked += count;
+    }
+    /* Commit each validated data block. The host must hold the volume
+     * exclusively; I/O failure may leave already-written blocks modified.
+     * There is no implied transaction or crash-atomicity guarantee. */
+    while (done < length) {
+        uint32_t at = position + done;
+        uint32_t count = 488U - at % 488U;
+        uint64_t device_offset;
+        if (count > length - done) count = length - done;
+        if (ifs_ofs_efi_resolve_file_block(&volume->reader, file, at,
+                                           &block_number, block) != 0)
+            return -1;
+        device_offset = (uint64_t)block_number * UINT64_C(512);
+        if (device_offset > volume->io.volume_bytes ||
+            UINT64_C(512) > volume->io.volume_bytes - device_offset)
+            return -1;
+        for (uint32_t i = 0; i < count; ++i)
+            block[24U + at % 488U + i] = data[done + i];
+        expected_sum = ifs_ofs_checksum_word_value(block, 512U, 5U);
+        block[20] = (uint8_t)(expected_sum >> 24);
+        block[21] = (uint8_t)(expected_sum >> 16);
+        block[22] = (uint8_t)(expected_sum >> 8);
+        block[23] = (uint8_t)expected_sum;
+        if (ifs_ofs_block_checksum(block, 512U) != 0U ||
+            write_at(volume->io.context, device_offset, block, 512U) != 0 ||
+            sync(volume->io.context) != 0 ||
+            volume->io.read_at(volume->io.context, device_offset,
+                               persisted, 512U) != 0 ||
+            ifs_ofs_block_checksum(persisted, 512U) != 0U)
+            return -1;
+        for (uint32_t i = 0; i < 512U; ++i)
+            if (persisted[i] != block[i]) return -1;
+        done += count;
+    }
     return 0;
 }
 __attribute__((used,section(".ifsmeta")))
