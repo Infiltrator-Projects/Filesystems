@@ -633,6 +633,17 @@ if(UNIX)
         endif()
     endif()
     filesystems_configure(filesystems-exfat-dropin)
+    # Source-first installation through the Filesystems selector; the package
+    # does not automatically place a driver onto /System.
+    install(DIRECTORY native/filesystems/exfat/module/
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/exfat/native/filesystems/exfat/module"
+        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    install(DIRECTORY native/filesystems/fat/portable/
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/exfat/native/filesystems/fat/portable"
+        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    install(PROGRAMS packaging/linux/exfat-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME exfat-module-helper)
 
     # Independent EXT2.so: canonical read/directory engine plus constrained
     # existing-block overwrites. Does not replace ext2.ko or EFI.
