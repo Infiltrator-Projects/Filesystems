@@ -199,6 +199,12 @@ int main(void)
             writes != 1U)
             return fail("OFS V2 accepted corrupt data chain");
         fixture();
+        put(disk[0], 0, UINT32_C(0x444f5301)); /* Hot-swapped FFS after mount. */
+        if (writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       write_at, sync_volume) == 0 ||
+            writes != 1U)
+            return fail("OFS V2 wrote stale/foreign-format mounted media");
+        fixture();
         if (module->mount(&volume, &io) != 0 ||
             module->lookup(&volume, &(IfsOfsEfiEntry){ROOT, 0, IFS_OFS_EFI_DIRECTORY},
                            (const uint8_t *)"boot", 4, &directory) != 0 ||
