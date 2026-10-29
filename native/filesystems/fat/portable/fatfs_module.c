@@ -14,6 +14,9 @@
 #elif defined(IFS_FATFS_ONLY) && IFS_FATFS_ONLY == 16
 #define REQUIRED_FS FS_FAT16
 #define FS_ID "fat16"
+#elif defined(IFS_FATFS_ONLY) && IFS_FATFS_ONLY == 32
+#define REQUIRED_FS FS_FAT32
+#define FS_ID "fat32"
 #elif defined(IFS_FATFS_ONLY) && IFS_FATFS_ONLY == 64
 #define REQUIRED_FS FS_EXFAT
 #define FS_ID "exfat"
@@ -155,8 +158,13 @@ static int mounted_bounds_valid(void)
     uint64_t sectors,limit=device.partition_bytes/device.sector_bytes;
     uint64_t data_end;
     if ((uint64_t)volume.volbase>=limit ||
-        volume.fatbase<volume.volbase || volume.dirbase<=volume.fatbase ||
-        volume.database<=volume.dirbase ||
+        volume.fatbase<volume.volbase ||
+#if IFS_FATFS_ONLY == 32
+        volume.database<=volume.fatbase ||
+        volume.dirbase<2u || volume.dirbase>=volume.n_fatent ||
+#else
+        volume.dirbase<=volume.fatbase || volume.database<=volume.dirbase ||
+#endif
         disk_read(0,bpb,volume.volbase,1)!=RES_OK) return 0;
     sectors=(uint64_t)bpb[19] | (uint64_t)bpb[20]<<8;
     if (!sectors)
@@ -180,6 +188,8 @@ static int attach(const IfsFatfsIo *io)
         volume.n_fatent-2u>=4085u) {
 #elif IFS_FATFS_ONLY == 16
         volume.n_fatent-2u>=65525u) {
+#elif IFS_FATFS_ONLY == 32
+        volume.n_fatent-2u<65525u) {
 #else
         volume.n_fatent-2u<1u) {
 #endif
@@ -264,8 +274,7 @@ static int rename_directory_safe(const char *from,const char *to)
     if (f_stat(from,&source_info)!=FR_OK) return 0;
     if (!(source_info.fattrib & AM_DIR)) return 1;
 #if IFS_FATFS_ONLY == 64
-    /* ExFAT has no conventional '..' entries. Fail closed for directory
-     * moves until cluster-based ancestry is implemented and tested. */
+    /* No conventional parent entries on exFAT; refuse directory moves. */
     return 0;
 #endif
     if (f_opendir(&source_dir,from)!=FR_OK) return 0;
@@ -290,7 +299,11 @@ static int rename_directory_safe(const char *from,const char *to)
     if (f_opendir(&parent_dir,parent)!=FR_OK) return 0;
     parent_cluster=parent_dir.obj.sclust;
     if (f_closedir(&parent_dir)!=FR_OK) return 0;
-    for(DWORD steps=0;parent_cluster!=0u && steps<volume.n_fatent;++steps) {
+    for(DWORD steps=0; parent_cluster!=0u &&
+#if IFS_FATFS_ONLY == 32
+        parent_cluster!=volume.dirbase &&
+#endif
+        steps<volume.n_fatent; ++steps) {
         LBA_t first_sector;
         if(parent_cluster==source_cluster || parent_cluster<2u ||
            parent_cluster>=volume.n_fatent) return 0;
@@ -298,13 +311,26 @@ static int rename_directory_safe(const char *from,const char *to)
         if(disk_read(0,sector,first_sector,1)!=RES_OK ||
            sector[0]!='.' || sector[1]!=' ' || !(sector[11]&AM_DIR) ||
            sector[32]!='.' || sector[33]!='.' || sector[34]!=' ' ||
-           !(sector[43]&AM_DIR) || sector[20] || sector[21] ||
-           sector[52] || sector[53] ||
-           ((DWORD)sector[26] | (DWORD)sector[27]<<8)!=parent_cluster)
+           !(sector[43]&AM_DIR) ||
+#if IFS_FATFS_ONLY == 32
+           (((DWORD)sector[20]<<16 | (DWORD)sector[21]<<24 |
+             (DWORD)sector[26] | (DWORD)sector[27]<<8)!=parent_cluster) ||
+#else
+           sector[20] || sector[21] || sector[52] || sector[53] ||
+           ((DWORD)sector[26] | (DWORD)sector[27]<<8)!=parent_cluster ||
+#endif
+           0)
             return 0;
         parent_cluster=(DWORD)sector[58] | (DWORD)sector[59]<<8;
+#if IFS_FATFS_ONLY == 32
+        parent_cluster|=(DWORD)sector[52]<<16 | (DWORD)sector[53]<<24;
+#endif
     }
+#if IFS_FATFS_ONLY == 32
+    return parent_cluster==0u || parent_cluster==volume.dirbase;
+#else
     return parent_cluster==0u;
+#endif
 }
 static int rename_path(const char *from,const char *to) {
     return selected && from && to && rename_directory_safe(from,to) &&
@@ -401,10 +427,33 @@ static int preview_matches_format(void)
 #if IFS_FATFS_ONLY == 12
     return clusters>0u && clusters<4085u;
 #else
-    /* FatFs classifies exactly 4085 clusters as FAT12, while Linux and
-     * EDK2 classify it as FAT16. Reject that ambiguous boundary BEFORE any
-     * format write instead of producing media our own driver cannot mount. */
+    uint64_t sectors=boot16(19u), root_sectors, overhead, clusters;
+    unsigned bytes=boot16(11u), sectors_per_cluster=preview_boot[13u];
+    unsigned reserved=boot16(14u), fats=preview_boot[16u];
+    unsigned roots=boot16(17u), fat_sectors=boot16(22u);
+#if IFS_FATFS_ONLY == 32
+    fat_sectors=boot32(36u);
+#endif
+    if (!preview_boot_seen || preview_boot[510]!=0x55u || preview_boot[511]!=0xaau ||
+        bytes!=device.sector_bytes || !sectors_per_cluster ||
+        (sectors_per_cluster & (sectors_per_cluster-1u)) ||
+        !reserved || !fats || !fat_sectors) return 0;
+#if IFS_FATFS_ONLY == 32
+    if (roots || boot16(19u) || boot16(22u) || boot32(44u)<2u) return 0;
+#else
+    if (!roots) return 0;
+#endif
+    if (!sectors) sectors=boot32(32u);
+    root_sectors=((uint64_t)roots*32u+bytes-1u)/bytes;
+    overhead=(uint64_t)reserved+(uint64_t)fats*fat_sectors+root_sectors;
+    if (sectors<=overhead || sectors>device.partition_bytes/bytes) return 0;
+    clusters=(sectors-overhead)/sectors_per_cluster;
+#if IFS_FATFS_ONLY == 12
+    return clusters>0u && clusters<4085u;
+#elif IFS_FATFS_ONLY == 16
     return clusters>4085u && clusters<65525u;
+#else
+    return clusters>=65525u && clusters<UINT32_C(0x0ffffff0);
 #endif
 #endif
 }
@@ -414,6 +463,8 @@ static int format_volume(const IfsFatfsIo *io,uint32_t cluster_bytes)
     MKFS_PARM options={
 #if IFS_FATFS_ONLY == 64
         FM_EXFAT|FM_SFD,
+#elif IFS_FATFS_ONLY == 32
+        FM_FAT32|FM_SFD,
 #else
         FM_FAT|FM_SFD,
 #endif
