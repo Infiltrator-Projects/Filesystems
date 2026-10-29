@@ -28,10 +28,10 @@ jobs:
             "$portable/ff.c" "$portable/ffunicode.c" "$portable/fatfs_libc.c" \
             -o /tmp/ifs-exfat/exFAT.so
           readelf -h /tmp/ifs-exfat/exFAT.so | grep -Eq 'Type:.*DYN'
-          for symbol in infiltrator_filesystem_module_v3 infiltrator_filesystem_module_v4; do
+          for symbol in infiltrator_filesystem_module_v3 infiltrator_filesystem_module_v4 infiltrator_filesystem_module_v5; do
             readelf -Ws /tmp/ifs-exfat/exFAT.so | grep -F "$symbol"
           done
-          for version in 3 4; do
+          for version in 3 4 5; do
             readelf -p .ifsmeta /tmp/ifs-exfat/exFAT.so | grep -F "IFS-MODULE:exfat:$version"
           done
           ! readelf -d /tmp/ifs-exfat/exFAT.so | grep -Eq '[(]NEEDED[)]'
@@ -46,7 +46,7 @@ jobs:
           mkfs.exfat -n SOQUAL "$d/exfat.img"
           mkfs.fat -F 32 -I "$d/fat32.img"
           cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
-            -I native/filesystems/fat/portable \
+            -I native/filesystems/fat/portable -I native/filesystems/exfat/module \
             tests/exfat_so_realimage_test.c -ldl -o /tmp/ifs-exfat/interop
           /tmp/ifs-exfat/interop /tmp/ifs-exfat/exFAT.so "$d/exfat.img" "$d/fat32.img"
           fsck.exfat -n "$d/exfat.img"
