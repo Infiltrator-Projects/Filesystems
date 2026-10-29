@@ -563,6 +563,20 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
         }
     }
 
+    if (descriptor.id == "exfat") {
+        // Standalone exFAT.so is independent of Linux exfat.ko. Keep
+        // separate readiness, do not override the native driver status.
+        const std::string helper = application_helper("exfat-module-helper");
+        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
+            const CommandResult status = run_command({helper, "status"});
+            if (status.succeeded() &&
+                status.stdout_text.find("installed") != std::string::npos)
+                result.exfat_dropin_state = SupportState::Ready;
+            else if (status.spawned && status.exit_status == 3)
+                result.exfat_dropin_state = SupportState::Installable;
+        }
+    }
+
     if (descriptor.id == "minix") {
         // MINIX.so is not Linux minix.ko.
         const std::string helper = application_helper("minix-module-helper");
