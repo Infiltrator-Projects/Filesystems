@@ -16,6 +16,21 @@ compiler=/usr/bin/cc
 elf_checker=/usr/bin/readelf
 
 fatal() { echo "FAT16: $*" >&2; exit 1; }
+
+# An independently published FAT16 package owns its sole .so.
+# Never overwrite or unlink a package-owned driver from this GUI's
+# source/compiler helper. The package must be upgraded/removed by its owner.
+refuse_package_owned_module() {
+    local package="infiltrator-filesystem-fat16"
+    [[ -x /usr/bin/dpkg-query ]] || return 0
+    if /usr/bin/dpkg-query -W -f='${Status}' "$package" 2>/dev/null |
+       grep -Fxq 'install ok installed'; then
+        fatal "FAT16.so is managed by $package; use the independent driver package, not Filesystems' legacy compiler helper"
+    fi
+    if /usr/bin/dpkg-query -S -- "$module" >/dev/null 2>&1; then
+        fatal "FAT16.so is already owned by a Debian package; refusing overwrite or removal"
+    fi
+}
 [[ $# -eq 1 ]] || fatal "usage: fat16-module-helper install|remove|status"
 
 safe_directory() {
@@ -96,6 +111,7 @@ case "$1" in
         ;;
     install)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
+        refuse_package_owned_module
         safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
@@ -155,6 +171,7 @@ case "$1" in
         ;;
     remove)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
+        refuse_package_owned_module
         safe_directory
         [[ -e "$module" ]] ||
             { printf 'FAT16 already absent\n'; exit 0; }
