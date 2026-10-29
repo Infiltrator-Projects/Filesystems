@@ -85,6 +85,29 @@ prebuilt=$(find build-desktop -name FAT16.so -type f -print -quit)
 sudo install -m 0644 "$prebuilt" "$module"
 [[ "$(sudo "$helper" status)" == installed ]] ||
   { echo "precompiled FAT16.so was not recognised" >&2; exit 1; }
-sudo "$helper" remove
+# A source-owned FAT16 Debian package must be authoritative. The GUI
+# helper must neither overwrite it nor remove its managed .so.
+owner_temp=$(mktemp -d)
+owner_name="infiltrator-filesystem-fat16"
+mkdir -p "$owner_temp/package/DEBIAN" "$owner_temp/package/System/Filesystems"
+printf 'Package: %s\\nVersion: 0.0.1\\nSection: misc\\nPriority: optional\\nArchitecture: amd64\\nMaintainer: Infiltrator CI <ci@example.invalid>\\nDescription: Disposable FAT16 ownership fixture\\n' \
+    "$owner_name" | sed 's/\\n/\n/g' > "$owner_temp/package/DEBIAN/control"
+sudo cp "$module" "$owner_temp/package/System/Filesystems/FAT16.so"
+dpkg-deb --build "$owner_temp/package" "$owner_temp/owner.deb" >/dev/null
+sudo dpkg -i "$owner_temp/owner.deb" >/dev/null
+owner_hash=$(sha256sum "$module")
+if sudo "$helper" install >/dev/null 2>&1; then
+    echo "FAT16 GUI helper overwrote package-owned module" >&2
+    exit 1
+fi
+if sudo "$helper" remove >/dev/null 2>&1; then
+    echo "FAT16 GUI helper removed package-owned module" >&2
+    exit 1
+fi
+[[ "$(sha256sum "$module")" == "$owner_hash" ]] ||
+    { echo "Package-owned FAT16.so was modified" >&2; exit 1; }
+sudo dpkg --purge "$owner_name" >/dev/null
+[[ ! -e "$module" ]] || { echo "Package did not own FAT16.so" >&2; exit 1; }
+rm -rf -- "$owner_temp"
 
-echo 'FAT16-SELECT-COMPILE-COPY-AND-DRAG-PASS'
+echo 'FAT16-SELECT-COMPILE-COPY-AND-PACKAGE-OWNERSHIP-PASS'
