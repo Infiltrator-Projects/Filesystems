@@ -2,7 +2,7 @@
  * Test only disposable regular files. This is NOT a physical-disk test.
  */
 #define _POSIX_C_SOURCE 200809L
-#include "fatfs_module.h"
+#include "exfat_api.h"
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -48,8 +48,11 @@ int main(int argc,char**argv) {
     void *library;
     const IfsFatfsModuleV3 *(*resolve3)(void)=NULL;
     const IfsFatfsModuleV4 *(*resolve4)(void)=NULL;
+    const IfsExfatModuleV5 *(*resolve5)(void)=NULL;
     const IfsFatfsModuleV3 *api;
     const IfsFatfsModuleV4 *v4;
+    const IfsExfatModuleV5 *v5;
+    IfsExfatEntry64 meta64;
     IfsFatfsIo io;
     IfsFatfsEntry meta;
     Image d;
@@ -59,9 +62,14 @@ int main(int argc,char**argv) {
     if(!library)return fail(dlerror());
     *(void **)(&resolve3)=dlsym(library,"infiltrator_filesystem_module_v3");
     *(void **)(&resolve4)=dlsym(library,"infiltrator_filesystem_module_v4");
+    *(void **)(&resolve5)=dlsym(library,"infiltrator_filesystem_module_v5");
     api=resolve3?resolve3():NULL;
     v4=resolve4?resolve4():NULL;
-    if(!api||!v4||api->abi_version!=3u||v4->abi_version!=4u||
+    v5=resolve5?resolve5():NULL;
+    if(!api||!v4||!v5||api->abi_version!=3u||v4->abi_version!=4u||
+       v5->abi_version!=5u||v5->structure_bytes!=sizeof(*v5)||
+       v5->compat_v4!=v4||strcmp(v5->format_id,"exfat")||
+       !v5->read64||!v5->write64||!v5->truncate64||!v5->stat64||
        api->structure_bytes!=sizeof(*api)||v4->structure_bytes!=sizeof(*v4)||
        strcmp(api->format_id,"exfat")||strcmp(v4->format_id,"exfat")||
        v4->v3!=api||!api->create||!api->write||!api->read||!api->truncate||
@@ -77,7 +85,10 @@ int main(int argc,char**argv) {
     if(api->mkdir("0:/TESTDIR")||api->create("0:/TESTDIR/INPUT.BIN"))
         return fail("directory/file creation");
     for(unsigned i=0;i<sizeof data;++i)data[i]=(unsigned char)(i*31u+7u);
-    if(api->write("0:/TESTDIR/INPUT.BIN",0,data,sizeof data) ||
+    if(v5->write64("0:/TESTDIR/INPUT.BIN",0,data,sizeof data) ||
+       v5->stat64("0:/TESTDIR/INPUT.BIN",&meta64) ||
+       meta64.size_bytes!=sizeof data ||
+       v5->read64("0:/TESTDIR/INPUT.BIN",UINT64_MAX,out,1u)==0 ||
        api->read("0:/TESTDIR/INPUT.BIN",0,out,sizeof out) ||
        memcmp(data,out,sizeof data))return fail("multi-cluster write/readback");
     if(api->rename("0:/TESTDIR/INPUT.BIN","0:/TESTDIR/OUTPUT.BIN")||
@@ -86,12 +97,14 @@ int main(int argc,char**argv) {
     if(api->mkdir("0:/TESTDIR/CHILD") ||
        api->rename("0:/TESTDIR","0:/TESTDIR/CHILD/LOOP")==0)
         return fail("unsafe recursive directory move");
-    if(api->truncate("0:/TESTDIR/OUTPUT.BIN",4096u)||
+    if(v5->truncate64("0:/TESTDIR/OUTPUT.BIN",4096u)||
        api->unmount()||!d.writes||!d.flushes)return fail("truncate/flush");
     if(api->mount(&io) ||
        api->read("0:/TESTDIR/OUTPUT.BIN",0,out,4096u) ||
        memcmp(out,data,4096u) ||
-       api->stat("0:/TESTDIR/OUTPUT.BIN",&meta) || meta.bytes!=4096u)
+       api->stat("0:/TESTDIR/OUTPUT.BIN",&meta) || meta.bytes!=4096u ||
+       v5->stat64("0:/TESTDIR/OUTPUT.BIN",&meta64) ||
+       meta64.size_bytes!=4096u)
         return fail("remount persistence");
     if(api->unlink("0:/TESTDIR/OUTPUT.BIN")||
        api->unlink("0:/TESTDIR/CHILD")||
