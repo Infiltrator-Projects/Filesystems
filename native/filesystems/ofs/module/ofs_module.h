@@ -69,11 +69,12 @@ typedef struct {
     const char *format_id;
     uint64_t capabilities;
     /* Returns 0 on verified success, -1 for unsupported, corrupt or I/O
-     * error. Exactly one OFS data block per operation. Cannot grow a file. */
+     * error. Exactly one OFS data block per operation. Cannot grow a file.
+     * The write callback is *always bound to the same host context* as
+     * the mount's read callback; it cannot target a second device. */
     int (*overwrite_existing)(IfsOfsDropInVolume *volume,
         const IfsOfsEfiEntry *file, uint32_t offset, const void *bytes,
-        uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync,
-        void *write_context);
+        uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync);
 } IfsOfsDropInModuleV2;
 const IfsOfsDropInModuleV2 *infiltrator_filesystem_module_v2(void);
 #endif

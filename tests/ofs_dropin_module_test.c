@@ -177,7 +177,7 @@ int main(void)
             return fail("OFS V2 writer ABI missing");
         writes = syncs = 0U;
         if (writer->overwrite_existing(&volume, &file, 1U, bytes, 3U,
-                                       write_at, sync_volume, 0) != 0 ||
+                                       write_at, sync_volume) != 0 ||
             writes != 1U || syncs != 1U)
             return fail("bounded OFS V2 writer failed");
         if (module->read(&volume, &file, 0, data, 5, 0) != 0 ||
@@ -185,17 +185,17 @@ int main(void)
             return fail("OFS V2 writer did not persist validated data");
         memcpy(original, disk[6], sizeof original);
         if (writer->overwrite_existing(&volume, &file, 4U, bytes, 3U,
-                                       write_at, sync_volume, 0) == 0 ||
+                                       write_at, sync_volume) == 0 ||
             writer->overwrite_existing(&volume, &directory, 0U, bytes, 1U,
-                                       write_at, sync_volume, 0) == 0 ||
+                                       write_at, sync_volume) == 0 ||
             writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
-                                       reject_write, sync_volume, 0) == 0 ||
+                                       reject_write, sync_volume) == 0 ||
             writes != 1U ||
             memcmp(original, disk[6], sizeof original) != 0)
             return fail("OFS V2 violated bounds or modified rejected writes");
         disk[6][25] ^= 1U;
         if (writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
-                                       write_at, sync_volume, 0) == 0 ||
+                                       write_at, sync_volume) == 0 ||
             writes != 1U)
             return fail("OFS V2 accepted corrupt data chain");
         fixture();

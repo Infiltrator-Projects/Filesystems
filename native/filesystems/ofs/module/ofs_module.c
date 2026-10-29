@@ -79,9 +79,9 @@ const IfsOfsDropInModule *infiltrator_filesystem_module_v1(void)
  * primitives produce the OFS data-block checksum. No bitmap or size change. */
 static int module_overwrite_existing(IfsOfsDropInVolume *volume,
     const IfsOfsEfiEntry *file, uint32_t position, const void *source,
-    uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync,
-    void *write_context)
+    uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync)
 {
+    IfsOfsEfiVolume refreshed = {0};
     uint8_t block[512], persisted[512];
     uint32_t index, block_number, expected_sum, i;
     uint64_t device_offset;
@@ -91,6 +91,15 @@ static int module_overwrite_existing(IfsOfsDropInVolume *volume,
         length == 0U || position >= file->size ||
         length > file->size - position || length > 488U ||
         (position % 488U) + length > 488U)
+        return -1;
+    /* Re-detect the same media identity before permitting any mutation.
+     * A stale mount after hot-swap or format change must fail closed. */
+    if (volume->reader.opaque != &volume->io ||
+        volume->reader.read_block != block_read ||
+        ifs_ofs_efi_mount(&refreshed, volume->reader.blocks,
+                          block_read, &volume->io) != 0 ||
+        refreshed.root != volume->reader.root ||
+        refreshed.variant_flags != volume->reader.variant_flags)
         return -1;
     if (ifs_ofs_efi_resolve_file_block(&volume->reader, file, position,
                                        &block_number, block) != 0)
@@ -111,8 +120,8 @@ static int module_overwrite_existing(IfsOfsDropInVolume *volume,
         return -1;
     /* Host must exclusively own/unmount or lock the volume. Failure can
      * leave one block partially written; never advertise atomic writes. */
-    if (write_at(write_context, device_offset, block, 512U) != 0 ||
-        sync(write_context) != 0 ||
+    if (write_at(volume->io.context, device_offset, block, 512U) != 0 ||
+        sync(volume->io.context) != 0 ||
         volume->io.read_at(volume->io.context, device_offset,
                            persisted, 512U) != 0 ||
         ifs_ofs_block_checksum(persisted, 512U) != 0U)
