@@ -1,0 +1,71 @@
+name: FAT32 central shared-object external-media qualification
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - '.github/workflows/fat32-so.yml'
+      - 'native/filesystems/fat/module/fat32_module.*'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/fat32_*realimage_test.c'
+      - 'tests/fat32_v4_format_test.c'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fat32-so.yml'
+      - 'native/filesystems/fat/module/fat32_module.*'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/fat32_*realimage_test.c'
+      - 'tests/fat32_v4_format_test.c'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fat32-so:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Independent media/build dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential binutils dosfstools mtools
+      - name: Compile actual FAT32 V1 and full V3/V4 engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ifs-fat32
+          src=native/filesystems/fat
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -DIFS_FATFS_ONLY=32 -I "$src/module" -I "$src/portable" \
+            -fPIC -fno-builtin -fno-stack-protector -ffreestanding \
+            -fvisibility=hidden -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
+            "$src/module/fat32_module.c" "$src/portable/fatfs_module.c" \
+            "$src/portable/ff.c" "$src/portable/ffunicode.c" \
+            "$src/portable/fatfs_libc.c" -o /tmp/ifs-fat32/FAT32.so
+          for version in 1 3 4; do
+            readelf -Ws /tmp/ifs-fat32/FAT32.so | grep -F "infiltrator_filesystem_module_v$version"
+            readelf -p .ifsmeta /tmp/ifs-fat32/FAT32.so | grep -F "IFS-MODULE:fat32:$version"
+          done
+          ! readelf -d /tmp/ifs-fat32/FAT32.so | grep -Eq '[(]NEEDED[)]'
+      - name: Independently formatted FAT32 reads, writes, rename, FS check
+        shell: bash
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d /tmp/ifs-fat32-check-XXXXXXXX)
+          trap 'rm -rf -- "$work"' EXIT
+          truncate -s 128M "$work/fat32.img"
+          truncate -s 8M "$work/fat16.img"
+          mkfs.fat -F 32 -I -s 1 "$work/fat32.img"
+          mkfs.fat -F 16 -I -s 1 "$work/fat16.img"
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I native/filesystems/fat/portable \
+            tests/fat32_v3_realimage_test.c -ldl -o /tmp/ifs-fat32/v3
+          /tmp/ifs-fat32/v3 /tmp/ifs-fat32/FAT32.so "$work/fat32.img" "$work/fat16.img"
+          fsck.fat -n "$work/fat32.img"
+          /tmp/ifs-fat32/v3 /tmp/ifs-fat32/FAT32.so "$work/fat32.img" "$work/fat16.img" cleanup
+          fsck.fat -n "$work/fat32.img"
+          truncate -s 128M "$work/fmt.img"
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I native/filesystems/fat/portable \
+            tests/fat32_v4_format_test.c -ldl -o /tmp/ifs-fat32/v4
+          /tmp/ifs-fat32/v4 /tmp/ifs-fat32/FAT32.so "$work/fmt.img" 512
+          fsck.fat -n "$work/fmt.img"
+          echo FAT32-SO-FULL-V3-V4-REAL-MEDIA-PASS

@@ -26,6 +26,14 @@ jobs:
   ext2-independent:
     uses: ./.github/workflows/ext2-independent-media.yml
 
+  # Separate genuine FAT32 and exFAT SOs: format-specific real images
+  # are mandatory, not an optional module fixture or legacy .ko proxy.
+  fat32-independent:
+    uses: ./.github/workflows/fat32-so.yml
+
+  exfat-independent:
+    uses: ./.github/workflows/exfat-so.yml
+
   fat-driver-runtime:
     uses: ./.github/workflows/fat12-fat16-runtime.yml
     with:
@@ -509,6 +517,8 @@ jobs:
     needs:
       - minix-standalone
       - ext2-independent
+      - fat32-independent
+      - exfat-independent
       - desktop-integration
       - source-boundary
       - linux

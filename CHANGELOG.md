@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.105 — 2026-10-29 (FAT32 and exFAT standalone shared-object integration candidate)
+
+- Compile FAT32.so with full ChaN FatFs V3/V4 read/write, directory and formatting operations alongside the V1 reader and defrag bridge; secure helper verifies exact V1/V3/V4 identity.
+- Introduce independent exFAT.so backed by the same source (not Linux exfat.ko), including 64-bit LBA geometry, portable V3/V4 and exFAT-specific V5 64-bit file APIs.
+- Package the exFAT source under /Programs/Filesystems and provide an on-demand installer and GUI selector separate from the native Linux module.
+- Add independently formatted FAT32/exFAT image qualification and mandatory release gates. Directory moves on exFAT remain disabled; root boot, EFI integration, physical-media safety and full conformance are NOT qualified.
+
 ## 0.5.103 — 2026-10-29 (EXT2.so independent-media safety qualification)
 
 - Preflight entire EXT2 existing-file overwrite ranges against the actual block bitmap and reserved group metadata before any mutation, refusing forged or unallocated block references.

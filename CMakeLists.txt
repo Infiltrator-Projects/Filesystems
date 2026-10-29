@@ -566,10 +566,15 @@ if(UNIX)
     # FAT32 has real 28-bit FAT entries and a cluster-chain root directory.
     add_library(filesystems-fat32-module SHARED
         native/filesystems/fat/module/fat32_module.c
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
         native/filesystems/fat/portable/fatfs_libc.c)
+    target_compile_definitions(filesystems-fat32-module PRIVATE IFS_FATFS_ONLY=32)
     filesystems_fat_defrag(filesystems-fat32-module 32)
     target_include_directories(filesystems-fat32-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
     set_target_properties(filesystems-fat32-module PROPERTIES
         PREFIX "" OUTPUT_NAME "FAT32")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -587,11 +592,58 @@ if(UNIX)
     install(FILES
         native/filesystems/fat/module/fat32_module.c
         native/filesystems/fat/module/fat32_module.h
+        native/filesystems/fat/portable/fatfs_module.c
+        native/filesystems/fat/portable/fatfs_module.h
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ff.h
+        native/filesystems/fat/portable/ffconf.h
+        native/filesystems/fat/portable/ffunicode.c
         native/filesystems/fat/portable/fatfs_libc.c
+        native/filesystems/fat/portable/diskio.h
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat32")
     install(PROGRAMS packaging/linux/fat32-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME fat32-module-helper)
+
+    # Independent native exFAT.so, using the same audited FatFs source in
+    # a separate format-specific build. The installed Linux exfat.ko remains.
+    # No auto-install onto /System or disk/EFI mutation is performed.
+    add_library(filesystems-exfat-dropin SHARED
+        native/filesystems/exfat/module/exfat_module.c
+        native/filesystems/fat/portable/ff.c
+        native/filesystems/fat/portable/ffunicode.c
+        native/filesystems/fat/portable/fatfs_libc.c)
+    target_compile_definitions(filesystems-exfat-dropin PRIVATE
+        IFS_FATFS_ONLY=64)
+    target_include_directories(filesystems-exfat-dropin PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/exfat/module"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
+    set_target_properties(filesystems-exfat-dropin PROPERTIES
+        PREFIX "" OUTPUT_NAME "exFAT")
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(filesystems-exfat-dropin PRIVATE
+            -O2 -ffreestanding -fno-builtin -fno-stack-protector
+            -fvisibility=hidden)
+        if(CMAKE_C_FLAGS MATCHES "fsanitize")
+            target_link_options(filesystems-exfat-dropin PRIVATE
+                -Wl,-z,relro -Wl,-z,now)
+        else()
+            target_link_options(filesystems-exfat-dropin PRIVATE
+                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
+        endif()
+    endif()
+    filesystems_configure(filesystems-exfat-dropin)
+    # Source-first installation through the Filesystems selector; the package
+    # does not automatically place a driver onto /System.
+    install(DIRECTORY native/filesystems/exfat/module/
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/exfat/native/filesystems/exfat/module"
+        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    install(DIRECTORY native/filesystems/fat/portable/
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/exfat/native/filesystems/fat/portable"
+        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    install(PROGRAMS packaging/linux/exfat-module-helper.sh
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
+        RENAME exfat-module-helper)
 
     # Independent EXT2.so: canonical read/directory engine plus constrained
     # existing-block overwrites. Does not replace ext2.ko or EFI.

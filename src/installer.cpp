@@ -632,6 +632,22 @@ void manage_ext2_dropin_async(const bool remove,
         std::move(completion));
 }
 
+void manage_exfat_dropin_async(const bool remove,
+                               ActionCompletion completion)
+{
+    const std::string helper = application_helper("exfat-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The exFAT.so compiler helper is not installed.");
+        return;
+    }
+    // Independent exFAT.so only. Never touch exfat.ko, EFI, APT or partitions.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "exFAT.so removed." :
+                 "exFAT.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void manage_minix_dropin_async(const bool remove,
                                 ActionCompletion completion)
 {
