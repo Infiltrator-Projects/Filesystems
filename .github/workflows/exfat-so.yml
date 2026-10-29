@@ -1,0 +1,53 @@
+name: Independent exFAT shared-object native qualification
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exfat-so:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Install external exFAT and FAT media tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends build-essential binutils exfatprogs dosfstools
+      - name: Compile genuine freestanding exFAT.so from source-shared FatFs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ifs-exfat
+          portable=native/filesystems/fat/portable
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -DIFS_FATFS_ONLY=64 -I "$portable" \
+            -fPIC -fno-builtin -fno-stack-protector -ffreestanding \
+            -fvisibility=hidden -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
+            native/filesystems/exfat/module/exfat_module.c \
+            "$portable/ff.c" "$portable/ffunicode.c" "$portable/fatfs_libc.c" \
+            -o /tmp/ifs-exfat/exFAT.so
+          readelf -h /tmp/ifs-exfat/exFAT.so | grep -Eq 'Type:.*DYN'
+          for symbol in infiltrator_filesystem_module_v3 infiltrator_filesystem_module_v4; do
+            readelf -Ws /tmp/ifs-exfat/exFAT.so | grep -F "$symbol"
+          done
+          for version in 3 4; do
+            readelf -p .ifsmeta /tmp/ifs-exfat/exFAT.so | grep -F "IFS-MODULE:exfat:$version"
+          done
+          ! readelf -d /tmp/ifs-exfat/exFAT.so | grep -Eq '[(]NEEDED[)]'
+      - name: Independently format and exercise exFAT with persistent writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          d=$(mktemp -d /tmp/exfat-so-ci-XXXXXXXX)
+          trap 'rm -rf -- "$d"' EXIT
+          truncate -s 128M "$d/exfat.img"
+          truncate -s 128M "$d/fat32.img"
+          mkfs.exfat -n SOQUAL "$d/exfat.img"
+          mkfs.fat -F 32 -I "$d/fat32.img"
+          cc -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror \
+            -I native/filesystems/fat/portable \
+            tests/exfat_so_realimage_test.c -ldl -o /tmp/ifs-exfat/interop
+          /tmp/ifs-exfat/interop /tmp/ifs-exfat/exFAT.so "$d/exfat.img" "$d/fat32.img"
+          fsck.exfat -n "$d/exfat.img"
+          echo EXFAT-SO-INDEPENDENT-QUALIFICATION-PASS
