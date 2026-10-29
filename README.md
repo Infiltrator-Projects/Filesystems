@@ -72,6 +72,25 @@ operations to Defragmenter's child-process host. FAT32 includes the same
 interface so existing FAT32 defragmentation can continue. See the
 [FAT defragmentation ABI](docs/FAT_DEFRAG_MODULE_ABI.md).
 
+## FAT32 and exFAT shared-object integration (0.5.105 candidate)
+
+FAT32's full ChaN FatFs V3/V4 read/write/format operations are compiled into
+FAT32.so alongside the existing V1 and Defragmenter interfaces. This replaces
+the central manager's V1-only implementation without changing the independent
+FAT32 package's source ownership.
+
+exFAT.so is a distinct format-specific shared object compiled from the same
+audited FatFs source with exFAT and 64-bit LBA enabled. Its V3/V4 ABI supplies
+the compatible creation, directory, read/write, rename-file, truncation and
+format operations, while exFAT-only V5 provides genuine 64-bit file offsets and
+sizes. Directory moves are refused until ancestry verification is proven.
+The optional exFAT.so selector does not install, remove or load Linux exfat.ko.
+
+Standalone tests use disposable mkfs.exfat and dosfstools images, perform
+persistent writes and validate disk consistency independently. Neither SO
+replaces kernel drivers, firmware EFI drivers or BOOT's root filesystem loader.
+No physical-media or crash-safe transaction certification is claimed.
+
 ## Current EXT2.so implementation (restricted in-place writes)
 
 EXT2 now has an independent `EXT2.so` build and a separate Install/Remove
@@ -86,7 +105,7 @@ callbacks. All offsets are partition-relative. The compiled module and its
 synthetic-disk qualification do not establish production write safety on
 physical media.
 
-OFS and the FAT32 general file API remain read-only; EXT2 and SCO BFS support restricted
+OFS.so remains read-only; FAT32 now builds an independent V3/V4 writable and formatter API alongside its V1 reader. EXT2 and SCO BFS support restricted
 in-place writes, and FAT12/FAT16 add the V3 writable interface described above. Format-specific module operation tables still differ. A unified,
 portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
