@@ -1,14 +1,6 @@
 name: EXT2 independent SO media qualification
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/ext2-independent-media.yml'
-      - 'native/filesystems/ext2/core/**'
-      - 'native/filesystems/ext2/module/**'
-      - 'tests/ext2_*'
-      - 'tests/independent_image_io.h'
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
