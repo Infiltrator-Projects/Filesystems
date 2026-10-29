@@ -90,9 +90,16 @@ sudo install -m 0644 "$prebuilt" "$module"
 owner_temp=$(mktemp -d)
 owner_name="infiltrator-filesystem-fat12"
 mkdir -p "$owner_temp/package/DEBIAN" "$owner_temp/package/System/Filesystems"
-printf 'Package: %s\\nVersion: 0.0.1\\nSection: misc\\nPriority: optional\\nArchitecture: amd64\\nMaintainer: Infiltrator CI <ci@example.invalid>\\nDescription: Disposable FAT12 ownership fixture\\n' \
-    "$owner_name" | sed 's/\\n/\n/g' > "$owner_temp/package/DEBIAN/control"
-sudo cp "$module" "$owner_temp/package/System/Filesystems/FAT12.so"
+printf '%s\n' \
+    "Package: $owner_name" \
+    "Version: 0.0.1" \
+    "Section: misc" \
+    "Priority: optional" \
+    "Architecture: amd64" \
+    "Maintainer: Infiltrator CI <ci@example.invalid>" \
+    "Description: Disposable FAT12 ownership fixture" \
+    > "$owner_temp/package/DEBIAN/control"
+cp "$module" "$owner_temp/package/System/Filesystems/FAT12.so"
 dpkg-deb --build "$owner_temp/package" "$owner_temp/owner.deb" >/dev/null
 sudo dpkg -i "$owner_temp/owner.deb" >/dev/null
 owner_hash=$(sha256sum "$module")
