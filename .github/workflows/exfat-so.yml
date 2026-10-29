@@ -1,8 +1,19 @@
 name: Independent exFAT shared-object native qualification
 on:
+  workflow_call:
   pull_request:
+    paths:
+      - '.github/workflows/exfat-so.yml'
+      - 'native/filesystems/exfat/**'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/exfat_so_realimage_test.c'
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/exfat-so.yml'
+      - 'native/filesystems/exfat/**'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/exfat_so_realimage_test.c'
   workflow_dispatch:
 permissions:
   contents: read
