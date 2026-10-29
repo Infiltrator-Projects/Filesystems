@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.103 — 2026-10-29 (independent FAT12/FAT16 module package ownership)
+
+- Prevent the Filesystems graphical source/compiler helpers from overwriting or removing FAT12.so or FAT16.so when those drivers belong to independent source-owned Debian packages.
+- Preserve read-only module identity and capability status checks, with no filesystem, kernel, EFI or boot partition writes.
+- Add isolated GitHub-hosted package ownership regression coverage so the independently published FAT12/FAT16 full-feature modules remain authoritative when installed.
+- The separate Filesystem-FAT12 and Filesystem-FAT16 repositories own their verified 0.1.4 releases; this version does not introduce a new driver implementation or claim universal shared-object Boot/kernel execution.
+
+
 ## 0.5.101 — 2026-10-29 (single-file filesystem architecture documentation)
 
 - Record one authoritative `.so` per filesystem identity as the final distributed driver for BOOT, the InfiltratorOS kernel and applications.
