@@ -118,6 +118,9 @@ int main(void)
     store_le32(gd + 0x04U, 4U);
     store_le32(gd + 0x08U, 5U);
 
+    /* Block 7: bit 6 of group-zero allocation bitmap (first data = 1). */
+    disk.bytes[BLOCK_SIZE * 3U] |= 1U << 6;
+
     make_inode(inode_table + 128U, 0x41EDU, BLOCK_SIZE, 6U);
     make_inode(inode_table + 256U, 0x81A4U, 5U, 7U);
 
