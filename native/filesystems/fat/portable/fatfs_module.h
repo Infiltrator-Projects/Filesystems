@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later
- * FAT12/FAT16 shared full-lifecycle userspace interface backed by ChaN FatFs.
+ * FAT12/FAT16/FAT32 and exFAT full-lifecycle userspace ABI backed by ChaN FatFs.
  * V1 compatibility APIs remain distinct; source is compiled into EACH .so.
  */
 #ifndef IFS_FATFS_MODULE_H
