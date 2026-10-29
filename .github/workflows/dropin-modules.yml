@@ -66,6 +66,21 @@ jobs:
             /tmp/ifs-dropins/minix-real "$image" "$version" "$names"
             rm -f "$image"
           done
+      - name: FAT16/EXT2 real image interoperability and persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dosfstools mtools e2fsprogs
+          flags="-std=c11 -O2 -Wall -Wextra -Wpedantic -Wshadow -Werror"
+          cc $flags -Wl,-rpath,/tmp/ifs-dropins \
+            tests/fat16_external_interop.c /tmp/ifs-dropins/FAT16.so \
+            -o /tmp/ifs-dropins/fat16-external
+          cc $flags -Wl,-rpath,/tmp/ifs-dropins \
+            tests/ext2_external_interop.c /tmp/ifs-dropins/EXT2.so \
+            -o /tmp/ifs-dropins/ext2-external
+          bash tests/fat16_ext2_independent_roundtrip.sh \
+            /tmp/ifs-dropins/fat16-external /tmp/ifs-dropins/ext2-external
       - name: Check ELF identity, ABI exports and freestanding linkage
         shell: bash
         run: |
