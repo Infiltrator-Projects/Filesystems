@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.106 — 2026-10-29 (OFS existing-file V2 write foundation)
+
+- Preserve the read-only V1 ABI and implement a bounded V2 existing-file overwrite spanning multiple authentic 488-byte OFS data blocks, preflighting the whole destination chain before mutation and using the canonical resolver/checksum logic rather than creating a second parser.
+- Require a separately supplied write and durable sync callback, verify the rewritten 512-byte data block by rereading it and reject out-of-file offsets, corrupt layout, unsupported namespaces and allocation changes.
+- Add genuine positive and negative tests on disposable media. No allocation, create/delete/rename, general formatter, crash-safe recovery, kernel/BOOT SO loader or physical-drive write support is claimed.
+
 ## 0.5.103 — 2026-10-29 (EXT2.so independent-media safety qualification)
 
 - Preflight entire EXT2 existing-file overwrite ranges against the actual block bitmap and reserved group metadata before any mutation, refusing forged or unallocated block references.

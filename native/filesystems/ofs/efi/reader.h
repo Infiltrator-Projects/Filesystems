@@ -63,4 +63,11 @@ int ifs_ofs_efi_next(const IfsOfsEfiVolume *volume,
 int ifs_ofs_efi_read(const IfsOfsEfiVolume *volume,
                      const IfsOfsEfiEntry *file, uint32_t offset,
                      void *buffer, size_t length, IfsOfsEfiFileCursor *cursor);
+/* Shared canonical chain resolver: validates the complete traversed OFS data
+ * chain and returns one checked 512-byte block for freestanding consumers.
+ * No writes, allocations or platform-specific memory services occur here. */
+int ifs_ofs_efi_resolve_file_block(const IfsOfsEfiVolume *volume,
+                                   const IfsOfsEfiEntry *file,
+                                   uint32_t offset, uint32_t *block_number,
+                                   uint8_t block_contents[512]);
 #endif

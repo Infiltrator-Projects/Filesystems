@@ -57,6 +57,28 @@ static int read_at(void *ctx, uint64_t offset, void *buffer, uint32_t len)
     memcpy(buffer, (uint8_t *)disk + (size_t)offset, len);
     return 0;
 }
+static uint32_t writes, syncs;
+static int write_at(void *ctx, uint64_t offset, const void *source, uint32_t len)
+{
+    (void)ctx;
+    if (offset > sizeof disk || len > sizeof disk - offset)
+        return -1;
+    memcpy((uint8_t *)disk + (size_t)offset, source, len);
+    ++writes;
+    return 0;
+}
+static int sync_volume(void *ctx)
+{
+    (void)ctx;
+    ++syncs;
+    return 0;
+}
+static int reject_write(void *ctx, uint64_t offset, const void *source,
+                        uint32_t len)
+{
+    (void)ctx; (void)offset; (void)source; (void)len;
+    return -1;
+}
 static void fixture(void)
 {
     uint8_t *root = disk[ROOT], *dir = disk[4],
@@ -143,6 +165,108 @@ int main(void)
     if (module->read(&volume, &file, 4, data, 2, 0) == 0)
         return fail("out of range read was accepted");
 
+
+    {
+        const IfsOfsDropInModuleV2 *writer = infiltrator_filesystem_module_v2();
+        const uint8_t bytes[] = {'B', 'Y', 'E'};
+        uint8_t original[512];
+        if (!writer || writer->abi_version != 2U ||
+            writer->structure_bytes != sizeof *writer ||
+            strcmp(writer->format_id, "ofs") != 0 ||
+            !(writer->capabilities & IFS_OFS_CAP_EXISTING_FILE_OVERWRITE))
+            return fail("OFS V2 writer ABI missing");
+        writes = syncs = 0U;
+        if (writer->overwrite_existing(&volume, &file, 1U, bytes, 3U,
+                                       write_at, sync_volume) != 0 ||
+            writes != 1U || syncs != 1U)
+            return fail("bounded OFS V2 writer failed");
+        if (module->read(&volume, &file, 0, data, 5, 0) != 0 ||
+            memcmp(data, "HBYEO", 5) != 0)
+            return fail("OFS V2 writer did not persist validated data");
+        memcpy(original, disk[6], sizeof original);
+        if (writer->overwrite_existing(&volume, &file, 4U, bytes, 3U,
+                                       write_at, sync_volume) == 0 ||
+            writer->overwrite_existing(&volume, &directory, 0U, bytes, 1U,
+                                       write_at, sync_volume) == 0 ||
+            writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       reject_write, sync_volume) == 0 ||
+            writes != 1U ||
+            memcmp(original, disk[6], sizeof original) != 0)
+            return fail("OFS V2 violated bounds or modified rejected writes");
+        disk[6][25] ^= 1U;
+        if (writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       write_at, sync_volume) == 0 ||
+            writes != 1U)
+            return fail("OFS V2 accepted corrupt data chain");
+        fixture();
+        put(disk[0], 0, UINT32_C(0x444f5301)); /* Hot-swapped FFS after mount. */
+        if (writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       write_at, sync_volume) == 0 ||
+            writes != 1U)
+            return fail("OFS V2 wrote stale/foreign-format mounted media");
+        fixture();
+        if (module->mount(&volume, &io) != 0 ||
+            module->lookup(&volume, &(IfsOfsEfiEntry){ROOT, 0, IFS_OFS_EFI_DIRECTORY},
+                           (const uint8_t *)"boot", 4, &directory) != 0 ||
+            module->lookup(&volume, &directory,
+                           (const uint8_t *)"kernel.efi", 10, &file) != 0)
+            return fail("OFS V2 test fixture reset failed");
+    }
+
+    /* A real DOS0 data chain spans 488-byte payload blocks. Verify a
+     * cross-boundary overwrite, independent readback, and whole-span
+     * preflight on a deliberately corrupted trailing block. */
+    {
+        const IfsOfsDropInModuleV2 *writer = infiltrator_filesystem_module_v2();
+        const uint8_t payload[] = {'X','Y','Z','W'};
+        uint8_t out[sizeof payload] = {0};
+        uint32_t count_before;
+        fixture();
+        put(disk[5], 2, 2);
+        put(disk[5], 81, 600);
+        checksum(disk[5]);
+        put(disk[6], 3, 488);
+        put(disk[6], 4, 7);
+        memset(disk[6]+24, 'A', 488);
+        checksum(disk[6]);
+        put(disk[7], 0, 8);
+        put(disk[7], 1, 5);
+        put(disk[7], 2, 2);
+        put(disk[7], 3, 112);
+        memset(disk[7]+24, 'B', 112);
+        checksum(disk[7]);
+        if (module->mount(&volume, &io) != 0)
+            return fail("cross-block OFS fixture mount");
+        root = module->root(&volume);
+        if (module->lookup(&volume, &root, (const uint8_t *)"boot", 4,
+                           &directory) != 0 ||
+            module->lookup(&volume, &directory,
+                           (const uint8_t *)"kernel.efi", 10, &file) != 0 ||
+            file.size != 600)
+            return fail("cross-block fixture lookup");
+        writes = syncs = 0;
+        if (writer->overwrite_existing(&volume, &file, 487, payload, 4,
+                                       write_at, sync_volume) != 0 ||
+            writes != 2 || syncs != 2 ||
+            module->read(&volume, &file, 487, out, 4, 0) != 0 ||
+            memcmp(out, payload, 4) != 0)
+            return fail("OFS cross-data-block mutation and persistence");
+        count_before = writes;
+        disk[7][30] ^= 1u;
+        if (writer->overwrite_existing(&volume, &file, 487, payload, 4,
+                                       write_at, sync_volume) == 0 ||
+            writes != count_before)
+            return fail("OFS writer partially modified corrupted tail");
+        fixture();
+        if (module->mount(&volume, &io) != 0)
+            return fail("OFS cross-block fixture reset");
+        root = module->root(&volume);
+        if (module->lookup(&volume, &root, (const uint8_t *)"boot", 4,
+                           &directory) != 0 ||
+            module->lookup(&volume, &directory,
+                           (const uint8_t *)"kernel.efi", 10, &file) != 0)
+            return fail("OFS cross-block reset lookup");
+    }
     disk[6][25] ^= 1;
     if (module->read(&volume, &file, 0, data, 5, 0) == 0)
         return fail("corrupt data checksum was accepted");
