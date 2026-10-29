@@ -1,8 +1,21 @@
 name: FAT32 central shared-object external-media qualification
 on:
+  workflow_call:
   pull_request:
+    paths:
+      - '.github/workflows/fat32-so.yml'
+      - 'native/filesystems/fat/module/fat32_module.*'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/fat32_*realimage_test.c'
+      - 'tests/fat32_v4_format_test.c'
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/fat32-so.yml'
+      - 'native/filesystems/fat/module/fat32_module.*'
+      - 'native/filesystems/fat/portable/**'
+      - 'tests/fat32_*realimage_test.c'
+      - 'tests/fat32_v4_format_test.c'
   workflow_dispatch:
 permissions:
   contents: read
