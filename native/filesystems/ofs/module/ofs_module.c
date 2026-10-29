@@ -4,6 +4,7 @@
  * No EFI protocol or Linux kernel symbols are imported.
  */
 #include "ofs_module.h"
+#include "../core/ofs_primitives.h"
 
 static int block_read(void *opaque, uint32_t block, uint8_t data[512])
 {
@@ -71,4 +72,74 @@ __attribute__((visibility("default")))
 const IfsOfsDropInModule *infiltrator_filesystem_module_v1(void)
 {
     return &module;
+}
+
+/* First migrated OFS writer operation: existing allocated file bytes only.
+ * The canonical reader locates/checks the data chain; canonical checksum
+ * primitives produce the OFS data-block checksum. No bitmap or size change. */
+static int module_overwrite_existing(IfsOfsDropInVolume *volume,
+    const IfsOfsEfiEntry *file, uint32_t position, const void *source,
+    uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync)
+{
+    IfsOfsEfiVolume refreshed = {0};
+    uint8_t block[512], persisted[512];
+    uint32_t index, block_number, expected_sum, i;
+    uint64_t device_offset;
+    const uint8_t *data = (const uint8_t *)source;
+    if (!volume || !file || !source || !write_at || !sync ||
+        !volume->io.read_at || file->type != IFS_OFS_EFI_FILE ||
+        length == 0U || position >= file->size ||
+        length > file->size - position || length > 488U ||
+        (position % 488U) + length > 488U)
+        return -1;
+    /* Re-detect the same media identity before permitting any mutation.
+     * A stale mount after hot-swap or format change must fail closed. */
+    if (volume->reader.opaque != &volume->io ||
+        volume->reader.read_block != block_read ||
+        ifs_ofs_efi_mount(&refreshed, volume->reader.blocks,
+                          block_read, &volume->io) != 0 ||
+        refreshed.root != volume->reader.root ||
+        refreshed.variant_flags != volume->reader.variant_flags)
+        return -1;
+    if (ifs_ofs_efi_resolve_file_block(&volume->reader, file, position,
+                                       &block_number, block) != 0)
+        return -1;
+    device_offset = (uint64_t)block_number * UINT64_C(512);
+    if (device_offset > volume->io.volume_bytes ||
+        UINT64_C(512) > volume->io.volume_bytes - device_offset)
+        return -1;
+    index = 24U + position % 488U;
+    for (i = 0U; i < length; ++i)
+        block[index + i] = data[i];
+    expected_sum = ifs_ofs_checksum_word_value(block, 512U, 5U);
+    block[20] = (uint8_t)(expected_sum >> 24);
+    block[21] = (uint8_t)(expected_sum >> 16);
+    block[22] = (uint8_t)(expected_sum >> 8);
+    block[23] = (uint8_t)expected_sum;
+    if (ifs_ofs_block_checksum(block, 512U) != 0U)
+        return -1;
+    /* Host must exclusively own/unmount or lock the volume. Failure can
+     * leave one block partially written; never advertise atomic writes. */
+    if (write_at(volume->io.context, device_offset, block, 512U) != 0 ||
+        sync(volume->io.context) != 0 ||
+        volume->io.read_at(volume->io.context, device_offset,
+                           persisted, 512U) != 0 ||
+        ifs_ofs_block_checksum(persisted, 512U) != 0U)
+        return -1;
+    for (i = 0U; i < 512U; ++i)
+        if (block[i] != persisted[i])
+            return -1;
+    return 0;
+}
+__attribute__((used,section(".ifsmeta")))
+static const char ifs_module_format_identity_v2[] = "IFS-MODULE:ofs:2";
+static const IfsOfsDropInModuleV2 module_v2 = {
+    IFS_OFS_DROPIN_ABI_V2, sizeof(IfsOfsDropInModuleV2),
+    "ofs", IFS_OFS_CAP_EXISTING_FILE_OVERWRITE,
+    module_overwrite_existing
+};
+__attribute__((visibility("default")))
+const IfsOfsDropInModuleV2 *infiltrator_filesystem_module_v2(void)
+{
+    return &module_v2;
 }
