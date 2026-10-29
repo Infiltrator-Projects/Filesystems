@@ -70,6 +70,8 @@ void execute_classic_fat_variant_async(
 /* Separate EXT2.so action; this does not change native ext2.ko. */
 void execute_ext2_dropin_async(
     bool remove, DesktopActionCompletion completion);
+void execute_exfat_dropin_async(
+    bool remove, DesktopActionCompletion completion);
 void execute_minix_dropin_async(
     bool remove, DesktopActionCompletion completion);
 
