@@ -16,6 +16,18 @@ compiler=/usr/bin/cc
 elf_checker=/usr/bin/readelf
 
 fatal() { echo "FAT32: $*" >&2; exit 1; }
+# The independent provider owns the module when installed. Never replace
+# its package-owned bytes from the legacy Filesystems GUI.
+refuse_package_owned_module() {
+    [[ -x /usr/bin/dpkg-query ]] || return 0
+    if /usr/bin/dpkg-query -W -f='${Status}' infiltrator-filesystem-fat32 2>/dev/null |
+       grep -Fxq 'install ok installed'; then
+        fatal "FAT32.so belongs to the independent provider package"
+    fi
+    if /usr/bin/dpkg-query -S -- "$module" >/dev/null 2>&1; then
+        fatal "FAT32.so is Debian package-owned; refusing mutation"
+    fi
+}
 [[ $# -eq 1 ]] || fatal "usage: fat32-module-helper install|remove|status"
 
 safe_directory() {
@@ -53,6 +65,14 @@ check_module() {
     "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
         grep -F 'IFS-MODULE:fat32:1' >/dev/null ||
         fatal "FAT32 embedded format identity missing or incorrect"
+    for version in 3 4; do
+        "$elf_checker" -Ws "$file" |
+            grep -F "infiltrator_filesystem_module_v$version" >/dev/null ||
+            fatal "FAT32 V$version write/format ABI missing"
+        "$elf_checker" -p .ifsmeta "$file" 2>/dev/null |
+            grep -F "IFS-MODULE:fat32:$version" >/dev/null ||
+            fatal "FAT32 V$version format identity missing"
+    done
 }
 
 # The privileged compiler must never consume untrusted application source.
@@ -84,6 +104,7 @@ case "$1" in
         ;;
     install)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
+        refuse_package_owned_module()
         safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
@@ -100,7 +121,9 @@ case "$1" in
             "$engine_dir/fat_io.c" "$engine_dir/fat_journal.c"
             "$engine_dir/fat_relocation.c" "$engine_dir/fat_volume.c"
             "$engine_dir/fat_defrag_module.c")
-        for name in fat32_module.c fat32_module.h fatfs_libc.c; do
+        for name in fat32_module.c fat32_module.h fatfs_module.c
+                    fatfs_module.h ff.c ff.h ffconf.h diskio.h
+                    ffunicode.c fatfs_libc.c; do
             path="$source_dir/$name"
             [[ -f "$path" && ! -L "$path" ]] || fatal "unsafe FAT32 source: $path"
             [[ "$(stat -c %u -- "$path")" == 0 ]] || fatal "FAT32 source is not root-owned: $path"
@@ -120,10 +143,11 @@ case "$1" in
             -fno-builtin -ffreestanding -fvisibility=hidden \
             -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
             -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -DIFS_FAT_DEFRAG_BITS=32 \
-            -I "$source_dir" -I "$engine_dir" -I "$engine_dir/host" \
+            -DIFS_FATFS_ONLY=32 -I "$source_dir" -I "$engine_dir" -I "$engine_dir/host" \
             -I "$engine_dir/include" -o "$temporary" \
-            "$source_dir/fat32_module.c" "$source_dir/fatfs_libc.c" \
-            "${engine_sources[@]}" ||
+            "$source_dir/fat32_module.c" "$source_dir/fatfs_module.c" \
+            "$source_dir/ff.c" "$source_dir/ffunicode.c" \
+            "$source_dir/fatfs_libc.c" "${engine_sources[@]}" ||
             fatal "FAT32 compilation failed; old module unchanged"
         check_module "$temporary"
         chmod 0644 "$temporary"
@@ -134,6 +158,7 @@ case "$1" in
         ;;
     remove)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
+        refuse_package_owned_module()
         safe_directory
         [[ -e "$module" ]] ||
             { printf 'FAT32 already absent\n'; exit 0; }
