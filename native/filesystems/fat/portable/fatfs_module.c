@@ -415,26 +415,11 @@ static int preview_matches_format(void)
     unsigned bytes=boot16(11u), sectors_per_cluster=preview_boot[13u];
     unsigned reserved=boot16(14u), fats=preview_boot[16u];
     unsigned roots=boot16(17u), fat_sectors=boot16(22u);
-    if (!preview_boot_seen || preview_boot[510]!=0x55u || preview_boot[511]!=0xaau ||
-        bytes!=device.sector_bytes || !sectors_per_cluster ||
-        (sectors_per_cluster & (sectors_per_cluster-1u)) ||
-        !reserved || !fats || !roots || !fat_sectors) return 0;
-    if (!sectors) sectors=boot32(32u);
-    root_sectors=((uint64_t)roots*32u+bytes-1u)/bytes;
-    overhead=(uint64_t)reserved+(uint64_t)fats*fat_sectors+root_sectors;
-    if (sectors<=overhead || sectors>device.partition_bytes/bytes) return 0;
-    clusters=(sectors-overhead)/sectors_per_cluster;
-#if IFS_FATFS_ONLY == 12
-    return clusters>0u && clusters<4085u;
-#else
-    uint64_t sectors=boot16(19u), root_sectors, overhead, clusters;
-    unsigned bytes=boot16(11u), sectors_per_cluster=preview_boot[13u];
-    unsigned reserved=boot16(14u), fats=preview_boot[16u];
-    unsigned roots=boot16(17u), fat_sectors=boot16(22u);
 #if IFS_FATFS_ONLY == 32
     fat_sectors=boot32(36u);
 #endif
-    if (!preview_boot_seen || preview_boot[510]!=0x55u || preview_boot[511]!=0xaau ||
+    if (!preview_boot_seen || preview_boot[510]!=0x55u ||
+        preview_boot[511]!=0xaau ||
         bytes!=device.sector_bytes || !sectors_per_cluster ||
         (sectors_per_cluster & (sectors_per_cluster-1u)) ||
         !reserved || !fats || !fat_sectors) return 0;
