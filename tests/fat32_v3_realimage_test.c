@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Independent DOS-formatted FAT12/FAT16 image interoperability (no devices).
+/* Independently formatted FAT32 image interoperability (no devices).
  * Both media files are produced by dosfstools, not the reader under test.
  */
 #define _POSIX_C_SOURCE 200809L
@@ -195,6 +195,6 @@ int main(int argc,char **argv) {
     if(api->unmount()!=0 || flush_at(f)!=0 || fclose(f)!=0)
         return die("final flush");
     if(dlclose(handle)!=0) return die("close module");
-    printf("FAT12-FAT16-CROSS-FORMAT-IMAGE-READ-WRITE-PASS: %s\n",argv[1]);
+    printf("FAT32-CROSS-FORMAT-IMAGE-READ-WRITE-PASS: %s\n",argv[1]);
     return 0;
 }
