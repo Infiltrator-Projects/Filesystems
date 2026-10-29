@@ -108,8 +108,19 @@ int main(int argc,char**argv) {
         return fail("remount persistence");
     if(api->unlink("0:/TESTDIR/OUTPUT.BIN")||
        api->unlink("0:/TESTDIR/CHILD")||
-       api->unlink("0:/TESTDIR")||api->unmount()||close(d.fd))
+       api->unlink("0:/TESTDIR")||api->unmount())
         return fail("directory/file deletion");
+    /* V4 is a real exFAT formatter, not just an exported symbol. Reformat
+     * ONLY this disposable regular-file image, then remount and mutate it. */
+    {
+        unsigned before=d.writes;
+        if(v4->format(&io,512u)!=0 || d.writes<=before ||
+           api->mount(&io)!=0 || api->create("0:/FORMATTED.BIN")!=0 ||
+           v5->write64("0:/FORMATTED.BIN",0u,data,sizeof data)!=0 ||
+           api->unmount()!=0 || !d.flushes)
+            return fail("exFAT V4 on-image format and remount");
+    }
+    if(close(d.fd)!=0)return fail("close exFAT after format");
     if(dlclose(library))return fail("library cleanup");
     puts("EXFAT-SO-MKFS-READ-WRITE-RENAME-TRUNCATE-REMOUNT-PASS");
     return 0;
