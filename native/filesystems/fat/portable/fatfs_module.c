@@ -356,6 +356,7 @@ static const IfsFatfsModuleV3 module={
 __attribute__((visibility("default")))
 const IfsFatfsModuleV3 *infiltrator_filesystem_module_v3(void) {return &module;}
 
+#if IFS_FATFS_ONLY != 64
 static uint16_t boot16(unsigned offset)
 {
     return (uint16_t)((uint16_t)preview_boot[offset] |
@@ -365,6 +366,7 @@ static uint32_t boot32(unsigned offset)
 {
     return (uint32_t)boot16(offset) | (uint32_t)boot16(offset+2u)<<16;
 }
+#endif
 static int preview_matches_format(void)
 {
 #if IFS_FATFS_ONLY == 64
