@@ -57,6 +57,28 @@ static int read_at(void *ctx, uint64_t offset, void *buffer, uint32_t len)
     memcpy(buffer, (uint8_t *)disk + (size_t)offset, len);
     return 0;
 }
+static uint32_t writes, syncs;
+static int write_at(void *ctx, uint64_t offset, const void *source, uint32_t len)
+{
+    (void)ctx;
+    if (offset > sizeof disk || len > sizeof disk - offset)
+        return -1;
+    memcpy((uint8_t *)disk + (size_t)offset, source, len);
+    ++writes;
+    return 0;
+}
+static int sync_volume(void *ctx)
+{
+    (void)ctx;
+    ++syncs;
+    return 0;
+}
+static int reject_write(void *ctx, uint64_t offset, const void *source,
+                        uint32_t len)
+{
+    (void)ctx; (void)offset; (void)source; (void)len;
+    return -1;
+}
 static void fixture(void)
 {
     uint8_t *root = disk[ROOT], *dir = disk[4],
@@ -142,6 +164,48 @@ int main(void)
         return fail("OFS file read incorrect");
     if (module->read(&volume, &file, 4, data, 2, 0) == 0)
         return fail("out of range read was accepted");
+
+
+    {
+        const IfsOfsDropInModuleV2 *writer = infiltrator_filesystem_module_v2();
+        const uint8_t bytes[] = {'B', 'Y', 'E'};
+        uint8_t original[512];
+        if (!writer || writer->abi_version != 2U ||
+            writer->structure_bytes != sizeof *writer ||
+            strcmp(writer->format_id, "ofs") != 0 ||
+            !(writer->capabilities & IFS_OFS_CAP_EXISTING_FILE_OVERWRITE))
+            return fail("OFS V2 writer ABI missing");
+        writes = syncs = 0U;
+        if (writer->overwrite_existing(&volume, &file, 1U, bytes, 3U,
+                                       write_at, sync_volume, 0) != 0 ||
+            writes != 1U || syncs != 1U)
+            return fail("bounded OFS V2 writer failed");
+        if (module->read(&volume, &file, 0, data, 5, 0) != 0 ||
+            memcmp(data, "HBYEO", 5) != 0)
+            return fail("OFS V2 writer did not persist validated data");
+        memcpy(original, disk[6], sizeof original);
+        if (writer->overwrite_existing(&volume, &file, 4U, bytes, 3U,
+                                       write_at, sync_volume, 0) == 0 ||
+            writer->overwrite_existing(&volume, &directory, 0U, bytes, 1U,
+                                       write_at, sync_volume, 0) == 0 ||
+            writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       reject_write, sync_volume, 0) == 0 ||
+            writes != 1U ||
+            memcmp(original, disk[6], sizeof original) != 0)
+            return fail("OFS V2 violated bounds or modified rejected writes");
+        disk[6][25] ^= 1U;
+        if (writer->overwrite_existing(&volume, &file, 0U, bytes, 1U,
+                                       write_at, sync_volume, 0) == 0 ||
+            writes != 1U)
+            return fail("OFS V2 accepted corrupt data chain");
+        fixture();
+        if (module->mount(&volume, &io) != 0 ||
+            module->lookup(&volume, &(IfsOfsEfiEntry){ROOT, 0, IFS_OFS_EFI_DIRECTORY},
+                           (const uint8_t *)"boot", 4, &directory) != 0 ||
+            module->lookup(&volume, &directory,
+                           (const uint8_t *)"kernel.efi", 10, &file) != 0)
+            return fail("OFS V2 test fixture reset failed");
+    }
 
     disk[6][25] ^= 1;
     if (module->read(&volume, &file, 0, data, 5, 0) == 0)

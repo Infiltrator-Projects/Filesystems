@@ -54,4 +54,26 @@ typedef struct {
 /* V1 supports read-only 512-byte DOS\0/\2/\4 only, NO formatter,
  * write, defragmentation, or Linux VFS / UEFI module loading yet. */
 const IfsOfsDropInModule *infiltrator_filesystem_module_v1(void);
+/* V2 extends the V1 *contract*; no V1 layout or pointer is changed.
+ * Explicit write and sync capabilities come from the privileged host.
+ * Only bounded existing-file bytes are writable until allocation and
+ * transactional metadata mutation are independently qualified. */
+#define IFS_OFS_DROPIN_ABI_V2 2u
+#define IFS_OFS_CAP_EXISTING_FILE_OVERWRITE UINT64_C(256)
+typedef int (*IfsOfsWriteAt)(void *context, uint64_t offset,
+                             const void *buffer, uint32_t bytes);
+typedef int (*IfsOfsSync)(void *context);
+typedef struct {
+    uint32_t abi_version;
+    uint32_t structure_bytes;
+    const char *format_id;
+    uint64_t capabilities;
+    /* Returns 0 on verified success, -1 for unsupported, corrupt or I/O
+     * error. Exactly one OFS data block per operation. Cannot grow a file. */
+    int (*overwrite_existing)(IfsOfsDropInVolume *volume,
+        const IfsOfsEfiEntry *file, uint32_t offset, const void *bytes,
+        uint32_t length, IfsOfsWriteAt write_at, IfsOfsSync sync,
+        void *write_context);
+} IfsOfsDropInModuleV2;
+const IfsOfsDropInModuleV2 *infiltrator_filesystem_module_v2(void);
 #endif

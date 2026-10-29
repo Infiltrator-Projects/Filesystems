@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.103 — 2026-10-29 (OFS.so experimental V2 bounded writer)
+
+- Introduce a versioned OFS.so V2 single-block existing-file overwrite ABI using canonical OFS data-chain validation and checksum primitives, leaving V1 layout unchanged.
+- Require explicit host write and sync callbacks; reject file growth, invalid bounds, directory writes and corrupt chains; read back and verify all 512 persisted bytes and checksum.
+- Add negative and positive disposable-image tests. This is **not** a full OFS writer: allocation, create/delete/rename, formatting and crash-safe recovery still require migration from the existing working Linux ofs.ko code and independent qualification.
+- No physical devices, ESP, BOOT or kernel loaders are modified. Keep old native OFS paths intact until replaced and tested.
+
+
 ## 0.5.101 — 2026-10-29 (single-file filesystem architecture documentation)
 
 - Record one authoritative `.so` per filesystem identity as the final distributed driver for BOOT, the InfiltratorOS kernel and applications.
