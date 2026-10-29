@@ -244,3 +244,33 @@ int ifs_ofs_efi_read(const IfsOfsEfiVolume *v,
     }
     return 0;
 }
+
+/* Central data-chain resolver used by the reader and the future portable
+ * OFS writer. This is the same validated chain, not a duplicate parser. */
+int ifs_ofs_efi_resolve_file_block(const IfsOfsEfiVolume *v,
+                                   const IfsOfsEfiEntry *file,
+                                   uint32_t offset, uint32_t *block_number,
+                                   uint8_t contents[512])
+{
+    uint8_t header[512];
+    uint32_t current, seq, wanted;
+    if (!v || !file || !block_number || !contents ||
+        file->type != IFS_OFS_EFI_FILE || offset >= file->size ||
+        metadata(v, file->block, header) != 0 ||
+        word(header, 1) != file->block ||
+        word(header, 127) != (uint32_t)OFS_FILE ||
+        word(header, 81) != file->size)
+        return -1;
+    current = word(header, 4);
+    wanted = offset / OFS_DATA + 1U;
+    for (seq = 1U; seq <= wanted; ++seq) {
+        if (data(v, file, current, seq, contents) != 0)
+            return -1;
+        if (seq == wanted) {
+            *block_number = current;
+            return 0;
+        }
+        current = word(contents, 4);
+    }
+    return -1;
+}
