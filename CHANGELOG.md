@@ -2,7 +2,7 @@
 
 ## 0.5.106 — 2026-10-29 (OFS existing-file V2 write foundation)
 
-- Preserve the read-only V1 ABI and implement a bounded V2 existing-file overwrite, calling the canonical OFS data-block chain resolver and checksum implementation rather than creating a second parser.
+- Preserve the read-only V1 ABI and implement a bounded V2 existing-file overwrite spanning multiple authentic 488-byte OFS data blocks, preflighting the whole destination chain before mutation and using the canonical resolver/checksum logic rather than creating a second parser.
 - Require a separately supplied write and durable sync callback, verify the rewritten 512-byte data block by rereading it and reject out-of-file offsets, corrupt layout, unsupported namespaces and allocation changes.
 - Add genuine positive and negative tests on disposable media. No allocation, create/delete/rename, general formatter, crash-safe recovery, kernel/BOOT SO loader or physical-drive write support is claimed.
 
