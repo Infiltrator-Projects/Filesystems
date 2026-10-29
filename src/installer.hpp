@@ -41,6 +41,7 @@ void manage_fat12_module_async(bool remove, ActionCompletion completion);
 void manage_fat32_module_async(bool remove, ActionCompletion completion);
 void manage_ofs_module_async(bool remove, ActionCompletion completion);
 void manage_ext2_dropin_async(bool remove, ActionCompletion completion);
+void manage_exfat_dropin_async(bool remove, ActionCompletion completion);
 void manage_minix_dropin_async(bool remove, ActionCompletion completion);
 void load_module_async(const std::string& module,
                        ActionCompletion completion);
