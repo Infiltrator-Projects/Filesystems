@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Prune only branches already incorporated into main
+on:
+  push:
+    paths:
+      - '.github/workflows/one-time-prune-merged-branches.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove only fully merged branches without open pull requests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Examining branches for $GH_REPO"
+          gh api --paginate "repos/$GH_REPO/branches?per_page=100" --jq '.[].name' |
+          while IFS= read -r branch; do
+            [[ "$branch" == "main" ]] && continue
+            # GitHub returns the branch's FULL ancestry comparison; require
+            # zero commits on the branch which are absent from main.
+            encoded=$(jq -rn --arg x "$branch" '$x|@uri')
+            ahead=$(gh api "repos/$GH_REPO/compare/main...$encoded" --jq '.ahead_by') || {
+              echo "KEEP $branch (comparison unavailable)"
+              continue
+            }
+            if [[ "$ahead" != "0" ]]; then
+              echo "KEEP $branch ($ahead unique commits)"
+              continue
+            fi
+            # Even when merged, don't remove a branch tied to an open PR.
+            prs=$(gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" --jq '.[].head.ref') || {
+              echo "KEEP $branch (pull request inspection failed)"
+              continue
+            }
+            if grep -Fxq -- "$branch" <<<"$prs"; then
+              echo "KEEP $branch (open pull request)"
+              continue
+            fi
+            echo "DELETE $branch (fully contained in main)"
+            gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$encoded"
+          done
