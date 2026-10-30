@@ -358,16 +358,21 @@ jobs:
           fi
           kernel_tree="$RUNNER_TEMP/filesystems-kernel-7.0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           printf 'KERNEL_TREE=%s\n' "$kernel_tree" >> "$GITHUB_ENV"
-          # Linux v7.0 tag resolves to this pinned upstream commit.
-          # Fetch a source archive instead of a rate-limited smart-HTTP clone.
+          # Linux v7.0 is the annotated upstream tag for this exact commit.
+          # Use kernel.org's official tarball: GitHub codeload rate-limits
+          # shared CI runner addresses. Verify immutable upstream release
+          # bytes before extracting or compiling; never accept an HTTP error
+          # page as source code.
           kernel_commit=028ef9c96e96197026887c0f092424679298aae8
-          archive="$RUNNER_TEMP/linux-7.0-$kernel_commit.tar.gz"
+          kernel_sha256=bb7f6d80b387c757b7d14bb93028fcb90f793c5c0d367736ee815a100b3891f0
+          archive="$RUNNER_TEMP/linux-7.0-$kernel_commit.tar.xz"
           curl --fail --location --retry 5 --retry-delay 4 \
             --retry-all-errors --connect-timeout 30 --max-time 600 \
-            "https://codeload.github.com/torvalds/linux/tar.gz/$kernel_commit" \
+            "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.tar.xz" \
             --output "$archive"
+          printf '%s  %s\n' "$kernel_sha256" "$archive" | sha256sum --check --
           mkdir -p "$kernel_tree"
-          tar -xzf "$archive" -C "$kernel_tree" --strip-components=1
+          tar -xJf "$archive" -C "$kernel_tree" --strip-components=1
           test -f "$kernel_tree/Makefile"
           make -C "$kernel_tree" defconfig
           make -C "$kernel_tree" modules_prepare
