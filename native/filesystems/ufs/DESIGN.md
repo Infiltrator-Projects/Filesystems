@@ -10,15 +10,23 @@ other Unix systems. Filesystems must model explicitly which UFS1/UFS2
 and vendor/layout variants it supports rather than treating "UFS" as one
 undifferentiated Linux-driver mode.
 
-The target architecture is one canonical host-neutral UFS engine with thin host
-adapters.
+The distribution identity follows the on-disk format generation: independent
+[Filesystem-UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1)
+and [Filesystem-UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2)
+repositories own `UFS1.so` and `UFS2.so`. Each driver handles its
+own UFS major version (including little/big byte orders) through the common
+versioned module ABI. Generic host adaptation and execution belong to
+Defragmenter, BOOT, or the kernel, not a second on-disk parser. Shared
+historical UFS algorithm lineage does not change the two independent
+on-disk distribution identities.
 
 ## Current implementation state
 
 UFS is currently **imported-source development state**.
 
-There is no project-authored canonical UFS engine and no Filesystems UFS
-native module claimed by this directory. The source under `linux/`
+The independent UFS1/UFS2 repositories now own project-authored hosted
+on-disk C engines and test pipelines. **This historical Filesystems
+directory itself** does not build or distribute those drivers. The source under `linux/`
 is the pinned upstream Linux UFS implementation retained as format,
 variant-detection, byte-order and interoperability evidence.
 
