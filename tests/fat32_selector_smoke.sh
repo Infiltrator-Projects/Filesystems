@@ -19,7 +19,7 @@ module=/System/Filesystems/FAT32.so
 
 cleanup() {
     sudo "$helper" remove >/dev/null 2>&1 || :
-    sudo rm -f "$helper" "$source_dir/fat32_module.c" "$source_dir/fat32_module.h" "$source_dir/fatfs_libc.c"
+    sudo rm -f -- "$helper" "$source_dir"/{fat32_module.c,fat32_module.h,fatfs_module.c,fatfs_module.h,ff.c,ff.h,ffconf.h,diskio.h,ffunicode.c,fatfs_libc.c}
     sudo rmdir "$source_dir" >/dev/null 2>&1 || :
     sudo rm -rf "$engine_dir"
     sudo rmdir "$app_dir/Sources" "$app_dir/Helpers" "$app_dir" /Programs >/dev/null 2>&1 || :
