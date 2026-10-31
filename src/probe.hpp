@@ -47,6 +47,7 @@ struct ProbeResult {
     SupportState ext2_dropin_state = SupportState::Incomplete;
     // FFS.so is independent of the existing Linux ffs.ko.
     SupportState ffs_dropin_state = SupportState::Incomplete;
+    SupportState bfs_dropin_state = SupportState::Incomplete;
 };
 
 void invalidate_probe_cache();

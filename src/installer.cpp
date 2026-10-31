@@ -616,6 +616,22 @@ void manage_ofs_module_async(const bool remove,
         std::move(completion));
 }
 
+void manage_bfs_dropin_async(const bool remove,
+                             ActionCompletion completion)
+{
+    const std::string helper = application_helper("bfs-module-helper");
+    if (!executable_file(helper.c_str())) {
+        completion(false, "The BFS.so compiler helper is not installed.");
+        return;
+    }
+    // Only BFS.so; never the Linux bfs.ko or other filesystems.
+    run_privileged_async(
+        {helper, remove ? "remove" : "install"},
+        remove ? "BFS.so removed." :
+                 "BFS.so compiled and installed in /System/Filesystems/.",
+        std::move(completion));
+}
+
 void manage_ffs_dropin_async(const bool remove,
                              ActionCompletion completion)
 {

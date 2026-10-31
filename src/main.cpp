@@ -71,6 +71,7 @@ struct RowState {
     GtkWidget* fat32_button = nullptr;
     GtkWidget* ext2_dropin_button = nullptr;
     GtkWidget* ffs_dropin_button = nullptr;
+    GtkWidget* bfs_dropin_button = nullptr;
 };
 
 struct AppState {
@@ -328,7 +329,8 @@ void render_row(RowState* row)
         gtk_button_set_label(GTK_BUTTON(row->module_button), "Scanning…");
         set_button_semantics(row->module_button, false, false);
         for (GtkWidget* button : {row->fat12_button, row->fat32_button,
-                                  row->ext2_dropin_button, row->ffs_dropin_button}) {
+                                  row->ext2_dropin_button, row->ffs_dropin_button,
+                                  row->bfs_dropin_button}) {
             if (button == nullptr) continue;
             gtk_widget_set_visible(button, TRUE);
             gtk_widget_set_sensitive(button, FALSE);
@@ -378,6 +380,8 @@ void render_row(RowState* row)
                        row->probe.ext2_dropin_state, "EXT2.so");
     render_fat_variant(row->ffs_dropin_button,
                        row->probe.ffs_dropin_state, "FFS.so");
+    render_fat_variant(row->bfs_dropin_button,
+                       row->probe.bfs_dropin_state, "BFS.so");
 }
 
 bool row_matches_filter(const RowState& row, const ViewFilter filter)
@@ -546,6 +550,8 @@ void set_scan_chrome(AppState* state, const bool running)
                 gtk_widget_set_sensitive(row->ext2_dropin_button, FALSE);
             if (row->ffs_dropin_button != nullptr)
                 gtk_widget_set_sensitive(row->ffs_dropin_button, FALSE);
+            if (row->bfs_dropin_button != nullptr)
+                gtk_widget_set_sensitive(row->bfs_dropin_button, FALSE);
         } else if (row->probed) {
             render_row(row.get());
         }
@@ -860,6 +866,33 @@ void ext2_dropin_clicked(GtkButton* clicked, gpointer user_data)
         });
 }
 
+void bfs_dropin_clicked(GtkButton* clicked, gpointer user_data)
+{
+    auto* row = static_cast<RowState*>(user_data);
+    if (row == nullptr || row->app == nullptr || !row->probed ||
+        row->descriptor == nullptr || row->descriptor->id != "bfs" ||
+        GTK_WIDGET(clicked) != row->bfs_dropin_button ||
+        row->app->shutting_down || row->app->scan_running)
+        return;
+    const fs::SupportState observed = row->probe.bfs_dropin_state;
+    if (observed != fs::SupportState::Ready &&
+        observed != fs::SupportState::Installable)
+        return;
+    const bool remove = observed == fs::SupportState::Ready;
+    gtk_widget_set_sensitive(row->bfs_dropin_button, FALSE);
+    gtk_button_set_label(GTK_BUTTON(row->bfs_dropin_button),
+                         remove ? "Removing BFS.so…" : "Compiling BFS.so…");
+    AppState* app = row->app;
+    fs::execute_bfs_dropin_async(remove,
+        [app](const bool success, const std::string& description) {
+            if (app->shutting_down) return;
+            if (!success)
+                show_message(GTK_WINDOW(app->window), GTK_MESSAGE_ERROR,
+                             "BFS.so operation failed", description);
+            start_scan(app);
+        });
+}
+
 void ffs_dropin_clicked(GtkButton* clicked, gpointer user_data)
 {
     auto* row = static_cast<RowState*>(user_data);
@@ -998,6 +1031,14 @@ GtkWidget* create_row(AppState* state,
         g_signal_connect(row->ext2_dropin_button, "clicked",
                          G_CALLBACK(ext2_dropin_clicked), row);
     }
+    if (descriptor.id == "bfs") {
+        row->bfs_dropin_button = gtk_button_new_with_label("Scanning…");
+        gtk_widget_set_no_show_all(row->bfs_dropin_button, TRUE);
+        gtk_widget_set_tooltip_text(row->bfs_dropin_button,
+            "Independent SCO BFS.so; bounded existing-file writes only.");
+        g_signal_connect(row->bfs_dropin_button, "clicked",
+                         G_CALLBACK(bfs_dropin_clicked), row);
+    }
     if (descriptor.id == "ffs") {
         row->ffs_dropin_button = gtk_button_new_with_label("Scanning…");
         gtk_widget_set_no_show_all(row->ffs_dropin_button, TRUE);
@@ -1029,6 +1070,9 @@ GtkWidget* create_row(AppState* state,
     if (row->ffs_dropin_button != nullptr)
         gtk_box_pack_end(GTK_BOX(actions),
                          row->ffs_dropin_button, FALSE, FALSE, 0);
+    if (row->bfs_dropin_button != nullptr)
+        gtk_box_pack_end(GTK_BOX(actions),
+                         row->bfs_dropin_button, FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(outer), icon, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(outer), middle, TRUE, TRUE, 0);

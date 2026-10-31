@@ -72,6 +72,8 @@ void execute_ext2_dropin_async(
     bool remove, DesktopActionCompletion completion);
 void execute_ffs_dropin_async(
     bool remove, DesktopActionCompletion completion);
+void execute_bfs_dropin_async(
+    bool remove, DesktopActionCompletion completion);
 
 void execute_desktop_action_async(
     DesktopAction action,

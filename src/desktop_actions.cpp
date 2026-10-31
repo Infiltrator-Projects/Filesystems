@@ -203,6 +203,13 @@ void execute_ext2_dropin_async(
     manage_ext2_dropin_async(remove, std::move(completion));
 }
 
+void execute_bfs_dropin_async(
+    const bool remove, DesktopActionCompletion completion)
+{
+    if (!completion) return;
+    manage_bfs_dropin_async(remove, std::move(completion));
+}
+
 void execute_ffs_dropin_async(
     const bool remove, DesktopActionCompletion completion)
 {

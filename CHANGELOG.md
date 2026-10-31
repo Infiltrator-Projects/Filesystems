@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.102 — 2026-10-28 (standalone SCO BFS UI activation)
+
+- Connect the already existing genuine `BFS.so` compiler/helper to a separate graphical Install/Remove button, source-status probe and privileged action. Retain exact Linux `bfs.ko` operations separately, leave `BeFS` unrelated, and do not claim creation/formatting/EFI/general write support.
+- Preserve dependency on independent FFS 0.5.101 development; no production release is triggered by this feature branch.
+
+
 ## 0.5.101 — 2026-10-28 (independent Amiga FFS reader)
 
 - Build a genuine freestanding read-only Amiga `FFS.so` from canonical FFS DOSType, checksum, directory-hash and raw data-pointer semantics, supporting classic DOS1, international DOS3 and directory-cache DOS5, with filesystem blocks from 512 bytes to 32 KiB.

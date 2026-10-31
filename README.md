@@ -119,8 +119,8 @@ System**, not BeOS BeFS. It uses repository-owned BFS on-disk semantics
 to enumerate the root directory, look up case-sensitive names, read
 contiguous file extents, and overwrite allocated bytes of existing files.
 The helper builds the one file into `/System/Filesystems/BFS.so` from
-`/Programs/Filesystems/Sources/bfs/`. This source target has a
-compiler/helper path but no GTK Install/Remove button yet.
+`/Programs/Filesystems/Sources/bfs/`. The standalone module now has an independent
+GTK Install/Remove action; it never installs or removes the Linux BFS driver.
 
 BFS writes require explicit host write and flush callbacks and refuse
 interrupted relocation markers. CI tests both synthetic images and independently
