@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/exfat-native-so-20261029]
   pull_request:
 
 permissions:
