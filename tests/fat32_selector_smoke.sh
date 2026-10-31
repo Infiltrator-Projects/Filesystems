@@ -33,7 +33,8 @@ sudo install -m 0644 native/filesystems/fat/defrag/host/*.h "$engine_dir/host"
 sudo install -m 0644 src/infiltratr-common/include/infiltratr/*.h "$engine_dir/include/infiltratr"
 sudo install -m 0644 native/filesystems/fat/module/fat32_module.c "$source_dir"
 sudo install -m 0644 native/filesystems/fat/module/fat32_module.h "$source_dir"
-sudo install -m 0644 native/filesystems/fat/portable/fatfs_libc.c "$source_dir"
+bash -n packaging/linux/fat32-module-helper.sh
+sudo install -m 0644 native/filesystems/fat/portable/{fatfs_module.c,fatfs_module.h,ff.c,ff.h,ffconf.h,diskio.h,ffunicode.c,fatfs_libc.c} "$source_dir"
 sudo install -m 0755 packaging/linux/fat32-module-helper.sh "$helper"
 
 sudo "$helper" install
