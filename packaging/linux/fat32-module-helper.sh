@@ -121,8 +121,8 @@ case "$1" in
             "$engine_dir/fat_io.c" "$engine_dir/fat_journal.c"
             "$engine_dir/fat_relocation.c" "$engine_dir/fat_volume.c"
             "$engine_dir/fat_defrag_module.c")
-        for name in fat32_module.c fat32_module.h fatfs_module.c
-                    fatfs_module.h ff.c ff.h ffconf.h diskio.h
+        for name in fat32_module.c fat32_module.h fatfs_module.c \
+                    fatfs_module.h ff.c ff.h ffconf.h diskio.h \
                     ffunicode.c fatfs_libc.c; do
             path="$source_dir/$name"
             [[ -f "$path" && ! -L "$path" ]] || fatal "unsafe FAT32 source: $path"
