@@ -104,7 +104,7 @@ case "$1" in
         ;;
     install)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
-        refuse_package_owned_module()
+        refuse_package_owned_module
         safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
@@ -158,7 +158,7 @@ case "$1" in
         ;;
     remove)
         [[ $(id -u) -eq 0 ]] || fatal "requires authorisation"
-        refuse_package_owned_module()
+        refuse_package_owned_module
         safe_directory
         [[ -e "$module" ]] ||
             { printf 'FAT32 already absent\n'; exit 0; }
