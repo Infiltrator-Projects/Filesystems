@@ -24,6 +24,24 @@ static int read_at(void *opaque, uint64_t at, void *out, uint32_t n)
     memcpy(out, image + (size_t)at, n);
     return 0;
 }
+static unsigned recorded_writes, recorded_flushes;
+static int write_at(void *opaque, uint64_t at,
+                    const void *source, uint32_t count)
+{
+    (void)opaque;
+    if (at < (uint64_t)DATA_START * SECTOR ||
+        at > sizeof image || count > sizeof image - at)
+        return -1; /* Never mutate BPB, FAT copies or root metadata. */
+    memcpy(image + (size_t)at, source, count);
+    ++recorded_writes;
+    return 0;
+}
+static int flush(void *opaque)
+{
+    (void)opaque;
+    ++recorded_flushes;
+    return 0;
+}
 static unsigned char *data(unsigned cluster)
 {
     return image + (DATA_START + (cluster - 2u)) * SECTOR;
@@ -75,6 +93,8 @@ static int fail(const char *reason)
 int main(void)
 {
     const IfsFat32Module *api = infiltrator_filesystem_module_v1();
+    const IfsFat32ModuleV2 *v2 = infiltrator_filesystem_module_v2();
+    IfsFat32WritableIo writable = {{read_at, NULL, sizeof image}, write_at, flush};
     IfsFat32Io io = {read_at, NULL, sizeof image};
     IfsFat32Volume vol = {0};
     IfsFat32File file = {0};
@@ -105,7 +125,60 @@ int main(void)
             return fail("FAT32 file contents incorrect");
     if (api->read_file(&io, &vol, &file, 1199u, bytes, 2u) == 0)
         return fail("out-of-file read accepted");
+
+    if (!v2 || v2->abi_version != IFS_FAT32_V2_ABI_VERSION ||
+        v2->structure_bytes != sizeof(*v2) ||
+        strcmp(v2->format_id, "fat32") != 0 ||
+        v2->readonly_v1 != api ||
+        (v2->capabilities & IFS_FAT32_V2_CAP_OVERWRITE_EXISTING) == 0u)
+        return fail("V2 FAT32 ABI/identity mismatch");
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            510u, "WXYZ", 4u) != 0 ||
+        recorded_writes != 2u || recorded_flushes != 1u ||
+        api->read_file(&io, &vol, &file, 510u, bytes, 4u) != 0 ||
+        memcmp(bytes, "WXYZ", 4u) != 0)
+        return fail("V2 fragmented cross-cluster overwrite failed");
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            1199u, "XX", 2u) == 0 || recorded_writes != 2u)
+        return fail("V2 allowed file extension");
+    {
+        IfsFat32File forged = file;
+        forged.first_cluster = 9u;
+        if (v2->overwrite_existing(&writable, &vol, &forged,
+               0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return fail("V2 allowed forged root metadata");
+        forged = file;
+        forged.attributes |= 1u;
+        if (v2->overwrite_existing(&writable, &vol, &forged,
+               0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return fail("V2 ignored read-only file attribute");
+    }
+    writable.flush = NULL;
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return fail("V2 allowed writer without flush");
+    writable.flush = flush;
+    writable.write_at = NULL;
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return fail("V2 allowed absent writer");
+    writable.write_at = write_at;
+    {
+        IfsFat32Volume tampered = vol;
+        ++tampered.data_offset;
+        if (v2->overwrite_existing(&writable, &tampered, &file,
+                0u, "X", 1u) == 0 || recorded_writes != 2u)
+            return fail("V2 accepted altered volume geometry");
+    }
+    p16(image + 40u, 0x0081u);
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return fail("V2 accepted unqualified FAT32 active FAT selection");
+    p16(image + 40u, 0u);
     fat(7u, UINT32_C(0x0fffffff));
+    if (v2->overwrite_existing(&writable, &vol, &file,
+            0u, "X", 1u) == 0 || recorded_writes != 2u)
+        return fail("V2 wrote through corrupt FAT32 allocation chain");
     if (api->root_file_fragments(&io, &vol, &file, &fragments) == 0)
         return fail("short FAT32 file chain accepted");
     fixture();

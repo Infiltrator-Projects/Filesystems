@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — FAT12/FAT16/FAT32 V2 bounded existing-data overwrites
+
+- Add separately versioned V2 FAT12/FAT16/FAT32 optional APIs without altering the V1 read-only layouts.
+- Implement host-flush-backed existing-file writes across fragmented cluster chains in the shared classic FAT engine, with root-file identity matching, fresh BPB geometry checks, bounds, read-only attributes and negative-case tests.
+- Add FAT32's independent 28-bit FAT/root-chain V2 overwrite preflight with an explicit nondefault active-FAT refusal and its own negative-case tests.
+- No file creation, rename, deletion, allocation, extension, formatter, defrag or boot claim; each variant remains separately managed.
+
 ## Unreleased — experimental BFS.so
 
 - Implement independent SCO BFS drop-in with bounded root inode/directory traversal, real contiguous data reading, and flush-backed in-place overwrites of allocated file bytes.

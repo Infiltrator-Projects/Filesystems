@@ -37,12 +37,14 @@ if readelf -d "$module" | grep 'NEEDED' >/dev/null; then
     echo "FAT32.so has host-linked library dependencies" >&2
     exit 1
 fi
-readelf -Ws "$module" | grep 'infiltrator_filesystem_module_v1$' >/dev/null
+readelf -Ws "$module" | grep -F 'infiltrator_filesystem_module_v1' >/dev/null
+readelf -Ws "$module" | grep -F 'infiltrator_filesystem_module_v2' >/dev/null
+readelf -p .ifsmeta "$module" | grep -F 'IFS-MODULE:fat32:2' >/dev/null
 
 sudo "$helper" remove
 [[ ! -e "$module" ]] || { echo "FAT32 removal failed" >&2; exit 1; }
 
-# A binary for another FAT format is never an acceptable replacement.
+# A foreign FAT16 module must not be accepted as FAT32.
 foreign=$(find build-desktop -name "FAT16.so" -type f -print -quit)
 [[ -n "$foreign" ]] || { echo "missing foreign module for identity test" >&2; exit 1; }
 sudo install -m 0644 "$foreign" "$module"
@@ -52,9 +54,7 @@ if sudo "$helper" status >/dev/null 2>&1; then
 fi
 sudo "$helper" remove
 
-
-# The copied prebuilt module and a module compiled by Install are discovered
-# through the exact same directory; neither installs a second filesystem.
+# Prebuilt and compiled modules use the identical /System discovery path.
 prebuilt=$(find build-desktop -name FAT32.so -type f -print -quit)
 [[ -n "$prebuilt" ]] || { echo "prebuilt FAT32.so missing" >&2; exit 1; }
 sudo install -m 0644 "$prebuilt" "$module"
