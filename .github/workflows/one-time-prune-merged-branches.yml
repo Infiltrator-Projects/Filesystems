@@ -47,3 +47,65 @@ jobs:
             gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$encoded"
           done
 # Maintenance recheck 2026-11-01: prune only zero-ahead branches after the November consolidation audit.
+
+      - name: Archive only reviewed superseded 2026-11-01 branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Rechecked 2026-11-01. Each listed branch has a merged or newer
+          # authoritative successor. Some squash/ported commits are not Git
+          # ancestors of main, so retain full original history under a
+          # SHA-qualified archival tag BEFORE deleting the named branch.
+          # This does not claim that unmerged commits have been incorporated.
+          open_prs=$(gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" --jq '.[].head.ref')
+          while IFS='|' read -r branch expected_sha; do
+            [[ -z "$branch" ]] && continue
+            [[ "$branch" == "main" ]] && { echo "Refusing main"; exit 1; }
+            if grep -Fxq -- "$branch" <<<"$open_prs"; then
+              echo "KEEP $branch (open PR)"
+              continue
+            fi
+            current_sha=$(gh api "repos/$GH_REPO/git/ref/heads/$branch" --jq '.object.sha' 2>/dev/null) || {
+              echo "KEEP $branch (ref absent or unreadable)"
+              continue
+            }
+            if [[ "$current_sha" != "$expected_sha" ]]; then
+              echo "KEEP $branch (head changed)"
+              continue
+            fi
+            slug=${branch//\//--}
+            tag="archive/2026-11-01/superseded/${slug}-${expected_sha:0:12}"
+            actual=$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq '.object.sha' 2>/dev/null) || actual=""
+            if [[ -z "$actual" ]]; then
+              echo "ARCHIVE $branch => $tag"
+              gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$expected_sha" >/dev/null
+              actual=$(gh api "repos/$GH_REPO/git/ref/tags/$tag" --jq '.object.sha')
+            fi
+            if [[ "$actual" != "$expected_sha" ]]; then
+              echo "KEEP $branch (archive SHA mismatch)"
+              continue
+            fi
+            latest=$(gh api "repos/$GH_REPO/git/ref/heads/$branch" --jq '.object.sha' 2>/dev/null) || {
+              echo "KEEP $branch (ref changed or missing after archive)"
+              continue
+            }
+            if [[ "$latest" != "$expected_sha" ]]; then
+              echo "KEEP $branch (ref moved after archive)"
+              continue
+            fi
+            echo "ARCHIVED AND DELETE $branch at $expected_sha"
+            gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$branch"
+          done <<'REVIEWED_BRANCHES'
+          feat/ext2-dropin-existing-block-rw-20261027|6062bb8b0f7635576b0ba30ba48b830ee832373e
+          feat/ext2-dropin-rw-main-20261027|cb2bfc3e9626156c8b12c7a689e93192521cc56b
+          feature/bfs-gui-dropin-20261028|5050cf33748c0be35fdceae50f872c20be7394ba
+          feature/exfat-native-so-20261029|e076a0effa30b59842e63996b864b1681b1ab5d0
+          feature/fat16-consolidation-20261026|69a8e8198c2feeca87a2bb7e8ba56b03e7447b46
+          feature/ffs-freestanding-reader-20261028|d8e9a0dd030744ac6fde192da38178997db3d572
+          feature/integrate-fat-v2-minix-main-20261028|093a01354536917885ecddffa68d904dc9532c47
+          feature/minix-standalone-v1-v3-20261027|9928bb6ce216e244d638d214734e9cc1c674c1bc
+          test/fat16-ext2-independent-roundtrip-20261028|33da5048c8aad0041a065021265b6d39901b15e5
+          REVIEWED_BRANCHES
