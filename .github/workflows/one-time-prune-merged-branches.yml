@@ -108,4 +108,8 @@ jobs:
           feature/integrate-fat-v2-minix-main-20261028|093a01354536917885ecddffa68d904dc9532c47
           feature/minix-standalone-v1-v3-20261027|9928bb6ce216e244d638d214734e9cc1c674c1bc
           test/fat16-ext2-independent-roundtrip-20261028|33da5048c8aad0041a065021265b6d39901b15e5
+          feature/fat12-fat16-inplace-write-20261027|36a397005a2599dddf8b0467c61dbe8ad092dd67
+          feature/fat16-drop-in-selector-20261026|a6dd4048e350bd50e1f89ff406654dcdfb5290c6
+          feature/fat-v2-overwrite-on-bfs-20261027|e8f93aad2130f8d7ad6949ad896a185123e01770
+          integration/ffs-v101-after-minix-v100-20261028|23416455b63127ae32582eac2ff433c757bee6c5
           REVIEWED_BRANCHES
