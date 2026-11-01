@@ -46,3 +46,4 @@ jobs:
             echo "DELETE $branch (fully contained in main)"
             gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$encoded"
           done
+# Maintenance recheck 2026-11-01: prune only zero-ahead branches after the November consolidation audit.
