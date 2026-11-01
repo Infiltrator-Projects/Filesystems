@@ -112,4 +112,5 @@ jobs:
           feature/fat16-drop-in-selector-20261026|a6dd4048e350bd50e1f89ff406654dcdfb5290c6
           feature/fat-v2-overwrite-on-bfs-20261027|e8f93aad2130f8d7ad6949ad896a185123e01770
           integration/ffs-v101-after-minix-v100-20261028|23416455b63127ae32582eac2ff433c757bee6c5
+          cleanup/infiltratorfs-efi-authority|0758bf582679e3de5864d53d3a031a3719489a18
           REVIEWED_BRANCHES
