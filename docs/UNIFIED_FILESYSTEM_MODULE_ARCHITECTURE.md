@@ -39,6 +39,10 @@ Use one destination per output across the independent filesystem providers. Each
 | Canonical shared module | `$DESTDIR/System/Filesystems/<catalogue-filename>.so` |
 | Qualified Linux module | `$DESTDIR/System/Kernel/Filesystems/<provider-id>.ko` |
 
+The published Debian package installs the shared module, generated manual and qualified Linux module at these three paths. A manual `.run` compiles the shared module and Linux adapter locally, generates the PDF from its editable source, and replaces the package's files. It uses the running kernel's prepared headers by default and accepts `--kernel-build DIRECTORY` for an explicit build target.
+
+InfiltratorOS owns the selective update policy. It builds a missing or older shared module, verifies and repairs the manual independently, and retains a valid package-owned kernel module from the same release. Its `--system-package-mode` build supplies the shared module and manual while the OS worker stages a matching kernel asset separately.
+
 Keep the `.so` and `.ko` tied to the same provider release. Build and qualify a single amd64 Linux module for the project Linux `6.12.107` target. Publish it as `<provider-id>-linux-6.12.107.ko` with its SHA-256 alongside the provider’s normal source installer and Debian package. InfiltratorOS uses the release digest to stage the module under its stable filename, such as `ofs.ko`, for manual use. The release asset records the kernel target. The installed filename is stable across upgrades.
 
 FAT12, FAT16, FAT32, OFS and exFAT already have published kernel assets. The same rule applies to the other providers as their Linux builds qualify. Linux SWAP uses the kernel’s built-in swap implementation.
