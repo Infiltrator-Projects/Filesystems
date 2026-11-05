@@ -31,11 +31,11 @@ Current FAT12/FAT16 source/CI includes standalone `.so` and platform-specific ke
 
 ## Transitional filesystem build outputs
 
-Use one flat destination per output across the independent filesystem providers. Each output is a regular file.
+Use one destination per output across the independent filesystem providers. Each output is a regular file.
 
 | Output | Build staging path |
 | --- | --- |
-| PDF manual | `$DESTDIR/System/Resources/Documentation/<provider-repository>.pdf` |
+| PDF manual | `$DESTDIR/System/Resources/Documentation/<provider-repository>/<manual>.pdf` |
 | Canonical shared module | `$DESTDIR/System/Filesystems/<catalogue-filename>.so` |
 | Qualified Linux module | `$DESTDIR/System/Kernel/Filesystems/<provider-id>.ko` |
 
