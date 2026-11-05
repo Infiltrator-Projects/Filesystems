@@ -29,6 +29,24 @@ Existing per-format `.efi` UEFI readers, Linux `.ko` drivers, distribution files
 
 Current FAT12/FAT16 source/CI includes standalone `.so` and platform-specific kernel/EFI work; that evidence **does not mean** BOOT already executes an `.so` or that the active Linux kernel consumes it. Do not mark a filesystem complete because its package contains three binaries or because separate tests are green. Documentation of released artifacts and their historical contents must remain accurate until migrated.
 
+## Transitional filesystem build outputs
+
+Use one destination per output across the independent filesystem providers. Each output is a regular file.
+
+| Output | Build staging path |
+| --- | --- |
+| PDF manual | `$DESTDIR/System/Resources/Documentation/<provider-repository>/<manual>.pdf` |
+| Canonical shared module | `$DESTDIR/System/Filesystems/<catalogue-filename>.so` |
+| Qualified Linux module | `$DESTDIR/System/Kernel/Filesystems/<provider-id>.ko` |
+
+The published Debian package installs the shared module, generated manual and qualified Linux module at these three paths. A manual `.run` compiles the shared module and Linux adapter locally, generates the PDF from its editable source, and replaces the package's files. It uses the running kernel's prepared headers by default and accepts `--kernel-build DIRECTORY` for an explicit build target.
+
+InfiltratorOS owns the selective update policy. It builds a missing or older shared module, verifies and repairs the manual independently, and retains a valid package-owned kernel module from the same release. Its `--system-package-mode` build supplies the shared module and manual; the OS worker packages them with the retained or matching published kernel module, keeping ownership and all three checksums in Debian metadata. Missing-SO repair reads kernel provenance independently. Kernel-only repair reuses the verified SO and PDF without recompiling them.
+
+Keep the `.so` and `.ko` tied to the same provider release. Build and qualify a single amd64 Linux module for the project Linux `6.12.107` target. Publish it as `<provider-id>-linux-6.12.107.ko` with its SHA-256 alongside the provider’s normal source installer and Debian package. InfiltratorOS uses the release digest to stage the module under its stable filename, such as `ofs.ko`, for manual use. The release asset records the kernel target. The installed filename is stable across upgrades.
+
+Twenty-one providers build Linux adapters against the reference kernel. Linux SWAP uses the kernel’s built-in swap implementation; ZFS has no qualified Linux adapter yet.
+
 ## Required evidence before a format is called complete
 
 1. A *single* independently versioned, correctly identified `.so`, with tested complete read/write/create/delete/rename/format and any advertised relocation/recovery capabilities, including power-loss/failure recovery limits.
