@@ -31,12 +31,13 @@ Current FAT12/FAT16 source/CI includes standalone `.so` and platform-specific ke
 
 ## Transitional filesystem build outputs
 
-Use one flat destination per output across the independent filesystem providers.
+Use one flat destination per output across the independent filesystem providers. Each output is a regular file.
 
 | Output | Build staging path |
 | --- | --- |
+| PDF manual | `$DESTDIR/System/Resources/Documentation/<provider-repository>.pdf` |
 | Canonical shared module | `$DESTDIR/System/Filesystems/<catalogue-filename>.so` |
-| Qualified Linux module | `$DESTDIR/System/Kernel/Modules/<provider-id>.ko` |
+| Qualified Linux module | `$DESTDIR/System/Kernel/Filesystems/<provider-id>.ko` |
 
 Keep the `.so` and `.ko` tied to the same provider release. Build and qualify a single amd64 Linux module for the project Linux `6.12.107` target. Publish it as `<provider-id>-linux-6.12.107.ko` with its SHA-256 alongside the provider’s normal source installer and Debian package. InfiltratorOS uses the release digest to stage the module under its stable filename, such as `ofs.ko`, for manual use. The release asset records the kernel target. The installed filename is stable across upgrades.
 
