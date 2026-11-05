@@ -29,6 +29,19 @@ Existing per-format `.efi` UEFI readers, Linux `.ko` drivers, distribution files
 
 Current FAT12/FAT16 source/CI includes standalone `.so` and platform-specific kernel/EFI work; that evidence **does not mean** BOOT already executes an `.so` or that the active Linux kernel consumes it. Do not mark a filesystem complete because its package contains three binaries or because separate tests are green. Documentation of released artifacts and their historical contents must remain accurate until migrated.
 
+## Transitional filesystem build outputs
+
+Use one flat destination per output across the independent filesystem providers.
+
+| Output | Build staging path |
+| --- | --- |
+| Canonical shared module | `$DESTDIR/System/Filesystems/<catalogue-filename>.so` |
+| Qualified Linux module | `$DESTDIR/System/Kernel/Modules/<provider-id>.ko` |
+
+Keep the `.so` and `.ko` tied to the same provider release. Build and qualify a single amd64 Linux module for the project Linux `6.12.107` target. Publish it as `<provider-id>-linux-6.12.107.ko` with its SHA-256 alongside the provider’s normal source installer and Debian package. InfiltratorOS uses the release digest to stage the module under its stable filename, such as `ofs.ko`, for manual use. The release asset records the kernel target. The installed filename is stable across upgrades.
+
+FAT12, FAT16, FAT32, OFS and exFAT already have published kernel assets. The same rule applies to the other providers as their Linux builds qualify. Linux SWAP uses the kernel’s built-in swap implementation.
+
 ## Required evidence before a format is called complete
 
 1. A *single* independently versioned, correctly identified `.so`, with tested complete read/write/create/delete/rename/format and any advertised relocation/recovery capabilities, including power-loss/failure recovery limits.
