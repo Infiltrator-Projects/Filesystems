@@ -49,3 +49,7 @@
 [submodule "native/providers/Filesystem-HFSPlus"]
 	path = native/providers/Filesystem-HFSPlus
 	url = https://github.com/Infiltrator-Projects/Filesystem-HFSPlus.git
+
+[submodule "native/providers/Filesystem-APFS"]
+	path = native/providers/Filesystem-APFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-APFS.git
