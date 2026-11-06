@@ -9,6 +9,8 @@ jobs:
     steps:
       - name: Check out exact Filesystems source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          submodules: recursive
       - name: Verify original source remains available
         run: |
           set -euo pipefail

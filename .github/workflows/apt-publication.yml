@@ -28,6 +28,7 @@ jobs:
       - name: Check out exact completed build source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
+          submodules: recursive
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 1
 

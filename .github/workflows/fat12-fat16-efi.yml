@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Check out the owned FAT EFI source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          submodules: recursive
       - name: Install EDK2 build prerequisites
         run: |
           sudo apt-get update
