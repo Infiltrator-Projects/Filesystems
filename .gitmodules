@@ -61,3 +61,7 @@
 [submodule "native/providers/Filesystem-XFS"]
 	path = native/providers/Filesystem-XFS
 	url = https://github.com/Infiltrator-Projects/Filesystem-XFS.git
+
+[submodule "native/providers/Filesystem-OFS"]
+	path = native/providers/Filesystem-OFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-OFS.git

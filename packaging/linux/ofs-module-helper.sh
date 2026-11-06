@@ -81,12 +81,28 @@ case "$1" in
         safe_source_tree
         [[ -x "$compiler" ]] || fatal "C compiler missing; no packages installed"
         [[ -x "$elf_checker" ]] || fatal "readelf missing; no packages installed"
-        for src in module/ofs_module.c module/ofs_module.h \
-                   efi/reader.c efi/reader.h \
-                   core/ofs_core.c core/ofs_core.h \
-                   core/ofs_primitives.c core/ofs_primitives.h; do
+        source_files=(
+            module/ofs_module.c
+            module/ofs_v3.c
+            module/ofs_boot.c
+            module/ofs_memory.c
+            core/ofs_core.c
+            core/ofs_primitives.c
+            core/ofs_volume.c
+            core/ofs_nodes.c
+            core/ofs_files.c
+            core/ofs_namespace.c
+            core/ofs_check.c
+            core/ofs_strings.c
+            core/ofs_cache.c
+            defrag/ofs_relayout.c
+            defrag/ofs_defrag_module.c
+        )
+        source_args=()
+        for src in "${source_files[@]}"; do
             [[ -f "$source_dir/$src" && ! -L "$source_dir/$src" ]] ||
                 fatal "packaged OFS source missing: $src"
+            source_args+=("$source_dir/$src")
         done
         [[ ! -L /System && ! -L "$destination" ]] ||
             fatal "symlinked module directory refused"
@@ -99,13 +115,11 @@ case "$1" in
         trap 'rm -f -- "$temporary"' EXIT
         "$compiler" -std=c11 -O2 -fPIC -fno-stack-protector \
             -fno-builtin -ffreestanding -fvisibility=hidden \
-            -nostdlib -shared -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
+            -nostdlib -shared -Wl,-Bsymbolic -Wl,-z,defs -Wl,-z,relro -Wl,-z,now \
             -I "$source_dir/module" -I "$source_dir/efi" \
-            -I "$source_dir/core" -o "$temporary" \
-            "$source_dir/module/ofs_module.c" \
-            "$source_dir/efi/reader.c" \
-            "$source_dir/core/ofs_core.c" \
-            "$source_dir/core/ofs_primitives.c" ||
+            -I "$source_dir/core" -I "$source_dir/defrag" \
+            -I "$source_dir/include" -o "$temporary" \
+            "${source_args[@]}" ||
             fatal "OFS compilation failed; old module unchanged"
         check_module "$temporary"
         chmod 0644 "$temporary"

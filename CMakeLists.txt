@@ -394,15 +394,28 @@ if(UNIX)
     # The Filesystems Install OFS action compiles this source on demand.
     add_library(filesystems-ofs-dropin SHARED
         native/filesystems/ofs/module/ofs_module.c
-        native/filesystems/ofs/efi/reader.c
+        native/filesystems/ofs/module/ofs_v3.c
+        native/filesystems/ofs/module/ofs_boot.c
+        native/filesystems/ofs/module/ofs_memory.c
         native/filesystems/ofs/core/ofs_core.c
-        native/filesystems/ofs/core/ofs_primitives.c)
+        native/filesystems/ofs/core/ofs_primitives.c
+        native/filesystems/ofs/core/ofs_volume.c
+        native/filesystems/ofs/core/ofs_nodes.c
+        native/filesystems/ofs/core/ofs_files.c
+        native/filesystems/ofs/core/ofs_namespace.c
+        native/filesystems/ofs/core/ofs_check.c
+        native/filesystems/ofs/core/ofs_strings.c
+        native/filesystems/ofs/core/ofs_cache.c
+        native/filesystems/ofs/defrag/ofs_relayout.c
+        native/filesystems/ofs/defrag/ofs_defrag_module.c)
     set_target_properties(filesystems-ofs-dropin PROPERTIES
         PREFIX "" OUTPUT_NAME "OFS")
     target_include_directories(filesystems-ofs-dropin PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/module"
         "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core")
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/defrag"
+        "${CMAKE_CURRENT_SOURCE_DIR}/native/include")
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         # Match the on-demand compiler helper's -O2 optimization profile.
         # Higher -O3 optimization triggers a misleading cross-TU array-bound
@@ -419,20 +432,15 @@ if(UNIX)
         endif()
     endif()
     filesystems_configure(filesystems-ofs-dropin)
-    install(FILES
-        native/filesystems/ofs/module/ofs_module.c
-        native/filesystems/ofs/module/ofs_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/module")
-    install(FILES
-        native/filesystems/ofs/efi/reader.c
-        native/filesystems/ofs/efi/reader.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/efi")
-    install(FILES
-        native/filesystems/ofs/core/ofs_core.c
-        native/filesystems/ofs/core/ofs_core.h
-        native/filesystems/ofs/core/ofs_primitives.c
-        native/filesystems/ofs/core/ofs_primitives.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/core")
+    # Install the SAME canonical standalone engine sources that built OFS.so.
+    # The Filesystems selector compiles the installed source without network access.
+    foreach(ofs_part module core defrag efi)
+        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/${ofs_part}/"
+            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/${ofs_part}"
+            FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
+    endforeach()
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/native/include/infiltratr"
+        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/include")
     install(PROGRAMS packaging/linux/ofs-module-helper.sh
         DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
         RENAME ofs-module-helper)
