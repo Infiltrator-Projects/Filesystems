@@ -1,3 +1,51 @@
 [submodule "src/infiltratr-common"]
 	path = src/infiltratr-common
 	url = https://github.com/Infiltrator-Projects/Libraries.git
+
+[submodule "native/providers/Filesystem-EXT2"]
+	path = native/providers/Filesystem-EXT2
+	url = https://github.com/Infiltrator-Projects/Filesystem-EXT2.git
+
+[submodule "native/providers/Filesystem-EXT3"]
+	path = native/providers/Filesystem-EXT3
+	url = https://github.com/Infiltrator-Projects/Filesystem-EXT3.git
+
+[submodule "native/providers/Filesystem-EXT4"]
+	path = native/providers/Filesystem-EXT4
+	url = https://github.com/Infiltrator-Projects/Filesystem-EXT4.git
+
+[submodule "native/providers/Filesystem-FFS"]
+	path = native/providers/Filesystem-FFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-FFS.git
+
+[submodule "native/providers/Filesystem-SFS"]
+	path = native/providers/Filesystem-SFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-SFS.git
+
+[submodule "native/providers/Filesystem-SFS2"]
+	path = native/providers/Filesystem-SFS2
+	url = https://github.com/Infiltrator-Projects/Filesystem-SFS2.git
+
+[submodule "native/providers/Filesystem-PFS3"]
+	path = native/providers/Filesystem-PFS3
+	url = https://github.com/Infiltrator-Projects/Filesystem-PFS3.git
+
+[submodule "native/providers/Filesystem-Minix"]
+	path = native/providers/Filesystem-Minix
+	url = https://github.com/Infiltrator-Projects/Filesystem-Minix.git
+
+[submodule "native/providers/Filesystem-NTFS"]
+	path = native/providers/Filesystem-NTFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-NTFS.git
+
+[submodule "native/providers/Filesystem-exFAT"]
+	path = native/providers/Filesystem-exFAT
+	url = https://github.com/Infiltrator-Projects/Filesystem-exFAT.git
+
+[submodule "native/providers/Filesystem-HFS"]
+	path = native/providers/Filesystem-HFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-HFS.git
+
+[submodule "native/providers/Filesystem-HFSPlus"]
+	path = native/providers/Filesystem-HFSPlus
+	url = https://github.com/Infiltrator-Projects/Filesystem-HFSPlus.git
