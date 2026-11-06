@@ -57,3 +57,7 @@
 [submodule "native/providers/Filesystem-Btrfs"]
 	path = native/providers/Filesystem-Btrfs
 	url = https://github.com/Infiltrator-Projects/Filesystem-Btrfs.git
+
+[submodule "native/providers/Filesystem-XFS"]
+	path = native/providers/Filesystem-XFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-XFS.git
