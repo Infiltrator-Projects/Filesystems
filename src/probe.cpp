@@ -659,6 +659,8 @@ const char* support_state_label(const SupportState state)
     switch (state) {
     case SupportState::Ready:
         return "Ready";
+    case SupportState::VerifiedPackage:
+        return "Package verified";
     case SupportState::Installable:
         return "Available";
     case SupportState::Incomplete:
