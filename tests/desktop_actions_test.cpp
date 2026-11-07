@@ -92,7 +92,7 @@ int main()
         // Extracted formats cannot invoke removed central helper actions.
         for (const auto id : {"ofs", "fat16"}) {
             auto entry = descriptor(id, id == std::string_view("fat16")
-                ? SupportProvider::DropIn : SupportProvider::Kernel,
+                ? SupportProvider::Independent : SupportProvider::Kernel,
                 {}, {});
             for (const auto state : {SupportState::Ready,
                                      SupportState::Installable}) {

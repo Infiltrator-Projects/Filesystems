@@ -126,7 +126,7 @@ int main(int argc, char** argv)
     std::size_t dkms = 0U;
     std::size_t userspace = 0U;
     std::size_t tools_only = 0U;
-    std::size_t drop_in = 0U;
+    std::size_t independent = 0U;
 
     for (const auto& entry : catalog()) {
         if (entry.id == std::string_view("fuse2fs")) {
@@ -136,9 +136,9 @@ int main(int argc, char** argv)
         if (entry.id == std::string_view("ext2") ||
             entry.id == std::string_view("ext3") ||
             entry.id == std::string_view("ext4")) {
-            if (entry.provider != filesystems::SupportProvider::Kernel ||
+            if (entry.provider != filesystems::SupportProvider::Independent ||
                 !entry.packages.empty() ||
-                !entry.project_native_linux) {
+                entry.project_native_linux || !entry.modules.empty()) {
                 return fail("EXT2/EXT3/EXT4 must remain project-native kernel-only providers");
             }
         }
@@ -168,11 +168,11 @@ int main(int argc, char** argv)
                 return fail("userspace provider classification is inconsistent");
             }
             break;
-        case filesystems::SupportProvider::DropIn:
-            ++drop_in;
-            if (entry.id != "fat16" || !entry.modules.empty() ||
-                !entry.packages.empty()) {
-                return fail("FAT16 must be standalone without APT or kernel modules");
+        case filesystems::SupportProvider::Independent:
+            ++independent;
+            if (!entry.modules.empty() || !entry.packages.empty() ||
+                entry.project_native_linux) {
+                return fail("independent format must not use central module or APT policy");
             }
             break;
         case filesystems::SupportProvider::ToolsOnly:
@@ -195,9 +195,9 @@ int main(int argc, char** argv)
     if (hfs_uses_removed_package) {
         return fail("HFS still references hfsutils, which is not in Debian trixie stable");
     }
-    if (kernel_only != 22U || kernel_with_userspace != 11U ||
+    if (kernel_only != 12U || kernel_with_userspace != 11U ||
         dkms != 3U || userspace != 3U || tools_only != 1U ||
-        drop_in != 1U) {
+        independent != 11U) {
         return fail("support-provider classification counts changed unexpectedly");
     }
 
@@ -212,9 +212,9 @@ int main(int argc, char** argv)
     }
 
     if (!filesystems::module_is_catalogued("infiltratorfs") ||
-        !filesystems::module_is_catalogued("ofs") ||
-        !filesystems::module_is_catalogued("ffs") ||
-        !filesystems::module_is_catalogued("sfs") ||
+        filesystems::module_is_catalogued("ofs") ||
+        filesystems::module_is_catalogued("ffs") ||
+        filesystems::module_is_catalogued("sfs") ||
         filesystems::module_is_catalogued("affs") ||
         filesystems::module_is_catalogued("overlay") ||
         filesystems::module_is_catalogued("cifs") ||
@@ -223,16 +223,16 @@ int main(int argc, char** argv)
     }
 
     if (!filesystems::linux_native_module_is_managed("udf", "udf") ||
-        !filesystems::linux_native_module_is_managed("exfat", "exfat") ||
-        !filesystems::linux_native_module_is_managed("ntfs", "ntfs3") ||
         !filesystems::linux_native_module_is_managed("bfs", "bfs") ||
-        !filesystems::linux_native_module_is_managed("minix", "minix") ||
-        !filesystems::linux_native_module_is_managed("ext3", "ext3") ||
-        !filesystems::linux_native_module_is_managed("ofs", "ofs") ||
-        !filesystems::linux_native_module_is_managed("ffs", "ffs") ||
-        !filesystems::linux_native_module_is_managed("sfs", "sfs") ||
-        !filesystems::linux_native_module_is_managed("sfs2", "sfs2") ||
-        !filesystems::linux_native_module_is_managed("pfs3", "pfs3") ||
+        filesystems::linux_native_module_is_managed("exfat", "exfat") ||
+        filesystems::linux_native_module_is_managed("ntfs", "ntfs3") ||
+        filesystems::linux_native_module_is_managed("minix", "minix") ||
+        filesystems::linux_native_module_is_managed("ext3", "ext3") ||
+        filesystems::linux_native_module_is_managed("ofs", "ofs") ||
+        filesystems::linux_native_module_is_managed("ffs", "ffs") ||
+        filesystems::linux_native_module_is_managed("sfs", "sfs") ||
+        filesystems::linux_native_module_is_managed("sfs2", "sfs2") ||
+        filesystems::linux_native_module_is_managed("pfs3", "pfs3") ||
         filesystems::linux_native_module_is_managed("infiltratorfs", "infiltratorfs") ||
         filesystems::linux_native_module_is_managed("affs", "affs") ||
         filesystems::linux_native_module_is_managed(

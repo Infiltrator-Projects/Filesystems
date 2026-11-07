@@ -480,17 +480,14 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     ProbeResult result;
     NativeModuleObservation native_observation;
 
-    // Extracted format engines are owned and installed by their independent
-    // Filesystem-* packages. The transitional central manager neither builds
-    // nor claims to validate these individually released shared objects.
-    if (descriptor.id == "ofs" || descriptor.id == "fat16") {
+    // A separately owned format is not proved Ready by an empty kernel
+    // and package policy. Independent package identity checks are read-only;
+    // no removed central source/compiler helper may run here.
+    if (descriptor.provider == SupportProvider::Independent) {
         result.state = SupportState::Incomplete;
-        result.detail = descriptor.id == "ofs"
-            ? "OFS.so belongs to Filesystem-OFS. Install and verify its "
-              "independent package; this manager has no OFS compiler helper."
-            : "FAT12.so, FAT16.so and FAT32.so belong to their three "
-              "independent packages. This manager does not compile, inspect "
-              "or remove those separately owned drivers.";
+        result.detail = "Independently released format. Package ownership and "
+                        "filesystem identity have not yet been verified by "
+                        "this manager; install through InfiltratorOS.";
         return result;
     }
 

@@ -120,7 +120,7 @@ int main()
     const FilesystemDescriptor* ofs = find_entry("ofs");
     const FilesystemDescriptor* fat16 = find_entry("fat16");
     if (!ofs || ofs->project_native_linux || !ofs->modules.empty() ||
-        !fat16 || fat16->provider != SupportProvider::DropIn ||
+        !fat16 || fat16->provider != SupportProvider::Independent ||
         !fat16->modules.empty() || !fat16->packages.empty()) {
         return fail("extracted formats still look centrally owned");
     }

@@ -14,7 +14,7 @@ std::string_view install_label(const FilesystemDescriptor& descriptor)
         return "Install userspace";
     case SupportProvider::ToolsOnly:
         return "Install tools";
-    case SupportProvider::DropIn:
+    case SupportProvider::Independent:
         return "Install module";
     case SupportProvider::Kernel:
         return "No package";
@@ -32,7 +32,7 @@ std::string_view remove_label(const FilesystemDescriptor& descriptor)
         return "Remove userspace";
     case SupportProvider::ToolsOnly:
         return "Remove tools";
-    case SupportProvider::DropIn:
+    case SupportProvider::Independent:
         return "Remove module";
     case SupportProvider::Kernel:
         return "No package";
@@ -48,10 +48,7 @@ std::string support_detail_text(const FilesystemDescriptor& descriptor,
     std::string detail =
         std::string("Support path: ") + support_provider_label(descriptor.provider);
 
-    if (descriptor.id == "ofs") {
-        return "Support path: Drop-in .so  •  " + probe.detail;
-    }
-    if (descriptor.provider == SupportProvider::DropIn) {
+    if (descriptor.provider == SupportProvider::Independent) {
         detail += "  •  ";
         detail += probe.detail;
         return detail;
@@ -130,8 +127,7 @@ ModuleActionPolicy module_action_policy(const FilesystemDescriptor& descriptor,
                                         const ProbeResult& probe)
 {
     ModuleActionPolicy policy;
-    if (descriptor.id == "ofs" ||
-        descriptor.provider == SupportProvider::DropIn) {
+    if (descriptor.provider == SupportProvider::Independent) {
         // Extracted format modules are owned by independent packages. Never
         // expose the removed central compiler or uninstall action.
         policy.button.visible = true;

@@ -61,9 +61,8 @@ bool provider_shape_is_valid(const FilesystemDescriptor& entry)
     case SupportProvider::ToolsOnly:
         return entry.modules.empty() && !entry.packages.empty() &&
                entry.access == AccessMode::ToolsOnly;
-    case SupportProvider::DropIn:
-        return entry.modules.empty() && entry.packages.empty() &&
-               entry.id == "fat16";
+    case SupportProvider::Independent:
+        return entry.modules.empty() && entry.packages.empty();
     }
     return false;
 }
@@ -131,7 +130,7 @@ const char* support_provider_label(const SupportProvider provider)
     case SupportProvider::Dkms: return "DKMS driver";
     case SupportProvider::Userspace: return "Userspace / FUSE";
     case SupportProvider::ToolsOnly: return "Tools only";
-    case SupportProvider::DropIn: return "Drop-in .so";
+    case SupportProvider::Independent: return "Independent .so package";
     }
     return "Unknown";
 }

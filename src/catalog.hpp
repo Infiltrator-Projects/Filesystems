@@ -21,7 +21,7 @@ enum class SupportProvider {
     Dkms,
     Userspace,
     ToolsOnly,
-    DropIn
+    Independent
 };
 
 struct FilesystemDescriptor {
