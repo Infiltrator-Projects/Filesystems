@@ -26,6 +26,16 @@ jobs:
           test ! -e .github/workflows/apt-publication.yml
           test ! -e native/providers
           ! grep -Fq "native/filesystems/fat/" CMakeLists.txt
+  independent-fat-package-install-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Test pinned FAT12 FAT16 FAT32 release isolation in private dpkg root
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl binutils dpkg
+          python3 tests/independent_fat_package_test.py
   independent-package-install-qa:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
