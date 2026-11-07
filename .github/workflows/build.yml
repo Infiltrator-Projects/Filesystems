@@ -40,6 +40,9 @@ jobs:
       - name: Configure and compile remaining code only
         run: |
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-          cmake --build build --target filesystems filesystems-action-policy-test filesystems-desktop-actions-test
+          cmake --build build --target filesystems filesystems-catalog-test filesystems-action-policy-test filesystems-desktop-actions-test
+          ctest --test-dir build --output-on-failure -R '^filesystems-catalog
+          ctest --test-dir build --output-on-failure -R filesystems-desktop-actions
+
           ctest --test-dir build --output-on-failure -R filesystems-action-policy
           ctest --test-dir build --output-on-failure -R filesystems-desktop-actions
