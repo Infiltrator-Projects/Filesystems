@@ -21,4 +21,3 @@ sysv
 udf
 vmfs
 vmfs6
-zfs

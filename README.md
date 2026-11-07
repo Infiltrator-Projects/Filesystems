@@ -1,5 +1,7 @@
 # Filesystems
 
+> **Retirement in progress (November 2026).** The filesystem engines have been moved into independently owned `Filesystem-*` repositories. This repository no longer contains their FAT, EXT, OFS, FFS, SFS, PFS3, NTFS, exFAT, HFS, UFS, Btrfs, APFS, ZFS or Swap implementations or any filesystem provider submodules. The central package and remaining source catalog are transitional only; new filesystem binaries, kernel modules, firmware drivers and PDFs are released by the individual repositories and installed by InfiltratorOS. Historical sections below may describe superseded central builds.
+
 **Architecture authority:** [One filesystem → one distributed `.so` → all consumers](docs/UNIFIED_FILESYSTEM_MODULE_ARCHITECTURE.md). Separate `.ko` and `.efi` implementations are transitional compatibility paths, not the intended final per-format deliverables. The universal BOOT/kernel loaders remain to be implemented and tested.
 
 Filesystems is the InfiltratorOS filesystem capability and integration manager. It owns the catalogue of real persistent local-storage filesystem formats that InfiltratorOS can recognise, install support for and, as each format is qualified, use as the filesystem beneath an InfiltratorOS installation.
