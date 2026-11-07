@@ -23,7 +23,7 @@ FORMATS = (
     ("FAT16", "fat16", "0.1.14",
      "beee0cf3af77c03f72dd9dc9decc16e3f795d75d563bb1a15642f275e6d54169", "FAT16.so"),
     ("FAT32", "fat32", "0.1.10",
-     "8f25d5ea31fff9468c40b236021c2a8e3d39d7df4baf7a60e3fd4d", "FAT32.so"),
+     "8f25d5ea31fff9468c40b236021c2a8e92e95d2a8e3d39d7df4baf7a60e3fd4d", "FAT32.so"),
 )
 CANARIES = (
     "APFS.so", "BTRFS.so", "EXT2.so", "EXT3.so", "EXT4.so",
