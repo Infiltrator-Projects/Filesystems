@@ -461,6 +461,14 @@ if(BUILD_TESTING)
             tests/independent_package_runtime_test.cpp)
         target_link_libraries(filesystems-independent-runtime-test
             PRIVATE filesystems-core)
+        # CTest references are not a build target: ensure the five actual
+        # synthetic ELF inputs exist before the runtime acceptance starts.
+        add_dependencies(filesystems-independent-runtime-test
+            filesystems-independent-fixture-ffs
+            filesystems-independent-fixture-exfat
+            filesystems-independent-fixture-fat12
+            filesystems-independent-fixture-fat16
+            filesystems-independent-fixture-fat32)
         filesystems_configure(filesystems-independent-runtime-test)
         add_test(NAME filesystems-independent-runtime
             COMMAND filesystems-independent-runtime-test
