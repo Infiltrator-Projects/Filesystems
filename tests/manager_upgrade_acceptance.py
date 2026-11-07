@@ -42,7 +42,10 @@ def run(*args, capture=False):
 
 def download(url, expected, destination):
     run("curl", "-fLSs", "--retry", "3", "-o", destination, url)
-    assert hashlib.sha256(destination.read_bytes()).hexdigest() == expected
+    actual = hashlib.sha256(destination.read_bytes()).hexdigest()
+    assert actual == expected, ("Pinned release SHA-256 mismatch", url,
+                               "expected", expected, "downloaded", actual,
+                               "size", destination.stat().st_size)
     return destination
 
 
