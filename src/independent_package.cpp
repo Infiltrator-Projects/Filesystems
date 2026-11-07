@@ -91,7 +91,8 @@ bool sha256_file(const std::string& path, std::string* result)
     return true;
 }
 
-IndependentObservation inspect(const IndependentSpec& spec)
+IndependentObservation inspect(const IndependentSpec& spec,
+                               const IndependentProbeBackend& backend)
 {
     IndependentObservation observation;
     observation.module = std::string(spec.name);
@@ -99,7 +100,7 @@ IndependentObservation inspect(const IndependentSpec& spec)
     IndependentEvidence evidence;
     std::string version;
 
-    const auto package = run_command({
+    const auto package = backend.command({
         "dpkg-query", "-W",
         "-f=${db:Status-Status}\\t${Version}\\t${X-Infiltrator-Resource-SHA256}\\n",
         observation.package
@@ -135,27 +136,28 @@ IndependentObservation inspect(const IndependentSpec& spec)
     evidence.package_installed = true;
     evidence.valid_declared_digest = valid_sha256(expected_digest);
     const std::string path = "/System/Filesystems/" + observation.module;
+    const std::string disk_path = backend.module_directory + "/" + observation.module;
 
-    const auto listing = run_command({"dpkg-query", "-L", observation.package});
+    const auto listing = backend.command({"dpkg-query", "-L", observation.package});
     evidence.lists_expected_file =
         listing.succeeded() && exact_line(listing.stdout_text, path);
 
-    const auto owners = run_command({"dpkg-query", "-S", path});
+    const auto owners = backend.command({"dpkg-query", "-S", path});
     evidence.sole_owner = owners.succeeded() &&
         (owners.stdout_text == observation.package + ": " + path + "\n" ||
          owners.stdout_text == observation.package + ": " + path);
 
     struct stat file_status {};
-    evidence.regular_file = lstat(path.c_str(), &file_status) == 0 &&
+    evidence.regular_file = lstat(disk_path.c_str(), &file_status) == 0 &&
         S_ISREG(file_status.st_mode) && (file_status.st_mode & 0022) == 0;
 
     if (evidence.regular_file && evidence.valid_declared_digest) {
         std::string actual_digest;
-        evidence.digest_matches = sha256_file(path, &actual_digest) &&
+        evidence.digest_matches = sha256_file(disk_path, &actual_digest) &&
             actual_digest == expected_digest;
     }
     if (evidence.regular_file) {
-        const auto elf = run_command({"readelf", "-h", path});
+        const auto elf = backend.command({"readelf", "-h", disk_path});
         evidence.elf64_shared = elf.succeeded() &&
             elf.stdout_text.find("ELF64") != std::string::npos &&
             elf.stdout_text.find("Type:") != std::string::npos &&
@@ -164,13 +166,15 @@ IndependentObservation inspect(const IndependentSpec& spec)
                 std::string::npos;
         evidence.format_identity_matches = evidence.elf64_shared;
         if (!spec.required_export.empty()) {
-            const auto symbols = run_command({"readelf", "-W", "--dyn-syms", path});
-            evidence.format_identity_matches = symbols.succeeded() &&
+            const auto symbols = backend.command({"readelf", "-W", "--dyn-syms", disk_path});
+            evidence.format_identity_matches =
+                evidence.format_identity_matches && symbols.succeeded() &&
                 symbols.stdout_text.find(spec.required_export) != std::string::npos;
         }
         if (!spec.required_manifest_marker.empty()) {
-            const auto markers = run_command({"readelf", "-p", ".ifsmeta", path});
-            evidence.format_identity_matches = markers.succeeded() &&
+            const auto markers = backend.command({"readelf", "-p", ".ifsmeta", disk_path});
+            evidence.format_identity_matches =
+                evidence.format_identity_matches && markers.succeeded() &&
                 markers.stdout_text.find(spec.required_manifest_marker) !=
                     std::string::npos;
         }
@@ -199,14 +203,33 @@ IndependentProof evaluate_independent_evidence(const IndependentEvidence& e)
         : IndependentProof::Unverified;
 }
 
+std::vector<IndependentObservation> observe_independent_packages_with_backend(
+    const std::string_view filesystem_id, const IndependentProbeBackend& backend)
+{
+    std::vector<IndependentObservation> observations;
+    if (backend.module_directory.empty() || !backend.command) {
+        return observations;
+    }
+    for (const auto& spec : kIndependent) {
+        if (spec.identity == filesystem_id) {
+            observations.push_back(inspect(spec, backend));
+        }
+    }
+    return observations;
+}
+
 std::vector<IndependentObservation> observe_independent_packages(
     const std::string_view filesystem_id)
 {
-    std::vector<IndependentObservation> observations;
-    for (const auto& spec : kIndependent) {
-        if (spec.identity == filesystem_id) observations.push_back(inspect(spec));
-    }
-    return observations;
+    // Do not allow environment overrides, PATH binaries or untrusted callers
+    // to redirect production observations away from installed packages.
+    const IndependentProbeBackend production {
+        "/System/Filesystems",
+        [](const std::vector<std::string>& args) {
+            return run_command(args);
+        }
+    };
+    return observe_independent_packages_with_backend(filesystem_id, production);
 }
 
 } // namespace filesystems

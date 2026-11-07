@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "process_runner.hpp"
+
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -33,6 +36,17 @@ struct IndependentObservation {
 };
 
 // Empty only for identities not yet listed in the independent-package contract.
+// An explicit read-only observation seam. Production always uses trusted
+// absolute system locations; tests can provide an isolated module directory
+// and synthetic package database responses without touching the host.
+struct IndependentProbeBackend {
+    std::string module_directory;
+    std::function<CommandResult(const std::vector<std::string>&)> command;
+};
+
+std::vector<IndependentObservation> observe_independent_packages_with_backend(
+    std::string_view filesystem_id, const IndependentProbeBackend& backend);
+
 std::vector<IndependentObservation> observe_independent_packages(
     std::string_view filesystem_id);
 

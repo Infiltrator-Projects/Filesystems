@@ -434,6 +434,42 @@ if(BUILD_TESTING)
             NAME filesystems-action-policy
             COMMAND filesystems-action-policy-test)
 
+        # Synthetic, non-installable read-only ELF identity fixtures. Do
+        # not link real filesystem implementation engines into the manager.
+        add_library(filesystems-independent-fixture-ffs SHARED
+            tests/independent_probe_named_fixture.c)
+        target_compile_definitions(filesystems-independent-fixture-ffs
+            PRIVATE IFS_TEST_FFS=1)
+        set_target_properties(filesystems-independent-fixture-ffs PROPERTIES
+            PREFIX "" OUTPUT_NAME "ffs-probe-fixture")
+        add_library(filesystems-independent-fixture-exfat SHARED
+            tests/independent_probe_named_fixture.c)
+        target_compile_definitions(filesystems-independent-fixture-exfat
+            PRIVATE IFS_TEST_EXFAT=1)
+        set_target_properties(filesystems-independent-fixture-exfat PROPERTIES
+            PREFIX "" OUTPUT_NAME "exfat-probe-fixture")
+        foreach(width IN ITEMS 12 16 32)
+            add_library(filesystems-independent-fixture-fat${width} SHARED
+                tests/independent_probe_fat_fixture.c)
+            target_compile_definitions(filesystems-independent-fixture-fat${width}
+                PRIVATE IFS_TEST_WIDTH=${width})
+            set_target_properties(filesystems-independent-fixture-fat${width}
+                PROPERTIES PREFIX "" OUTPUT_NAME "fat${width}-probe-fixture")
+        endforeach()
+
+        add_executable(filesystems-independent-runtime-test
+            tests/independent_package_runtime_test.cpp)
+        target_link_libraries(filesystems-independent-runtime-test
+            PRIVATE filesystems-core)
+        filesystems_configure(filesystems-independent-runtime-test)
+        add_test(NAME filesystems-independent-runtime
+            COMMAND filesystems-independent-runtime-test
+                "$<TARGET_FILE:filesystems-independent-fixture-ffs>"
+                "$<TARGET_FILE:filesystems-independent-fixture-exfat>"
+                "$<TARGET_FILE:filesystems-independent-fixture-fat12>"
+                "$<TARGET_FILE:filesystems-independent-fixture-fat16>"
+                "$<TARGET_FILE:filesystems-independent-fixture-fat32>")
+
         add_executable(filesystems-independent-package-test
             tests/independent_package_test.cpp)
         target_link_libraries(filesystems-independent-package-test
