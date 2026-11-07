@@ -59,6 +59,63 @@ def status(root, pkg):
     return ""
 
 
+
+def verify_format_binary(binary, item, expected_sha256):
+    """The same ELF/format/ABI integrity gates check clean and hostile copies."""
+    if not binary.is_file() or binary.is_symlink():
+        return False
+    if hashlib.sha256(binary.read_bytes()).hexdigest() != expected_sha256:
+        return False
+    try:
+        header = run("readelf", "-h", binary, capture=True)
+        exports = run("readelf", "-W", "--dyn-syms", binary, capture=True)
+        markers = run("readelf", "-p", ".ifsmeta", binary, capture=True)
+        dynamic = run("readelf", "-d", binary, capture=True)
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    width = item[0]
+    required = (
+        "infiltrator_filesystem_module_v1",
+        "infiltrator_filesystem_module_v3",
+        "infiltrator_filesystem_module_v4",
+        "infiltrator_filesystem_defrag_v1",
+    )
+    return (
+        "ELF64" in header and "DYN (" in header and
+        "Advanced Micro Devices X86-64" in header and
+        all(symbol in exports for symbol in required) and
+        "IFS-MODULE:fat" + str(width) + ":1" in markers and
+        all(("IFS-MODULE:fat" + str(other) + ":") not in markers
+            for other in (12, 16, 32) if other != width) and
+        "(NEEDED)" not in dynamic
+    )
+
+
+def reject_bad_module_fixtures(work, item, archive, other_item, other_archive):
+    """Mutate extracted release test copies; do not access real /System."""
+    binary = (work / (slug(item) + "-staging/System/Filesystems") / so(item))
+    foreign = (work / (slug(other_item) + "-staging/System/Filesystems") /
+               so(other_item))
+    assert binary.is_file() and foreign.is_file()
+    original = binary.read_bytes()
+    digest = field(archive, "X-Infiltrator-Resource-SHA256")
+    foreign_digest = field(other_archive, "X-Infiltrator-Resource-SHA256")
+    assert verify_format_binary(binary, item, digest)
+    try:
+        binary.write_bytes(original + b"\x00")
+        assert not verify_format_binary(binary, item, digest), "tamper accepted"
+        binary.unlink()
+        assert not verify_format_binary(binary, item, digest), "missing accepted"
+        binary.write_bytes(b"not an ELF")
+        assert not verify_format_binary(binary, item, digest), "text accepted"
+        binary.write_bytes(foreign.read_bytes())
+        assert not verify_format_binary(binary, item, foreign_digest), (
+            "wrong FAT format accepted even with matching foreign SHA256"
+        )
+    finally:
+        binary.write_bytes(original)
+    assert verify_format_binary(binary, item, digest), "restored FAT SO rejected"
+
 def inspect(archive, item, work):
     width, _, _, revision = item
     identifier = slug(item)
@@ -89,32 +146,13 @@ def inspect(archive, item, work):
 
     binary, manual = stage / module, stage / pdf
     assert manual.read_bytes().startswith(b"%PDF-"), identifier
-    assert hashlib.sha256(binary.read_bytes()).hexdigest() == field(
-        archive, "X-Infiltrator-Resource-SHA256"
-    ), identifier
+    assert verify_format_binary(
+        binary, item, field(archive, "X-Infiltrator-Resource-SHA256")
+    ), "FAT payload integrity, dedicated format marker or ABI invalid"
     assert hashlib.sha256(manual.read_bytes()).hexdigest() == field(
         archive, "X-Infiltrator-PDF-SHA256"
     ), identifier
 
-    header = run("readelf", "-h", binary, capture=True)
-    assert "ELF64" in header and "DYN (" in header
-    assert "Advanced Micro Devices X86-64" in header
-    exports = run("readelf", "-W", "--dyn-syms", binary, capture=True)
-    for symbol in ("infiltrator_filesystem_module_v1",
-                   "infiltrator_filesystem_module_v3",
-                   "infiltrator_filesystem_module_v4",
-                   "infiltrator_filesystem_defrag_v1"):
-        assert symbol in exports, (identifier, "missing ABI", symbol)
-
-    markers = run("readelf", "-p", ".ifsmeta", binary, capture=True)
-    assert "IFS-MODULE:" + identifier + ":1" in markers
-    for other in (12, 16, 32):
-        if other != width:
-            assert "IFS-MODULE:fat" + str(other) + ":" not in markers, (
-                identifier, "foreign FAT module metadata"
-            )
-    dynamic = run("readelf", "-d", binary, capture=True)
-    assert "(NEEDED)" not in dynamic, identifier
     return payload
 
 
@@ -139,6 +177,14 @@ def main():
                 assert hashlib.sha256(archive.read_bytes()).hexdigest() == expected_sha
                 archives[slug(item)] = archive
                 inventories.append(inspect(archive, item, work))
+
+            for index, current in enumerate(RELEASES):
+                foreign = RELEASES[(index + 1) % len(RELEASES)]
+                reject_bad_module_fixtures(
+                    work, current, archives[slug(current)],
+                    foreign, archives[slug(foreign)]
+                )
+            print("FAT12-FAT16-FAT32-NEGATIVE-PACKAGE-IDENTITY-PASS")
 
             # Format-specific modules and manuals must not collide.
             for i in range(len(inventories)):

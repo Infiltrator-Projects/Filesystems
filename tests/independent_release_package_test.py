@@ -47,6 +47,51 @@ def inventory(root):
     return set(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
 
 
+
+def verify_format_binary(binary, item, expected_sha256):
+    """Apply the same read-only checks to genuine and hostile local fixtures."""
+    if not binary.is_file() or binary.is_symlink():
+        return False
+    if hashlib.sha256(binary.read_bytes()).hexdigest() != expected_sha256:
+        return False
+    try:
+        hdr = run("readelf", "-h", binary, capture=True)
+        exports = run("readelf", "--dyn-syms", "-W", binary, capture=True)
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    symbol = item[5]
+    other = "exfat" if item[1] == "ffs" else "ffs"
+    return ("ELF64" in hdr and "DYN (" in hdr and
+            "Advanced Micro Devices X86-64" in hdr and
+            symbol in exports and
+            ("infiltrator_filesystem_" + other + "_defrag_v1") not in exports)
+
+
+def reject_bad_module_fixtures(work, item, archive, other_item, other_archive):
+    """Damage only an extracted disposable SO; never touch /System on the host."""
+    module = work / (item[1] + "-unpacked/System/Filesystems") / module_name(item)
+    other = (work / (other_item[1] + "-unpacked/System/Filesystems") /
+             module_name(other_item))
+    assert module.is_file() and other.is_file()
+    original = module.read_bytes()
+    digest = package_field(archive, "X-Infiltrator-Resource-SHA256")
+    foreign_digest = package_field(other_archive, "X-Infiltrator-Resource-SHA256")
+    assert verify_format_binary(module, item, digest)
+    try:
+        module.write_bytes(original + b"\x00")
+        assert not verify_format_binary(module, item, digest), "tamper accepted"
+        module.unlink()
+        assert not verify_format_binary(module, item, digest), "missing SO accepted"
+        module.write_bytes(b"not an ELF shared object")
+        assert not verify_format_binary(module, item, digest), "text accepted"
+        module.write_bytes(other.read_bytes())
+        assert not verify_format_binary(module, item, foreign_digest), (
+            "foreign format accepted with matching foreign digest"
+        )
+    finally:
+        module.write_bytes(original)
+    assert verify_format_binary(module, item, digest), "restored SO rejected"
+
 def validate(archive, item, staging):
     _, slug, _, _, revision, symbol = item
     assert package_field(archive, "Package") == package_name(item)
@@ -66,18 +111,13 @@ def validate(archive, item, staging):
     binary = staging / expected_module
     pdf = staging / expected_pdf
     assert pdf.read_bytes().startswith(b"%PDF-")
-    assert hashlib.sha256(binary.read_bytes()).hexdigest() == package_field(
-        archive, "X-Infiltrator-Resource-SHA256"
-    )
+    assert verify_format_binary(
+        binary, item, package_field(archive, "X-Infiltrator-Resource-SHA256")
+    ), "FFS/exFAT payload identity, ELF or digest invalid"
     assert hashlib.sha256(pdf.read_bytes()).hexdigest() == package_field(
         archive, "X-Infiltrator-PDF-SHA256"
     )
-    elf_header = run("readelf", "-h", binary, capture=True)
-    exports = run("readelf", "--dyn-syms", "-W", binary, capture=True)
-    assert "ELF64" in elf_header and "DYN (" in elf_header
-    assert symbol in exports, "expected format ABI missing: " + module_name(item)
-    other = "exfat" if slug == "ffs" else "ffs"
-    assert ("infiltrator_filesystem_" + other + "_defrag_v1") not in exports
+
     return files
 
 
@@ -109,6 +149,14 @@ def main():
                 archives[slug] = archive
                 payloads.append(validate(archive, item, work / (slug + "-unpacked")))
             assert payloads[0].isdisjoint(payloads[1]), "overlapping payload paths"
+
+            for current in RELEASES:
+                foreign = next(item for item in RELEASES if item != current)
+                reject_bad_module_fixtures(
+                    work, current, archives[current[1]],
+                    foreign, archives[foreign[1]]
+                )
+            print("FFS-EXFAT-NEGATIVE-PACKAGE-IDENTITY-PASS")
 
             def dpkg(*args):
                 run("sudo", "dpkg", "--no-triggers", "--root=" + str(root),
