@@ -81,3 +81,15 @@
 [submodule "native/providers/Filesystem-FAT32"]
 	path = native/providers/Filesystem-FAT32
 	url = https://github.com/Infiltrator-Projects/Filesystem-FAT32.git
+
+[submodule "native/providers/Filesystem-ZFS"]
+	path = native/providers/Filesystem-ZFS
+	url = https://github.com/Infiltrator-Projects/Filesystem-ZFS.git
+
+[submodule "native/providers/Filesystem-UFS2"]
+	path = native/providers/Filesystem-UFS2
+	url = https://github.com/Infiltrator-Projects/Filesystem-UFS2.git
+
+[submodule "native/providers/Filesystem-Swap"]
+	path = native/providers/Filesystem-Swap
+	url = https://github.com/Infiltrator-Projects/Filesystem-Swap.git

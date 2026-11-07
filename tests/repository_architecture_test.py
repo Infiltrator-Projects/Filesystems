@@ -272,8 +272,8 @@ for required in (
 # Current-state documentation must not claim implementation paths that no
 # longer exist or present historical migration targets as current authority.
 for design in (
-    "native/filesystems/sfs2/DESIGN.md",
-    "native/filesystems/pfs3/DESIGN.md",
+    "native/providers/Filesystem-SFS2/native/filesystems/sfs2/DESIGN.md",
+    "native/providers/Filesystem-PFS3/native/filesystems/pfs3/DESIGN.md",
 ):
     require("Linux adapter not yet implemented" not in text(design),
             f"stale Linux implementation status in {design}")

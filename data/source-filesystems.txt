@@ -1,4 +1,4 @@
-# In-repository filesystem source trees.
+# Authoritative source formats: in this repository or pinned independent providers.
 # One real on-media format per line; provider-only identities do not belong here.
 adfs
 apfs
