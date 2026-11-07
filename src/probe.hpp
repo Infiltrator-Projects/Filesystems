@@ -41,8 +41,6 @@ struct ProbeResult {
     std::string detail;
 };
 
-};
-
 void invalidate_probe_cache();
 bool package_installed(std::string_view package);
 bool package_available(std::string_view package);
