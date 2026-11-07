@@ -195,7 +195,7 @@ const char* filter_title(const ViewFilter filter)
     case ViewFilter::Apple: return "Apple Filesystems";
     case ViewFilter::UnixBsd: return "Unix & BSD";
     case ViewFilter::Native: return "Infiltrator Native";
-    case ViewFilter::Installed: return "Ready Support";
+    case ViewFilter::Installed: return "Ready / Verified Packages";
     case ViewFilter::Available: return "Available Support";
     case ViewFilter::Attention: return "Needs Attention";
     }
@@ -255,6 +255,7 @@ void set_status_semantics(GtkWidget* label, const fs::SupportState state)
 
     switch (state) {
     case fs::SupportState::Ready:
+    case fs::SupportState::VerifiedPackage:
         gtk_style_context_add_class(context, "fs-status-ready");
         break;
     case fs::SupportState::Installable:
@@ -358,7 +359,8 @@ bool row_matches_filter(const RowState& row, const ViewFilter filter)
     case ViewFilter::Native:
         return row.descriptor->project_native_linux;
     case ViewFilter::Installed:
-        return row.probed && row.probe.state == fs::SupportState::Ready;
+        return row.probed && (row.probe.state == fs::SupportState::Ready ||
+                              row.probe.state == fs::SupportState::VerifiedPackage);
     case ViewFilter::Available:
         return row.probed && row.probe.state == fs::SupportState::Installable;
     case ViewFilter::Attention:
@@ -447,6 +449,7 @@ void update_summary(AppState* state)
         }
         switch (row->probe.state) {
         case fs::SupportState::Ready:
+        case fs::SupportState::VerifiedPackage:
             ++ready;
             break;
         case fs::SupportState::Installable:
@@ -1212,7 +1215,7 @@ GtkWidget* build_home_page(AppState* state)
     gtk_grid_set_row_spacing(GTK_GRID(metrics), 10);
     gtk_grid_set_column_spacing(GTK_GRID(metrics), 10);
     gtk_grid_attach(GTK_GRID(metrics), make_metric_tile(
-        "emblem-ok-symbolic", "READY", "Ready now",
+        "emblem-ok-symbolic", "READY / VERIFIED", "Kernel ready or package verified",
         &state->ready_count, "metric-installed"), 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(metrics), make_metric_tile(
         "system-software-install-symbolic", "AVAILABLE", "Can be installed",

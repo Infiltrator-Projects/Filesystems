@@ -11,6 +11,7 @@ namespace filesystems {
 
 enum class SupportState {
     Ready,
+    VerifiedPackage,
     Installable,
     Incomplete,
     Unavailable

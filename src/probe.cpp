@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "probe.hpp"
+#include "independent_package.hpp"
 #include "linux_host_paths.hpp"
 #include "process_runner.hpp"
 
@@ -480,14 +481,24 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     ProbeResult result;
     NativeModuleObservation native_observation;
 
-    // A separately owned format is not proved Ready by an empty kernel
-    // and package policy. Independent package identity checks are read-only;
-    // no removed central source/compiler helper may run here.
     if (descriptor.provider == SupportProvider::Independent) {
-        result.state = SupportState::Incomplete;
-        result.detail = "Independently released format. Package ownership and "
-                        "filesystem identity have not yet been verified by "
-                        "this manager; install through InfiltratorOS.";
+        const auto observed = observe_independent_packages(descriptor.id);
+        bool complete = !observed.empty();
+        std::ostringstream detail;
+        detail << "Read-only independent package verification; no compilation "
+                  "or installation from Filesystems. ";
+        for (const auto& module : observed) {
+            if (module.proof != IndependentProof::VerifiedPackage) complete = false;
+            detail << module.module << ": " << module.detail << ". ";
+        }
+        if (observed.empty()) {
+            detail << "No trusted installed-package identity contract exists.";
+        }
+        result.state = complete
+            ? SupportState::VerifiedPackage : SupportState::Incomplete;
+        result.package_requirement_met = complete;
+        result.module_requirement_met = complete;
+        result.detail = detail.str();
         return result;
     }
 

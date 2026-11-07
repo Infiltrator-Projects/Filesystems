@@ -262,6 +262,7 @@ if(UNIX)
     # Portable read-only Minix V1/V2/V3, not Linux minix.ko.
     add_library(filesystems-core STATIC
         src/probe.cpp
+        src/independent_package.cpp
         src/platform/linux_host_paths.cpp
         src/action_policy.cpp)
     target_include_directories(filesystems-core
@@ -432,6 +433,14 @@ if(BUILD_TESTING)
         add_test(
             NAME filesystems-action-policy
             COMMAND filesystems-action-policy-test)
+
+        add_executable(filesystems-independent-package-test
+            tests/independent_package_test.cpp)
+        target_link_libraries(filesystems-independent-package-test
+            PRIVATE filesystems-core)
+        filesystems_configure(filesystems-independent-package-test)
+        add_test(NAME filesystems-independent-package
+            COMMAND filesystems-independent-package-test)
 
         add_executable(filesystems-linux-host-paths-test
             tests/linux_host_paths_test.cpp)
