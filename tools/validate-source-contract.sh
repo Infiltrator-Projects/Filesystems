@@ -114,7 +114,7 @@ while IFS= read -r fs; do
         echo "Invalid retired filesystem token: $fs" >&2
         exit 1
     }
-    test ! -e "$(resolve_source_dir "$fs")" || {
+    test ! -e "native/filesystems/$fs" || {
         echo "Retired non-format source tree returned: $fs" >&2
         exit 1
     }
