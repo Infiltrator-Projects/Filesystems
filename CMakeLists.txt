@@ -229,11 +229,6 @@ if(UNIX)
         PUBLIC infiltratr-fs-native-core InfiltratrCommon::Common)
     filesystems_configure(infiltratr-fs-userspace)
 
-    add_executable(fsinspect
-        tools/fsinspect/main.c)
-    target_link_libraries(fsinspect PRIVATE infiltratr-fs-userspace)
-    filesystems_configure(fsinspect)
-
     # SCO BFS has contiguous file data and fixed 512-byte blocks. This
     # standalone shared module implements real root traversal and in-place
     # overwrites, independently of the Linux BFS kernel driver.
