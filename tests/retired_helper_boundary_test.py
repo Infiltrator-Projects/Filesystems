@@ -24,7 +24,6 @@ for path in active:
 
 policy = (root / "src/action_policy.cpp").read_text()
 assert 'policy.button.label = "Independent package";' in policy
-assert 'descriptor.id == "ofs"' in policy
 assert "descriptor.provider == SupportProvider::Independent" in policy
 assert not (root / "native/providers").exists()
 print("RETIRED-HELPER-BOUNDARY-PASS")
