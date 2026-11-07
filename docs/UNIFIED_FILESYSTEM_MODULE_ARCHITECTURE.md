@@ -1,5 +1,12 @@
 # Unified filesystem module — authoritative target architecture
 
+**Meaning of “unified”:** *Operations within one filesystem*, not multiple
+filesystem formats linked into one driver. `FFS.so` and `exFAT.so` must
+always be separately built, packaged, identified and installed from
+`Filesystem-FFS` and `Filesystem-exFAT`. The same per-format ownership rule
+applies to every other independent repository. Internal regression binaries
+(e.g. `FFS-legacy.so`) are not installable products.
+
 **Status: approved destination, not a claim that the loaders or all filesystem capabilities already work.** This contract is the architectural source of truth for Filesystems, each independent Filesystem-* repository, BOOT, the InfiltratorOS kernel, Common (the Libraries repository), Defragmenter, Files, Disks and Setup. Product-specific documents must distinguish this target from the currently shipped Linux/UEFI integrations.
 
 ## Non-negotiable product contract

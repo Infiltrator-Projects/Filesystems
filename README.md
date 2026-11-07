@@ -14,21 +14,28 @@ The authoritative source/release version is stored in [`VERSION`](VERSION). Publ
 
 The baseline Linux distribution is **Debian stable**. As of September 2026 that is Debian 13 "trixie". Derivatives can benefit where they retain Debian-compatible package names and APT behaviour, but the catalogue is authored and qualified against Debian first.
 
-## Actual copied filesystem implementations
+## Remaining implementation source awaiting extraction
 
-The 41-format catalogue is distinct from the source inventory. **The original
-Linux implementation code for 26 additional formats is checked in under
-`native/filesystems/<id>/linux/` as editable working source**, including NTFS
-recovered from the historical NTFS3 source tree. These are not frozen references
-and an automated upstream refresh is not permitted to overwrite modifications.
+The **41-format identity catalogue** is not a list of implementations maintained
+here. This transitional repository currently retains implementation source for
+**21 formats**, enumerated in [`data/source-filesystems.txt`](data/source-filesystems.txt).
+Its remaining Linux native-module manifest lists only **BFS and UDF**. The source
+inventory does not prove that any given driver is complete or qualified.
 
-The existing nine individually managed native modules remain governed by
-`data/native-filesystems.tsv`; simply having original code does not qualify a
-module for installation. See
-[`docs/SOURCE_BASELINE_STATUS.md`](docs/SOURCE_BASELINE_STATUS.md) for the
-seven formats whose complete source baselines are still absent from this
-repository. Neither design documents nor Debian provider names are counted as
-copied implementation source.
+**FFS and exFAT are not among those remaining sources.** They are independently
+owned and built by
+[`Filesystem-FFS`](https://github.com/Infiltrator-Projects/Filesystem-FFS)
+and [`Filesystem-exFAT`](https://github.com/Infiltrator-Projects/Filesystem-exFAT).
+Each owns its own format-specific implementation, one distributable `.so`,
+version, illustrated manual and applicable kernel module. The same rule applies
+to the other extracted filesystem repositories. They are not submodules of
+Filesystems, and this repository must not build their implementation code.
+
+**Compatibility caution:** the Filesystems manager still compiles, but some
+historical per-format Install/Remove buttons refer to compiler helpers that
+were extracted or removed. Until its UI actions are reconciled, a successful
+manager build alone is not proof that those buttons can install the independent
+modules. InfiltratorOS owns current independent-module provisioning.
 
 ## Product scope
 
@@ -52,7 +59,11 @@ from being accepted merely because another binary was renamed. This is
 a format consistency check, not cryptographic module authentication;
 privileged loading still requires a separately defined trust policy.
 
-## Current freestanding drop-in implementation
+## Historical FAT/OFS drop-in implementation (extracted)
+
+> The following details record the earlier central builds, not current source
+> or installer functionality in this repository. The individual format
+> repositories own these implementations now.
 
 The source builds an independent read-only `OFS.so` and separate
 `FAT12.so` and `FAT16.so` artifacts. Each FAT module retains a legacy V1
@@ -74,7 +85,7 @@ operations to Defragmenter's child-process host. FAT32 includes the same
 interface so existing FAT32 defragmentation can continue. See the
 [FAT defragmentation ABI](docs/FAT_DEFRAG_MODULE_ABI.md).
 
-## Current EXT2.so implementation (restricted in-place writes)
+## Historical EXT2.so implementation (extracted)
 
 EXT2 now has an independent `EXT2.so` build and a separate Install/Remove
 selector on its existing catalogue row. The binary embeds the canonical EXT2
@@ -94,7 +105,7 @@ portable, load-and-dispatch runtime ABI for Files, Defragmenter and Boot is
 **not yet implemented**. Consequently these `.so` artifacts are not yet
 interchangeable with Linux `.ko` or firmware `.efi` drivers.
 
-## Current independent MINIX.so implementation
+## Historical MINIX.so implementation (extracted)
 
 `MINIX.so` is an independently compiled freestanding, read-only filesystem
 engine covering Minix V1/V2 (14/30-character directory variants) and V3
@@ -132,7 +143,7 @@ create/rename/delete, resize, formatter, repair and defragmentation are
 **not qualified**. As with EXT2, a real shared dispatcher for other
 InfiltratorOS applications remains unfinished.
 
-## Current FAT32.so implementation
+## Historical FAT32.so implementation (extracted)
 
 The independent `FAT32.so` source implements read-only probing of actual
 FAT32 media, 28-bit FAT entry traversal, root directory cluster chains,

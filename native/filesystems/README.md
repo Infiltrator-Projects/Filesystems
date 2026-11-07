@@ -1,27 +1,24 @@
-# Filesystem implementation source
+# Remaining unextracted filesystem implementation source
 
-The Linux source in each filesystem's `linux/` directory is editable
-implementation code, whether copied from a mature upstream implementation or
-subsequently modified by Filesystems. Imported code is **not** a disposable
-reference cache. Its actual original authorship and licence notices remain
-intact unless and until the affected implementation is independently replaced.
+This directory belongs to the **temporary Filesystems manager repository**,
+which is not yet retired. Its actual retained format implementations are listed
+in [`data/source-filesystems.txt`](../../data/source-filesystems.txt). At this
+revision the manifest names **21 formats**; some contain imported Linux source,
+some userspace source and some locally maintained adapters.
 
-There are 26 independently copied Linux source baselines enumerated by
-`data/imported-source-filesystems.txt`, including NTFS copied from the
-original historical NTFS3 tree into the single NTFS identity.
-These directories are available for direct code modifications.
+The distinct Linux native-module install manifest is
+[`data/native-filesystems.tsv`](../../data/native-filesystems.tsv), and
+currently lists only **BFS and UDF**. A format's presence in either manifest
+does not establish complete functionality, successful out-of-tree kernel
+compilation, or safety on physical media.
 
-The nine independently managed native Linux drivers are listed instead in
-`data/native-filesystems.tsv`. They are built and deployed only through
-their existing qualification and installation workflows. Copying an original
-working driver into the working tree is **not** an automatic claim that its
-out-of-tree compilation, integration or current runtime is qualified.
+Already extracted formats (including FFS, exFAT, FAT12/16/32, EXT2/3/4,
+OFS, SFS, SFS2, PFS3 and others) must be maintained **only in their own
+`Filesystem-*` Git repositories**. They do not belong here, even as source
+stubs, copies or provider Git submodules. The independent repository owns its
+standalone `.so`, format-specific code, any separately qualified `.ko` or
+firmware support, tests and generated manual.
 
-A future canonical `core/` can separate platform-independent semantics from
-the existing Linux adapter *without discarding the working source*. The
-requirement is correct functionality, stable provenance and evidenced
-qualification, not rewriting code simply to change attribution.
-
-For SFS, SFS2 and PFS3, retained copies of the earlier working upstream implementations are under `original/` as separately editable code snapshots. Their qualified native `linux/` adapters are unchanged. No `reference/` source quarantine remains.
-
-The Minix module was promoted from the original Linux Kbuild source after Debian header symbol linking and a real Minix V3 QEMU read/write/remount test. It intentionally has no invented empty `core/` tree; its complete format implementation remains in `linux/`. Other filesystem imports stay outside the managed manifest until independently qualified.
+Do not automatically refresh imported source or erase original attribution
+and licence notices. Source ownership transfer and runtime qualification are
+separate operations.
