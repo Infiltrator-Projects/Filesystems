@@ -31,8 +31,6 @@ enum class DesktopActionKind {
     RemovePackages,
     InstallNativeModule,
     RemoveNativeModule,
-    InstallDropIn,
-    RemoveDropIn,
     LoadModule,
     UnloadModule
 };
@@ -62,16 +60,6 @@ void prepare_package_desktop_action_async(
 DesktopAction prepare_module_desktop_action(
     const FilesystemDescriptor& descriptor,
     const ProbeResult& probe);
-
-/* A fixed-purpose FAT variant action; GTK never calls installer primitives. */
-void execute_classic_fat_variant_async(
-    bool fat12, bool remove, DesktopActionCompletion completion);
-
-/* Separate EXT2.so action; this does not change native ext2.ko. */
-void execute_ext2_dropin_async(
-    bool remove, DesktopActionCompletion completion);
-void execute_minix_dropin_async(
-    bool remove, DesktopActionCompletion completion);
 
 void execute_desktop_action_async(
     DesktopAction action,

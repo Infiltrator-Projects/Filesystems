@@ -128,9 +128,7 @@ DesktopAction prepare_module_desktop_action(
     const ProbeResult& probe)
 {
     DesktopAction action;
-    if (probe.module_name.empty() &&
-        descriptor.provider != SupportProvider::DropIn && 
-        descriptor.id != "ofs") {
+    if (probe.module_name.empty()) {
         return action;
     }
 
@@ -138,20 +136,6 @@ DesktopAction prepare_module_desktop_action(
     action.module = probe.module_name;
 
     switch (policy.action) {
-    case ModuleActionKind::InstallDropIn:
-        action.disposition = DesktopActionDisposition::Execute;
-        action.kind = DesktopActionKind::InstallDropIn;
-        action.busy_label = std::string("Compiling ") + std::string(descriptor.name) + "…";
-        action.failure_title = std::string(descriptor.name) + " module compilation failed";
-        action.filesystem_id = std::string(descriptor.id);
-        break;
-    case ModuleActionKind::RemoveDropIn:
-        action.disposition = DesktopActionDisposition::Execute;
-        action.kind = DesktopActionKind::RemoveDropIn;
-        action.busy_label = std::string("Removing ") + std::string(descriptor.name) + "…";
-        action.failure_title = std::string(descriptor.name) + " removal failed";
-        action.filesystem_id = std::string(descriptor.id);
-        break;
     case ModuleActionKind::InstallNative:
         action.disposition = DesktopActionDisposition::Execute;
         action.kind = DesktopActionKind::InstallNativeModule;
@@ -186,30 +170,6 @@ DesktopAction prepare_module_desktop_action(
     return action;
 }
 
-void execute_classic_fat_variant_async(
-    const bool fat12, const bool remove, DesktopActionCompletion completion)
-{
-    if (!completion) return;
-    if (fat12)
-        manage_fat12_module_async(remove, std::move(completion));
-    else
-        manage_fat32_module_async(remove, std::move(completion));
-}
-
-void execute_ext2_dropin_async(
-    const bool remove, DesktopActionCompletion completion)
-{
-    if (!completion) return;
-    manage_ext2_dropin_async(remove, std::move(completion));
-}
-
-void execute_minix_dropin_async(
-    const bool remove, DesktopActionCompletion completion)
-{
-    if (!completion) return;
-    manage_minix_dropin_async(remove, std::move(completion));
-}
-
 void execute_desktop_action_async(
     DesktopAction action,
     DesktopActionCompletion completion)
@@ -220,23 +180,6 @@ void execute_desktop_action_async(
     }
 
     switch (action.kind) {
-    case DesktopActionKind::InstallDropIn:
-    case DesktopActionKind::RemoveDropIn:
-        if (action.filesystem_id != "fat16" &&
-            action.filesystem_id != "ofs") {
-            fail_invalid_action(std::move(completion));
-            return;
-        }
-        if (action.filesystem_id == "ofs") {
-            manage_ofs_module_async(
-                action.kind == DesktopActionKind::RemoveDropIn,
-                std::move(completion));
-        } else {
-            manage_fat16_module_async(
-                action.kind == DesktopActionKind::RemoveDropIn,
-                std::move(completion));
-        }
-        return;
     case DesktopActionKind::InstallPackages:
         if (action.packages.empty()) {
             fail_invalid_action(std::move(completion));

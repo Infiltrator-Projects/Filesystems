@@ -89,27 +89,22 @@ int main()
     }
 
     {
-        // The UI Install OFS action selects only OFS.so. Kernel/EFI builds
-        // stay independently available through their existing toolchains.
-        auto entry = descriptor(
-            "ofs", SupportProvider::Kernel, {"ofs"}, {}, true);
-        ProbeResult probe;
-        probe.state = SupportState::Installable;
-        DesktopAction action = prepare_module_desktop_action(entry, probe);
-        if (action.disposition != DesktopActionDisposition::Execute ||
-            action.kind != DesktopActionKind::InstallDropIn ||
-            action.filesystem_id != "ofs" ||
-            action.busy_label != "Compiling ofs…" ||
-            action.failure_title != "ofs module compilation failed") {
-            return fail("OFS Install must compile only the OFS.so adapter");
-        }
-        probe.state = SupportState::Ready;
-        action = prepare_module_desktop_action(entry, probe);
-        if (action.disposition != DesktopActionDisposition::Execute ||
-            action.kind != DesktopActionKind::RemoveDropIn ||
-            action.filesystem_id != "ofs" ||
-            action.busy_label != "Removing ofs…") {
-            return fail("OFS remove must remove only OFS.so");
+        // Extracted formats cannot invoke removed central helper actions.
+        for (const auto id : {"ofs", "fat16"}) {
+            auto entry = descriptor(id, id == std::string_view("fat16")
+                ? SupportProvider::DropIn : SupportProvider::Kernel,
+                {}, {});
+            for (const auto state : {SupportState::Ready,
+                                     SupportState::Installable}) {
+                ProbeResult probe;
+                probe.state = state;
+                const DesktopAction action =
+                    prepare_module_desktop_action(entry, probe);
+                if (action.disposition != DesktopActionDisposition::None ||
+                    action.kind != DesktopActionKind::None) {
+                    return fail("extracted format produced stale desktop action");
+                }
+            }
         }
     }
 

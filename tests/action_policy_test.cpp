@@ -43,8 +43,10 @@ int main()
         return fail("package allowlist is not deny-by-default");
     }
 
-    if (!module_is_catalogued("ofs") ||
-        !module_is_catalogued("ffs") ||
+    if (!module_is_catalogued("bfs") ||
+        !module_is_catalogued("udf") ||
+        module_is_catalogued("ofs") ||
+        module_is_catalogued("ffs") ||
         module_is_catalogued("affs") ||
         module_is_catalogued("definitely-not-catalogued")) {
         return fail("module allowlist is not deny-by-default");
@@ -116,49 +118,29 @@ int main()
     }
 
     const FilesystemDescriptor* ofs = find_entry("ofs");
-    if (!ofs || !ofs->project_native_linux || ofs->modules.size() != 1U ||
-        ofs->modules.front() != "ofs") {
-        return fail("OFS Linux kernel driver generation must remain available");
-    }
-    ProbeResult ofs_missing;
-    ofs_missing.state = SupportState::Installable;
-    if (module_action_policy(*ofs, ofs_missing).action !=
-        ModuleActionKind::InstallDropIn ||
-        module_action_policy(*ofs, ofs_missing).button.label != "Install OFS" ||
-        package_action_policy(*ofs, ofs_missing).button.visible) {
-        return fail("Install OFS must compile only OFS.so");
-    }
-    ProbeResult ofs_installed;
-    ofs_installed.state = SupportState::Ready;
-    if (module_action_policy(*ofs, ofs_installed).action !=
-        ModuleActionKind::RemoveDropIn ||
-        module_action_policy(*ofs, ofs_installed).button.label != "Remove OFS") {
-        return fail("Remove OFS must remove only OFS.so");
-    }
-
     const FilesystemDescriptor* fat16 = find_entry("fat16");
-    if (fat16 == nullptr || fat16->provider != SupportProvider::DropIn ||
-        !fat16->packages.empty() || !fat16->modules.empty() ||
-        package_is_catalogued("dosfstools")) {
-        return fail("FAT16 must have independent .so selection without APT");
+    if (!ofs || ofs->project_native_linux || !ofs->modules.empty() ||
+        !fat16 || fat16->provider != SupportProvider::DropIn ||
+        !fat16->modules.empty() || !fat16->packages.empty()) {
+        return fail("extracted formats still look centrally owned");
     }
-    ProbeResult fat16_missing;
-    fat16_missing.state = SupportState::Installable;
-    const auto fat16_install = module_action_policy(*fat16, fat16_missing);
-    if (fat16_install.action != ModuleActionKind::InstallDropIn ||
-        fat16_install.button.label != "Install FAT16" ||
-        package_action_policy(*fat16, fat16_missing).button.visible) {
-        return fail("FAT16 installer routes to the wrong action");
-    }
-    ProbeResult fat16_present;
-    fat16_present.state = SupportState::Ready;
-    const auto fat16_remove = module_action_policy(*fat16, fat16_present);
-    if (fat16_remove.action != ModuleActionKind::RemoveDropIn ||
-        fat16_remove.button.label != "Remove FAT16") {
-        return fail("FAT16 remove must target one .so only");
+    for (const auto* entry : {ofs, fat16}) {
+        for (const auto state : {SupportState::Ready,
+                                 SupportState::Installable,
+                                 SupportState::Incomplete}) {
+            ProbeResult candidate;
+            candidate.state = state;
+            const auto policy = module_action_policy(*entry, candidate);
+            if (policy.action != ModuleActionKind::None ||
+                !policy.button.visible || policy.button.enabled ||
+                policy.button.label != "Independent package" ||
+                package_action_policy(*entry, candidate).button.visible) {
+                return fail("central manager exposed stale helper action");
+            }
+        }
     }
 
-    const FilesystemDescriptor* ext3 = find_entry("ext3");
+    const FilesystemDescriptor* ext3 = find_entry("bfs");
     const FilesystemDescriptor* apfs = find_entry("apfs");
     const FilesystemDescriptor* hfs = find_entry("hfs");
     if (ext3 == nullptr || apfs == nullptr || hfs == nullptr) {
@@ -166,7 +148,7 @@ int main()
     }
 
     ProbeResult native_missing;
-    native_missing.module_name = "ext3";
+    native_missing.module_name = "bfs";
     native_missing.kernel_state = KernelState::Missing;
     const ModuleActionPolicy install_native =
         module_action_policy(*ext3, native_missing);
@@ -232,7 +214,7 @@ int main()
 
     ProbeResult unreliable;
     unreliable.reliable = false;
-    unreliable.module_name = "ext3";
+    unreliable.module_name = "bfs";
     unreliable.missing_packages = {"hfsprogs"};
     const PackageActionPolicy unreliable_package =
         package_action_policy(*hfs, unreliable);

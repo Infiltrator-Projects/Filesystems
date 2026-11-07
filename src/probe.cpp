@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "probe.hpp"
-#include "app_resources.hpp"
 #include "linux_host_paths.hpp"
 #include "process_runner.hpp"
 
@@ -481,99 +480,18 @@ ProbeResult probe(const FilesystemDescriptor& descriptor)
     ProbeResult result;
     NativeModuleObservation native_observation;
 
-    if (descriptor.id == "ofs") {
-        // OFS's Filesystems selector is a compile-to-.so operation.
-        // The existing ofs.ko and OFS UEFI driver remain untouched.
-        const std::string helper = application_helper("ofs-module-helper");
-        if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
-            result.state = SupportState::Incomplete;
-            result.reliable = false;
-            result.detail = "OFS drop-in compiler helper is not installed.";
-            return result;
-        }
-        const CommandResult status = run_command({helper, "status"});
-        if (status.succeeded() &&
-            status.stdout_text.find("installed") != std::string::npos) {
-            result.state = SupportState::Ready;
-            result.detail = "/System/Filesystems/OFS.so is present and structurally validated (read-only 512-byte reader).";
-        } else if (status.spawned && status.exit_status == 3) {
-            result.state = SupportState::Installable;
-            result.detail = "Select Install OFS to compile only OFS.so.";
-        } else {
-            result.state = SupportState::Incomplete;
-            result.reliable = false;
-            result.detail = "OFS.so or its trusted directory failed validation.";
-        }
+    // Extracted format engines are owned and installed by their independent
+    // Filesystem-* packages. The transitional central manager neither builds
+    // nor claims to validate these individually released shared objects.
+    if (descriptor.id == "ofs" || descriptor.id == "fat16") {
+        result.state = SupportState::Incomplete;
+        result.detail = descriptor.id == "ofs"
+            ? "OFS.so belongs to Filesystem-OFS. Install and verify its "
+              "independent package; this manager has no OFS compiler helper."
+            : "FAT12.so, FAT16.so and FAT32.so belong to their three "
+              "independent packages. This manager does not compile, inspect "
+              "or remove those separately owned drivers.";
         return result;
-    }
-
-    if (descriptor.id == "fat16") {
-        // Keep the three independent FAT .so registrations under the one
-        // stable classic-FAT catalogue family without three fake providers.
-        const auto variant_state = [](const char* helper_name) {
-            const std::string helper = application_helper(helper_name);
-            if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE))
-                return SupportState::Incomplete;
-            const CommandResult status = run_command({helper, "status"});
-            if (status.succeeded() &&
-                status.stdout_text.find("installed") != std::string::npos)
-                return SupportState::Ready;
-            if (status.spawned && status.exit_status == 3)
-                return SupportState::Installable;
-            return SupportState::Incomplete;
-        };
-        result.fat12_dropin_state = variant_state("fat12-module-helper");
-        result.fat32_dropin_state = variant_state("fat32-module-helper");
-        // FAT16's selector checks only the single installed .so. Never
-        // probe, load or install stock kernel modules or Debian packages.
-        const std::string helper = application_helper("fat16-module-helper");
-        if (!g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
-            result.state = SupportState::Incomplete;
-            result.detail = "FAT16 module compiler helper is not installed.";
-            result.reliable = false;
-            return result;
-        }
-        const CommandResult status = run_command({helper, "status"});
-        if (status.succeeded() &&
-            status.stdout_text.find("installed") != std::string::npos) {
-            result.state = SupportState::Ready;
-            result.detail = "/System/Filesystems/FAT16.so is present and structurally validated.";
-        } else if (status.spawned && status.exit_status == 3) {
-            result.state = SupportState::Installable;
-            result.detail = "Select Install FAT16 to compile and place FAT16.so.";
-        } else {
-            result.state = SupportState::Incomplete;
-            result.detail = "Existing FAT16.so or module directory failed validation.";
-            result.reliable = false;
-        }
-        return result;
-    }
-
-    if (descriptor.id == "ext2") {
-        // Separate standalone drop-in. Native Linux ext2.ko below is still
-        // scanned and managed independently, never impersonated by EXT2.so.
-        const std::string helper = application_helper("ext2-module-helper");
-        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
-            const CommandResult status = run_command({helper, "status"});
-            if (status.succeeded() &&
-                status.stdout_text.find("installed") != std::string::npos)
-                result.ext2_dropin_state = SupportState::Ready;
-            else if (status.spawned && status.exit_status == 3)
-                result.ext2_dropin_state = SupportState::Installable;
-        }
-    }
-
-    if (descriptor.id == "minix") {
-        // MINIX.so is not Linux minix.ko.
-        const std::string helper = application_helper("minix-module-helper");
-        if (g_file_test(helper.c_str(), G_FILE_TEST_IS_EXECUTABLE)) {
-            const CommandResult status = run_command({helper, "status"});
-            if (status.succeeded() &&
-                status.stdout_text.find("installed") != std::string::npos)
-                result.minix_dropin_state = SupportState::Ready;
-            else if (status.spawned && status.exit_status == 3)
-                result.minix_dropin_state = SupportState::Installable;
-        }
     }
 
     result.project_native_module = descriptor.project_native_linux;

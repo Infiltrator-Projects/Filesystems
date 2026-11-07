@@ -39,13 +39,8 @@ struct ProbeResult {
     std::vector<std::string> missing_packages;
     std::vector<std::string> unavailable_packages;
     std::string detail;
-    // Independent modules displayed within the one classic-FAT catalogue row.
-    // Neither observation changes the FAT16 runtime or any Linux .ko.
-    SupportState fat12_dropin_state = SupportState::Incomplete;
-    SupportState fat32_dropin_state = SupportState::Incomplete;
-    // Independent EXT2.so state; never masks or replaces ext2.ko state.
-    SupportState ext2_dropin_state = SupportState::Incomplete;
-    SupportState minix_dropin_state = SupportState::Incomplete;
+};
+
 };
 
 void invalidate_probe_cache();

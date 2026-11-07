@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "installer.hpp"
-#include "app_resources.hpp"
 #include "linux_host_paths.hpp"
 
 #include "catalog.hpp"
@@ -551,101 +550,6 @@ void remove_packages_async(
                 "Removal completed successfully.",
                 std::move(completion));
         });
-}
-
-void manage_fat16_module_async(const bool remove,
-                               ActionCompletion completion)
-{
-    // This operation is intentionally fixed-purpose. No PATH-derived
-    // compiler, arbitrary filesystem ID, APT, DKMS or kernel module command.
-    const std::string helper = application_helper("fat16-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The FAT16 module compiler helper is not installed.");
-        return;
-    }
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "FAT16.so removed." :
-                 "FAT16.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
-}
-
-void manage_fat12_module_async(const bool remove,
-                                ActionCompletion completion)
-{
-    const std::string helper = application_helper("fat12-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The FAT12 module compiler helper is not installed.");
-        return;
-    }
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "FAT12.so removed." :
-                 "FAT12.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
-}
-
-void manage_fat32_module_async(const bool remove,
-                                ActionCompletion completion)
-{
-    const std::string helper = application_helper("fat32-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The FAT32 module compiler helper is not installed.");
-        return;
-    }
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "FAT32.so removed." :
-                 "FAT32.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
-}
-
-void manage_ofs_module_async(const bool remove,
-                             ActionCompletion completion)
-{
-    const std::string helper = application_helper("ofs-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The OFS module compiler helper is not installed.");
-        return;
-    }
-    // Only the OFS.so module is built/removed. No .ko, EFI, APT, or disk writes.
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "OFS.so removed." :
-                 "OFS.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
-}
-
-void manage_ext2_dropin_async(const bool remove,
-                               ActionCompletion completion)
-{
-    const std::string helper = application_helper("ext2-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The EXT2.so compiler helper is not installed.");
-        return;
-    }
-    // Does not touch ext2.ko, EFI, APT, partitions or boot configuration.
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "EXT2.so removed." :
-                 "EXT2.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
-}
-
-void manage_minix_dropin_async(const bool remove,
-                                ActionCompletion completion)
-{
-    const std::string helper = application_helper("minix-module-helper");
-    if (!executable_file(helper.c_str())) {
-        completion(false, "The MINIX.so compiler helper is not installed.");
-        return;
-    }
-    // Never change Linux minix.ko, EFI or any physical media.
-    run_privileged_async(
-        {helper, remove ? "remove" : "install"},
-        remove ? "MINIX.so removed." :
-                 "MINIX.so compiled and installed in /System/Filesystems/.",
-        std::move(completion));
 }
 
 void load_module_async(const std::string& module,
