@@ -86,7 +86,10 @@ def main():
         new_binary = staged / "Programs/Filesystems/Filesystems"
         launcher = staged / "usr/bin/filesystems"
         desktop = staged / "usr/share/applications/org.infiltrator.Filesystems.desktop"
-        assert new_binary.is_file() and launcher.is_file() and desktop.is_file()
+        assert new_binary.is_file() and launcher.is_file() and desktop.is_file(), (
+            "Unexpected CPack layout",
+            sorted(str(p.relative_to(staged)) for p in staged.rglob("*") if p.is_file())[:120]
+        )
         assert "0.5.116" in run("strings", "-a", new_binary, capture=True).splitlines()
         assert "Exec=filesystems" in desktop.read_text().splitlines()
 

@@ -29,7 +29,7 @@ jobs:
       - name: Build manager Debian package without publication
         run: |
           set -euo pipefail
-          cmake -S . -B build-upgrade -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake -S . -B build-upgrade -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
           cmake --build build-upgrade --target filesystems filesystems-package-removal-guard
           cpack -G DEB --config build-upgrade/CPackConfig.cmake -B dist-upgrade
           test -s dist-upgrade/Filesystems-0.5.116-amd64.deb
