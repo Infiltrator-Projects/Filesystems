@@ -1,17 +1,12 @@
-# Real, editable original Linux implementations copied into Filesystems.
+# Original Linux implementations not yet extracted from this temporary repository.
 # Source availability is distinct from native driver qualification.
 # Actual files live at native/filesystems/<id>/linux/.
 adfs
-apfs
 bcachefs
 befs
-btrfs
 efs
 f2fs
-fat
 gfs2
-hfs
-hfsplus
 hpfs
 jfs
 nilfs2
@@ -21,5 +16,3 @@ qnx4
 qnx6
 reiserfs
 sysv
-ufs
-xfs

@@ -20,11 +20,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(FILESYSTEMS_WARNINGS_AS_ERRORS "Treat warnings as errors" ON)
-option(FILESYSTEMS_BUILD_EFI_DRIVERS "Build independent x86-64 EFI filesystem drivers" OFF)
-set(FILESYSTEMS_FAT_EFI_PREBUILT_DIR "" CACHE PATH
-    "Directory containing runtime-qualified FAT12/FAT16 EFI drivers")
-set(FILESYSTEMS_FAT_KO_REFERENCE_DIR "" CACHE PATH
-    "Directory containing FAT12/FAT16 kernel modules for the qualified test kernel")
 
 # Application-owned executable and resources live in the native namespace.
 # Linux may keep a minimal /usr/bin launcher and distro-specific integration,
@@ -179,85 +174,6 @@ target_link_libraries(infiltratr-fs-native-core
     PUBLIC InfiltratrCommon::Portable)
 filesystems_configure(infiltratr-fs-native-core)
 
-# Canonical EXT2 on-disk semantics. This exact source is also compiled into
-# the Linux and Windows adapters; OS-specific code must not reimplement it.
-add_library(infiltratr-fs-ext2-core STATIC
-    native/filesystems/ext2/core/ext2_core.c
-    native/filesystems/ext2/core/ext2_engine.c)
-target_include_directories(infiltratr-fs-ext2-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/core")
-filesystems_configure(infiltratr-fs-ext2-core)
-
-# Portable read-only firmware-facing EXT2 reader, not a UEFI driver binary.
-add_library(infiltratr-fs-ext2-efi-reader STATIC
-    native/filesystems/ext2/efi/reader.c)
-target_link_libraries(infiltratr-fs-ext2-efi-reader
-    PUBLIC infiltratr-fs-ext2-core)
-target_include_directories(infiltratr-fs-ext2-efi-reader
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/efi")
-filesystems_configure(infiltratr-fs-ext2-efi-reader)
-
-# Canonical EXT3 feature/format policy. Linux and future Windows adapters
-# consume this exact implementation rather than maintaining independent rules.
-add_library(infiltratr-fs-ext3-core STATIC
-    native/filesystems/ext3/core/ext3_core.c)
-target_include_directories(infiltratr-fs-ext3-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext3/core")
-filesystems_configure(infiltratr-fs-ext3-core)
-
-# Canonical EXT4 feature/format policy shared by every host adapter.
-add_library(infiltratr-fs-ext4-core STATIC
-    native/filesystems/ext4/core/ext4_core.c)
-target_include_directories(infiltratr-fs-ext4-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext4/core")
-filesystems_configure(infiltratr-fs-ext4-core)
-
-# Canonical Amiga OFS and FFS format classification.
-add_library(infiltratr-fs-ofs-core STATIC
-    native/filesystems/ofs/core/ofs_core.c
-    native/filesystems/ofs/core/ofs_primitives.c)
-target_include_directories(infiltratr-fs-ofs-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core")
-filesystems_configure(infiltratr-fs-ofs-core)
-
-# Portable, project-owned AmigaDOS OFS firmware reader; no Boot source dependency.
-add_library(infiltratr-fs-ofs-efi-reader STATIC
-    native/filesystems/ofs/efi/reader.c)
-target_link_libraries(infiltratr-fs-ofs-efi-reader
-    PUBLIC infiltratr-fs-ofs-core)
-target_include_directories(infiltratr-fs-ofs-efi-reader
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi")
-filesystems_configure(infiltratr-fs-ofs-efi-reader)
-
-add_library(infiltratr-fs-ffs-core STATIC
-    native/filesystems/ffs/core/ffs_core.c
-    native/filesystems/ffs/core/ffs_primitives.c)
-target_include_directories(infiltratr-fs-ffs-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ffs/core")
-filesystems_configure(infiltratr-fs-ffs-core)
-
-# Canonical Amiga SFS format/layout policy shared by host adapters.
-add_library(infiltratr-fs-sfs-core STATIC
-    native/filesystems/sfs/core/sfs_core.c)
-target_include_directories(infiltratr-fs-sfs-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/sfs/core")
-filesystems_configure(infiltratr-fs-sfs-core)
-
-# Canonical Amiga SFS2 format policy. SFS2 is deliberately independent
-# from the SFS core because its on-disk structures are not 1:1 compatible.
-add_library(infiltratr-fs-sfs2-core STATIC
-    native/filesystems/sfs2/core/sfs2_core.c)
-target_include_directories(infiltratr-fs-sfs2-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/sfs2/core")
-filesystems_configure(infiltratr-fs-sfs2-core)
-
-# Canonical PFS format/geometry policy used by the PFS3 implementation.
-add_library(infiltratr-fs-pfs3-core STATIC
-    native/filesystems/pfs3/core/pfs3_core.c)
-target_include_directories(infiltratr-fs-pfs3-core
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/pfs3/core")
-filesystems_configure(infiltratr-fs-pfs3-core)
-
 # Stable on-media identity is a platform-neutral authority. Keep it physically
 # separate from Linux package/provider policy so non-Linux consumers cannot
 # acquire Debian concerns through a target-level dependency.
@@ -298,69 +214,6 @@ if(WIN32)
 endif()
 
 if(UNIX)
-    if(FILESYSTEMS_BUILD_EFI_DRIVERS)
-        if(NOT CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
-            message(FATAL_ERROR "EFI filesystem payload is currently qualified for x86-64 build hosts")
-        endif()
-        set(FILESYSTEMS_EFI_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/efi-drivers")
-        file(GLOB_RECURSE FILESYSTEMS_EFI_SOURCES CONFIGURE_DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/firmware/uefi/*"
-            "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi/*"
-            "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core/*")
-        add_custom_command(
-            OUTPUT
-                "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
-                "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
-            COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-efi-drivers.sh"
-                "${FILESYSTEMS_EFI_OUTPUT}"
-            DEPENDS ${FILESYSTEMS_EFI_SOURCES}
-                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-efi-drivers.sh"
-                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-ofs-efi.sh"
-                "${CMAKE_CURRENT_SOURCE_DIR}/scripts/gnu-efi-toolchain.sh"
-                "${CMAKE_CURRENT_SOURCE_DIR}/VERSION"
-            VERBATIM)
-        add_custom_target(filesystems-efi-drivers ALL DEPENDS
-            "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
-            "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi")
-        install(FILES "${FILESYSTEMS_EFI_OUTPUT}/drivers_x64/ext4_x64.efi"
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
-        install(FILES "${FILESYSTEMS_EFI_OUTPUT}/experimental/OFS_x64.efi"
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/experimental")
-
-        # The release build consumes the *same* images used in the OVMF
-        # runtime tests. For independent source builds, build them locally.
-        if(FILESYSTEMS_FAT_EFI_PREBUILT_DIR)
-            set(FILESYSTEMS_FAT_EFI_DIR "${FILESYSTEMS_FAT_EFI_PREBUILT_DIR}")
-        else()
-            set(FILESYSTEMS_FAT_EFI_DIR "${FILESYSTEMS_EFI_OUTPUT}/fat")
-            file(GLOB_RECURSE FILESYSTEMS_FAT_EFI_SOURCES CONFIGURE_DEPENDS
-                "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/efi/*")
-            add_custom_command(
-                OUTPUT "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
-                       "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi"
-                COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-fat12-fat16-efi.sh"
-                    "${FILESYSTEMS_FAT_EFI_DIR}"
-                DEPENDS ${FILESYSTEMS_FAT_EFI_SOURCES}
-                    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-fat12-fat16-efi.sh"
-                VERBATIM)
-            add_custom_target(filesystems-fat-efi-drivers ALL DEPENDS
-                "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
-                "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi")
-        endif()
-        install(FILES "${FILESYSTEMS_FAT_EFI_DIR}/FAT12.efi"
-                      "${FILESYSTEMS_FAT_EFI_DIR}/FAT16.efi"
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
-        install(FILES native/filesystems/fat/efi/EDK2-LICENSE.txt
-                      native/filesystems/fat/efi/EDK2-CREDITS.txt
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/EFI/drivers_x64")
-        install(FILES
-            firmware/uefi/filesystems/LICENSE.txt
-            firmware/uefi/filesystems/LICENSE_GPL.txt
-            firmware/uefi/COPYING.txt
-            firmware/uefi/CREDITS.txt
-            firmware/uefi/README.md
-            DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/filesystems/efi")
-    endif()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GLIB2 REQUIRED IMPORTED_TARGET glib-2.0)
     pkg_check_modules(GIO2 REQUIRED IMPORTED_TARGET gio-2.0)
@@ -380,264 +233,6 @@ if(UNIX)
         tools/fsinspect/main.c)
     target_link_libraries(fsinspect PRIVATE infiltratr-fs-userspace)
     filesystems_configure(fsinspect)
-
-    # Developer-preview, image-only OFS formatter. Cannot overwrite a file
-    # or open a block device; physical partition formatting is NOT qualified.
-    add_executable(filesystems-ofs-image tools/ofs-image/main.c)
-    target_link_libraries(filesystems-ofs-image PRIVATE infiltratr-fs-ofs-core)
-    filesystems_configure(filesystems-ofs-image)
-    install(TARGETS filesystems-ofs-image
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-
-    # Standalone OFS.so: directly reuse our canonical OFS core and the
-    # existing freestanding OFS EFI *reader* (not the EFI driver wrapper).
-    # The Filesystems Install OFS action compiles this source on demand.
-    add_library(filesystems-ofs-dropin SHARED
-        native/filesystems/ofs/module/ofs_module.c
-        native/filesystems/ofs/module/ofs_v3.c
-        native/filesystems/ofs/module/ofs_boot.c
-        native/filesystems/ofs/module/ofs_memory.c
-        native/filesystems/ofs/core/ofs_core.c
-        native/filesystems/ofs/core/ofs_primitives.c
-        native/filesystems/ofs/core/ofs_volume.c
-        native/filesystems/ofs/core/ofs_nodes.c
-        native/filesystems/ofs/core/ofs_files.c
-        native/filesystems/ofs/core/ofs_namespace.c
-        native/filesystems/ofs/core/ofs_check.c
-        native/filesystems/ofs/core/ofs_strings.c
-        native/filesystems/ofs/core/ofs_cache.c
-        native/filesystems/ofs/defrag/ofs_relayout.c
-        native/filesystems/ofs/defrag/ofs_defrag_module.c)
-    set_target_properties(filesystems-ofs-dropin PROPERTIES
-        PREFIX "" OUTPUT_NAME "OFS")
-    target_include_directories(filesystems-ofs-dropin PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/module"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/efi"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/core"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/defrag"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/include")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        # Match the on-demand compiler helper's -O2 optimization profile.
-        # Higher -O3 optimization triggers a misleading cross-TU array-bound
-        # diagnostic in the independently qualified legacy OFS reader; do
-        # not edit, suppress warnings globally, or fork that reader.
-        target_compile_options(filesystems-ofs-dropin PRIVATE
-            -O2 -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-ofs-dropin PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-ofs-dropin PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-ofs-dropin)
-    # Install the SAME canonical standalone engine sources that built OFS.so.
-    # The Filesystems selector compiles the installed source without network access.
-    foreach(ofs_part module core defrag efi)
-        install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ofs/${ofs_part}/"
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/${ofs_part}"
-            FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
-    endforeach()
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/native/include/infiltratr"
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ofs/include")
-    install(PROGRAMS packaging/linux/ofs-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME ofs-module-helper)
-
-    # The FAT defrag engine lives in each independently installable module.
-    # The host provides process, device-safety, and generic Common services;
-    # no host runtime or Common implementation is linked into the module.
-    set(IFS_FAT_DEFRAG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/defrag")
-    set(IFS_FAT_DEFRAG_SOURCES
-        "${IFS_FAT_DEFRAG_ROOT}/writer.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_analysis.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_directory.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_relayout.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_io.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_journal.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_relocation.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_volume.c"
-        "${IFS_FAT_DEFRAG_ROOT}/fat_defrag_module.c")
-    function(filesystems_fat_defrag target bits)
-        target_sources(${target} PRIVATE ${IFS_FAT_DEFRAG_SOURCES})
-        target_include_directories(${target} PRIVATE
-            "${IFS_FAT_DEFRAG_ROOT}" "${IFS_FAT_DEFRAG_ROOT}/host"
-            "${INFILTRATR_COMMON_DIR}/include")
-        target_compile_definitions(${target} PRIVATE
-            _GNU_SOURCE _FILE_OFFSET_BITS=64 IFS_FAT_DEFRAG_BITS=${bits})
-    endfunction()
-    install(DIRECTORY "${IFS_FAT_DEFRAG_ROOT}/"
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat-defrag"
-        FILES_MATCHING PATTERN "*.c" PATTERN "*.h")
-    install(DIRECTORY "${INFILTRATR_COMMON_DIR}/include/infiltratr"
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat-defrag/include"
-        FILES_MATCHING PATTERN "*.h")
-
-    # FAT16 is the first selectable single-file module. Build the exact
-    # source in CI; installed Filesystems compiles that SAME source when the
-    # user selects "Install FAT16". Do not preinstall a module or use APT.
-    add_library(filesystems-fat16-module SHARED
-        native/filesystems/fat/module/fat16_module.c
-        native/filesystems/fat/portable/fatfs_module.c
-        native/filesystems/fat/portable/ff.c
-        native/filesystems/fat/portable/ffunicode.c
-        native/filesystems/fat/portable/fatfs_libc.c)
-    target_include_directories(filesystems-fat16-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
-    target_compile_definitions(filesystems-fat16-module PRIVATE IFS_FATFS_ONLY=16)
-    filesystems_fat_defrag(filesystems-fat16-module 16)
-    set_target_properties(filesystems-fat16-module PROPERTIES
-        PREFIX "" OUTPUT_NAME "FAT16")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(filesystems-fat16-module PRIVATE
-            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
-        # Production module is freestanding. Sanitizer CI deliberately links
-        # compiler runtimes; -nostdlib/-z defs would prevent ASan/UBSan tests.
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-fat16-module PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-fat16-module PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-fat16-module)
-    install(FILES
-        native/filesystems/fat/module/classic_fat_module.c
-        native/filesystems/fat/module/classic_fat_module.h
-        native/filesystems/fat/module/fat16_module.c
-        native/filesystems/fat/module/fat16_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
-    install(FILES
-        native/filesystems/fat/portable/ff.c
-        native/filesystems/fat/portable/ff.h
-        native/filesystems/fat/portable/ffconf.h
-        native/filesystems/fat/portable/diskio.h
-        native/filesystems/fat/portable/ffunicode.c
-        native/filesystems/fat/portable/fatfs_libc.c
-        native/filesystems/fat/portable/fatfs_module.c
-        native/filesystems/fat/portable/fatfs_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat16")
-    install(PROGRAMS packaging/linux/fat16-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME fat16-module-helper)
-
-    # One shared source engine, two independently compiled and installed .so files.
-    add_library(filesystems-fat12-module SHARED
-        native/filesystems/fat/module/fat12_module.c
-        native/filesystems/fat/portable/fatfs_module.c
-        native/filesystems/fat/portable/ff.c
-        native/filesystems/fat/portable/ffunicode.c
-        native/filesystems/fat/portable/fatfs_libc.c)
-    target_include_directories(filesystems-fat12-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/portable")
-    target_compile_definitions(filesystems-fat12-module PRIVATE IFS_FATFS_ONLY=12)
-    filesystems_fat_defrag(filesystems-fat12-module 12)
-    set_target_properties(filesystems-fat12-module PROPERTIES
-        PREFIX "" OUTPUT_NAME "FAT12")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(filesystems-fat12-module PRIVATE
-            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-fat12-module PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-fat12-module PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-fat12-module)
-    install(FILES
-        native/filesystems/fat/module/classic_fat_module.c
-        native/filesystems/fat/module/classic_fat_module.h
-        native/filesystems/fat/module/fat12_module.c
-        native/filesystems/fat/module/fat12_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
-    install(FILES
-        native/filesystems/fat/portable/ff.c
-        native/filesystems/fat/portable/ff.h
-        native/filesystems/fat/portable/ffconf.h
-        native/filesystems/fat/portable/diskio.h
-        native/filesystems/fat/portable/ffunicode.c
-        native/filesystems/fat/portable/fatfs_libc.c
-        native/filesystems/fat/portable/fatfs_module.c
-        native/filesystems/fat/portable/fatfs_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat12")
-    install(PROGRAMS packaging/linux/fat12-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME fat12-module-helper)
-
-
-    # FAT32 has real 28-bit FAT entries and a cluster-chain root directory.
-    add_library(filesystems-fat32-module SHARED
-        native/filesystems/fat/module/fat32_module.c
-        native/filesystems/fat/portable/fatfs_libc.c)
-    filesystems_fat_defrag(filesystems-fat32-module 32)
-    target_include_directories(filesystems-fat32-module PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/fat/module")
-    set_target_properties(filesystems-fat32-module PROPERTIES
-        PREFIX "" OUTPUT_NAME "FAT32")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(filesystems-fat32-module PRIVATE
-            -ffreestanding -fno-builtin -fno-stack-protector -fvisibility=hidden)
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-fat32-module PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-fat32-module PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-fat32-module)
-    install(FILES
-        native/filesystems/fat/module/fat32_module.c
-        native/filesystems/fat/module/fat32_module.h
-        native/filesystems/fat/portable/fatfs_libc.c
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat32")
-    install(PROGRAMS packaging/linux/fat32-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME fat32-module-helper)
-
-    # Independent EXT2.so: canonical read/directory engine plus constrained
-    # existing-block overwrites. Does not replace ext2.ko or EFI.
-    add_library(filesystems-ext2-dropin SHARED
-        native/filesystems/ext2/module/ext2_module.c
-        native/filesystems/ext2/core/ext2_core.c
-        native/filesystems/ext2/core/ext2_engine.c)
-    set_target_properties(filesystems-ext2-dropin PROPERTIES
-        PREFIX "" OUTPUT_NAME "EXT2")
-    target_include_directories(filesystems-ext2-dropin PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/module"
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/ext2/core")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(filesystems-ext2-dropin PRIVATE
-            -O2 -ffreestanding -fno-builtin -fno-stack-protector
-            -fvisibility=hidden)
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-ext2-dropin PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-ext2-dropin PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-ext2-dropin)
-    install(FILES
-        native/filesystems/ext2/module/ext2_module.c
-        native/filesystems/ext2/module/ext2_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/module")
-    install(FILES
-        native/filesystems/ext2/core/ext2_core.c
-        native/filesystems/ext2/core/ext2_core.h
-        native/filesystems/ext2/core/ext2_engine.c
-        native/filesystems/ext2/core/ext2_engine.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/ext2/core")
-    install(PROGRAMS packaging/linux/ext2-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME ext2-module-helper)
 
     # SCO BFS has contiguous file data and fixed 512-byte blocks. This
     # standalone shared module implements real root traversal and in-place
@@ -670,33 +265,6 @@ if(UNIX)
         RENAME bfs-module-helper)
 
     # Portable read-only Minix V1/V2/V3, not Linux minix.ko.
-    add_library(filesystems-minix-dropin SHARED
-        native/filesystems/minix/module/minix_module.c)
-    set_target_properties(filesystems-minix-dropin PROPERTIES
-        PREFIX "" OUTPUT_NAME "MINIX")
-    target_include_directories(filesystems-minix-dropin PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/native/filesystems/minix/module")
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(filesystems-minix-dropin PRIVATE
-            -O2 -ffreestanding -fno-builtin -fno-stack-protector
-            -fvisibility=hidden)
-        if(CMAKE_C_FLAGS MATCHES "fsanitize")
-            target_link_options(filesystems-minix-dropin PRIVATE
-                -Wl,-z,relro -Wl,-z,now)
-        else()
-            target_link_options(filesystems-minix-dropin PRIVATE
-                -nostdlib -Wl,-z,defs -Wl,-z,relro -Wl,-z,now)
-        endif()
-    endif()
-    filesystems_configure(filesystems-minix-dropin)
-    install(FILES
-        native/filesystems/minix/module/minix_module.c
-        native/filesystems/minix/module/minix_module.h
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/minix/module")
-    install(PROGRAMS packaging/linux/minix-module-helper.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME minix-module-helper)
-
     add_library(filesystems-core STATIC
         src/probe.cpp
         src/platform/linux_host_paths.cpp
@@ -758,24 +326,6 @@ if(UNIX)
     install(PROGRAMS packaging/linux/native-module-helper.sh
         DESTINATION "lib/filesystems"
         RENAME native-module-helper)
-    # Source and build helper are application-owned. The build helper never
-    # installs or loads a kernel module. These two reference .ko files were
-    # built for the qualification VM's kernel and are not generic host drivers.
-    install(DIRECTORY "native/filesystems/fat/linux/"
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat/kernel"
-        PATTERN "*.o" EXCLUDE PATTERN "*.ko" EXCLUDE
-        PATTERN "*.mod" EXCLUDE PATTERN "*.mod.c" EXCLUDE
-        PATTERN "Module.symvers" EXCLUDE PATTERN "modules.order" EXCLUDE)
-    install(FILES native/filesystems/fat/DESIGN.md
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Sources/fat")
-    install(PROGRAMS packaging/linux/fat-kernel-build.sh
-        DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Helpers"
-        RENAME fat-kernel-build)
-    if(FILESYSTEMS_FAT_KO_REFERENCE_DIR)
-        install(FILES "${FILESYSTEMS_FAT_KO_REFERENCE_DIR}/fat12.ko"
-                      "${FILESYSTEMS_FAT_KO_REFERENCE_DIR}/fat16.ko"
-            DESTINATION "${FILESYSTEMS_APPLICATION_ROOT}/Resources/Kernel/6.12.107-qemu-test-only")
-    endif()
     install(PROGRAMS packaging/linux/kernel-module-helper.sh
         DESTINATION "lib/filesystems"
         RENAME kernel-module-helper)
@@ -809,55 +359,6 @@ if(UNIX)
 endif()
 
 if(BUILD_TESTING)
-    if(TARGET filesystems-ext2-dropin)
-        add_executable(filesystems-ext2-dropin-test
-            tests/ext2_dropin_module_test.c)
-        target_link_libraries(filesystems-ext2-dropin-test
-            PRIVATE filesystems-ext2-dropin)
-        filesystems_configure(filesystems-ext2-dropin-test)
-        add_test(NAME filesystems-ext2-dropin
-            COMMAND filesystems-ext2-dropin-test)
-    endif()
-    if(TARGET filesystems-ofs-dropin)
-        add_executable(filesystems-ofs-dropin-test
-            tests/ofs_dropin_module_test.c)
-        target_link_libraries(filesystems-ofs-dropin-test PRIVATE
-            filesystems-ofs-dropin)
-        filesystems_configure(filesystems-ofs-dropin-test)
-        add_test(NAME filesystems-ofs-dropin
-            COMMAND filesystems-ofs-dropin-test)
-    endif()
-
-    if(TARGET filesystems-fat16-module)
-        add_executable(filesystems-fat16-module-test
-            tests/fat16_module_test.c)
-        target_link_libraries(filesystems-fat16-module-test PRIVATE
-            filesystems-fat16-module)
-        filesystems_configure(filesystems-fat16-module-test)
-        add_test(NAME filesystems-fat16-module
-            COMMAND filesystems-fat16-module-test)
-    endif()
-
-    if(TARGET filesystems-fat12-module)
-        add_executable(filesystems-fat12-module-test
-            tests/fat12_module_test.c)
-        target_link_libraries(filesystems-fat12-module-test PRIVATE
-            filesystems-fat12-module)
-        filesystems_configure(filesystems-fat12-module-test)
-        add_test(NAME filesystems-fat12-module
-            COMMAND filesystems-fat12-module-test)
-    endif()
-
-    if(TARGET filesystems-fat32-module)
-        add_executable(filesystems-fat32-module-test
-            tests/fat32_module_test.c)
-        target_link_libraries(filesystems-fat32-module-test PRIVATE
-            filesystems-fat32-module)
-        filesystems_configure(filesystems-fat32-module-test)
-        add_test(NAME filesystems-fat32-module
-            COMMAND filesystems-fat32-module-test)
-    endif()
-
     add_executable(filesystems-catalog-test
         tests/catalog_test.cpp)
     target_link_libraries(filesystems-catalog-test
@@ -878,21 +379,6 @@ if(BUILD_TESTING)
         NAME filesystems-native-core
         COMMAND filesystems-native-core-test)
 
-    if(TARGET filesystems-minix-dropin)
-        add_executable(filesystems-minix-dropin-test
-            tests/minix_dropin_module_test.c)
-        target_link_libraries(filesystems-minix-dropin-test PRIVATE
-            filesystems-minix-dropin)
-        filesystems_configure(filesystems-minix-dropin-test)
-        add_test(NAME filesystems-minix-dropin
-            COMMAND filesystems-minix-dropin-test)
-        add_executable(filesystems-minix-real-mkfs-test
-            tests/minix_real_mkfs_test.c)
-        target_link_libraries(filesystems-minix-real-mkfs-test PRIVATE
-            filesystems-minix-dropin)
-        filesystems_configure(filesystems-minix-real-mkfs-test)
-    endif()
-
     if(TARGET filesystems-bfs-dropin)
         add_executable(filesystems-bfs-real-mkfs-test
             tests/bfs_real_mkfs_test.c)
@@ -908,51 +394,8 @@ if(BUILD_TESTING)
         add_test(NAME filesystems-bfs-dropin COMMAND filesystems-bfs-dropin-test)
     endif()
 
-    add_executable(filesystems-ext2-core-test
-        tests/ext2_core_test.c)
-    target_link_libraries(filesystems-ext2-core-test
-        PRIVATE infiltratr-fs-ext2-core)
-    filesystems_configure(filesystems-ext2-core-test)
-    add_test(
-        NAME filesystems-ext2-core
-        COMMAND filesystems-ext2-core-test)
-
-    add_executable(filesystems-ext2-engine-test
-        tests/ext2_engine_test.c)
-    target_link_libraries(filesystems-ext2-engine-test
-        PRIVATE infiltratr-fs-ext2-efi-reader)
-    filesystems_configure(filesystems-ext2-engine-test)
-    add_test(
-        NAME filesystems-ext2-engine
-        COMMAND filesystems-ext2-engine-test)
-
-    add_executable(filesystems-ext3-core-test
-        tests/ext3_core_test.c)
-    target_link_libraries(filesystems-ext3-core-test
-        PRIVATE infiltratr-fs-ext3-core)
-    filesystems_configure(filesystems-ext3-core-test)
-    add_test(
-        NAME filesystems-ext3-core
-        COMMAND filesystems-ext3-core-test)
-
-    add_executable(filesystems-ext4-core-test
-        tests/ext4_core_test.c)
-    target_link_libraries(filesystems-ext4-core-test
-        PRIVATE infiltratr-fs-ext4-core)
-    filesystems_configure(filesystems-ext4-core-test)
-    add_test(
-        NAME filesystems-ext4-core
-        COMMAND filesystems-ext4-core-test)
-
     if(UNIX)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
-        add_test(NAME filesystems-fat-defrag-architecture
-            COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_defrag_architecture_test.py")
-        add_test(NAME filesystems-ofs-image
-            COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/ofs_image_test.py"
-                "$<TARGET_FILE:filesystems-ofs-image>")
         add_test(NAME filesystems-native-source-digest
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_source_digest_test.py"
@@ -967,61 +410,6 @@ if(BUILD_TESTING)
                 "$<TARGET_FILE:filesystems-package-removal-guard>"
                 "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CXX_COMPILER}")
     endif()
-
-    add_executable(filesystems-ofs-core-test
-        tests/ofs_core_test.c)
-    target_link_libraries(filesystems-ofs-core-test
-        PRIVATE infiltratr-fs-ofs-core)
-    filesystems_configure(filesystems-ofs-core-test)
-    add_test(NAME filesystems-ofs-core COMMAND filesystems-ofs-core-test)
-
-    add_executable(filesystems-ofs-primitives-test
-        tests/ofs_primitives_test.c)
-    target_link_libraries(filesystems-ofs-primitives-test
-        PRIVATE infiltratr-fs-ofs-core)
-    filesystems_configure(filesystems-ofs-primitives-test)
-    add_test(NAME filesystems-ofs-primitives COMMAND filesystems-ofs-primitives-test)
-
-    add_executable(filesystems-ffs-core-test
-        tests/ffs_core_test.c)
-    target_link_libraries(filesystems-ffs-core-test
-        PRIVATE infiltratr-fs-ffs-core)
-    filesystems_configure(filesystems-ffs-core-test)
-    add_test(NAME filesystems-ffs-core COMMAND filesystems-ffs-core-test)
-
-    add_executable(filesystems-ffs-primitives-test
-        tests/ffs_primitives_test.c)
-    target_link_libraries(filesystems-ffs-primitives-test
-        PRIVATE infiltratr-fs-ffs-core)
-    filesystems_configure(filesystems-ffs-primitives-test)
-    add_test(NAME filesystems-ffs-primitives COMMAND filesystems-ffs-primitives-test)
-
-    add_executable(filesystems-sfs-core-test
-        tests/sfs_core_test.c)
-    target_link_libraries(filesystems-sfs-core-test
-        PRIVATE infiltratr-fs-sfs-core)
-    filesystems_configure(filesystems-sfs-core-test)
-    add_test(
-        NAME filesystems-sfs-core
-        COMMAND filesystems-sfs-core-test)
-
-    add_executable(filesystems-sfs2-core-test
-        tests/sfs2_core_test.c)
-    target_link_libraries(filesystems-sfs2-core-test
-        PRIVATE infiltratr-fs-sfs2-core)
-    filesystems_configure(filesystems-sfs2-core-test)
-    add_test(
-        NAME filesystems-sfs2-core
-        COMMAND filesystems-sfs2-core-test)
-
-    add_executable(filesystems-pfs3-core-test
-        tests/pfs3_core_test.c)
-    target_link_libraries(filesystems-pfs3-core-test
-        PRIVATE infiltratr-fs-pfs3-core)
-    filesystems_configure(filesystems-pfs3-core-test)
-    add_test(
-        NAME filesystems-pfs3-core
-        COMMAND filesystems-pfs3-core-test)
 
     add_executable(filesystems-windows-catalog-test
         tests/windows_catalog_test.cpp)
@@ -1086,14 +474,5 @@ if(UNIX)
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "policykit-1, apt, dpkg, kmod, mokutil")
-    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/amiga-desktop-detection.cmake")
     include(CPack)
-endif()
-
-if(BUILD_TESTING)
-    add_executable(infiltratr-fs-ofs-efi-reader-test tests/ofs_efi_reader_test.c)
-    target_link_libraries(infiltratr-fs-ofs-efi-reader-test
-        PRIVATE infiltratr-fs-ofs-efi-reader)
-    filesystems_configure(infiltratr-fs-ofs-efi-reader-test)
-    add_test(NAME ofs-efi-reader COMMAND infiltratr-fs-ofs-efi-reader-test)
 endif()

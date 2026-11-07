@@ -1,42 +1,24 @@
-# Authoritative source formats: in this repository or pinned independent providers.
-# One real on-media format per line; provider-only identities do not belong here.
+# Authoritative source formats: remaining within this repository.
+# Formats moved to independent repositories are deliberately absent.
 adfs
-apfs
 bcachefs
 befs
 bfs
-btrfs
 cpm
 efs
-exfat
-ext2
-ext3
-ext4
 f2fs
-fat
-ffs
 fosfat
 gfs2
-hfs
-hfsplus
 hpfs
 jfs
-minix
 nilfs2
-ntfs
 ocfs2
-ofs
 omfs
-pfs3
 qnx4
 qnx6
 reiserfs
-sfs
-sfs2
 sysv
 udf
-ufs
 vmfs
 vmfs6
-xfs
 zfs
