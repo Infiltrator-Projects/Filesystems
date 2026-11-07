@@ -37,6 +37,43 @@ Prior extracted-source commits on Filesystems main:
 - [x] **FAT12/FAT16/FAT32 independently packaged, sandbox qualified:** [CI run 42361937020](https://github.com/Infiltrator-Projects/Filesystems/actions/runs/42361937020) passed all four jobs: source extraction boundary, manager build, prior FFS/exFAT package isolation and new FAT-family package isolation. Published FAT12 0.1.13, FAT16 0.1.14 and FAT32 0.1.10 Debian packages are pinned by SHA-256, checked against separate `.so`/manual/format marker/ABI, installed/removed independently under an isolated temporary root, with the two other FAT installations surviving each removal. [Test source](https://github.com/Infiltrator-Projects/Filesystems/commit/a4aa7b284cf72704def4ae3e1a00b1463ed5e9d4).
 - [x] **Negative release artifact identity tests (isolated):** the actual published FFS, exFAT, FAT12, FAT16 and FAT32 module copies are tested for missing file, appended-byte tampering, non-ELF content, and replacement with a foreign format's SO **even when the expected hash is set to match that foreign file**. Format-specific ABI symbols or .ifsmeta identities reject the foreign copy. Restored copies then pass and independent Debian install/remove tests still pass. [All four CI jobs PASSED](https://github.com/Infiltrator-Projects/Filesystems/actions/runs/42363094071), [test commit 66af86c](https://github.com/Infiltrator-Projects/Filesystems/commit/66af86c5357ad28cc81820900df4a14127dbc515). This tests released-package validators, **not an injected production dpkg-query runtime fixture**; no physical media touched.
 - [x] **C++ manager package verifier tested against an isolated simulated Debian package database and real synthetic ELF fixture files:** `independent_package.cpp` now has an explicit read-only backend seam. Production remains pinned to trusted `dpkg-query`, `readelf` and `/System/Filesystems` paths; CTest injects a fake dpkg response backend and disposable FFS/exFAT/FAT12/FAT16/FAT32 ELF files. It verifies genuine package status, each independent FAT module, and rejection of missing/half-configured metadata, missing listing/owner, readelf failure, changed content, non-ELF, symlinks, and **foreign ELF despite matching forged SHA-256**. [All four CI jobs PASS](https://github.com/Infiltrator-Projects/Filesystems/actions/runs/42364066910), [C++ test source](https://github.com/Infiltrator-Projects/Filesystems/blob/main/tests/independent_package_runtime_test.cpp). Source version **0.5.116**. This does not involve host dpkg, disks or production deployment.
+### Host upgrade preflight — 2026-11-07, Dell Latitude 5550
+
+Shannon ran a read-only installation/launcher/module inventory on Linux Mint:
+
+- `dpkg-query` reported `filesystems 0.5.110 install ok installed`.
+- `/usr/bin/filesystems` is the installed, dpkg-owned compatibility launcher;
+  `/Programs/Filesystems/Filesystems` is the installed, dpkg-owned executable
+  (approximately 438 KiB), both dated 2026-11-05.
+- `~/Filesystems-GUI-Test/build/Filesystems` is a separately compiled,
+  unowned local executable (approximately 430 KiB, dated 2026-11-07).
+  It is not the executable selected by the desktop launcher.
+- `/usr/share/applications/org.infiltrator.Filesystems.desktop` contains
+  `Exec=filesystems`, so launching through the existing menu still uses
+  the dpkg-installed application.
+- All **23** independent filesystem modules were present directly under
+  `/System/Filesystems/` and were successfully SHA-256 enumerated:
+  APFS, BTRFS, exFAT, EXT2, EXT3, EXT4, FAT12, FAT16, FAT32, FFS,
+  HFSPLUS, HFS, MINIX, NTFS, OFS, PFS3, SFS2, SFS, SWAP, UFS1, UFS2,
+  XFS and ZFS. The full original checksum listing was recorded locally
+  by the user's `upgrade-preflight.txt` session; this summary is not a
+  cryptographic ownership/qualification claim.
+- The `/Temporary/InfiltratorOS/Kernel` workspace and its build outputs
+  belong to a separate Kernel workflow and are not affected by this
+  Filesystems manager preflight.
+
+**Conclusion:** the old GUI is still installed, the newer GUI remains a
+separate test executable, and no module removal or replacement is evidenced.
+Do not confuse current source version 0.5.116 or a passing GTK compile with
+a published installable manager release. The latest published central
+Filesystems manager release remains 0.5.110; central package publication was
+retired in the extraction cleanup. The next qualification gate is an
+isolated old-to-new manager Debian upgrade, including launcher/menu ownership
+and strict proof that the 23 independently owned modules are untouched.
+Do not test this by removing the production package (`prerm remove`
+invokes module cleanup); a real deployment requires separately verified
+package bytes and explicit acceptance.
+
 - [ ] **Next: actual installed application and upgrade acceptance:** the locally compiled 0.5.115 GUI smoke test passed, but the desktop-menu installed release remains 0.5.110 until qualified deployment; the current 0.5.116 source has not been published as a new APT release. Validate a non-destructive upgrade path and old-launcher replacement in an isolated environment first, then test a real Linux Mint installation only with explicit coordination. Real-media read/write, kernel/boot/recovery and source extraction of the remaining 21 formats are separate pending work. Central destructive format actions remain disabled.
 - [x] **Inventory completed, no source deleted:** [remaining 21-format source and 71-blob UEFI audit](docs/REMAINING_FORMAT_SOURCE_INVENTORY_2026-11-07.md) identifies 789 format-directory files, 676 source/headers and 19 formats with implementation code. `vmfs` and `vmfs6` are only design documents; no new standalone repo exists yet for these 21 identities. [Inventory commit](https://github.com/Infiltrator-Projects/Filesystems/commit/3b1efc2ca5123538c70a5358e3d73c1ddc3fb48d).
 - [ ] **Extract remaining formats one at a time.** For each, verify an independent real repository containing complete best source, provenance, tests, correct format-specific `.so`, qualified optional `.ko`/EFI path, manual and passing release. **Only then delete** the old format code from central and update manifests/build/tests. Also resolve the 71 firmware blobs before removing overlapping format-specific firmware.
