@@ -1,6 +1,7 @@
 name: Qualify imported Linux driver build baselines
 
-# This deliberately builds ORIGINAL imported code before changing its internals.
+# This builds only remaining, source-owned imported Linux modules.
+# Extracted filesystems are qualified in their independent repositories.
 # Nothing here updates data/native-filesystems.tsv, packages or live devices.
 on:
   push:
@@ -44,7 +45,7 @@ jobs:
           make -C "$kernel_tree" defconfig
           make -C "$kernel_tree" modules_prepare
 
-      - name: Build all eight imported legacy modules and report exact failures
+      - name: Build seven remaining imported legacy modules and report exact failures
         shell: bash
         run: |
           set -euo pipefail
@@ -55,7 +56,6 @@ jobs:
             [adfs]=CONFIG_ADFS_FS
             [bfs]=CONFIG_BFS_FS
             [efs]=CONFIG_EFS_FS
-            [minix]=CONFIG_MINIX_FS
             [omfs]=CONFIG_OMFS_FS
             [qnx4]=CONFIG_QNX4FS_FS
             [qnx6]=CONFIG_QNX6FS_FS
@@ -63,7 +63,7 @@ jobs:
           )
           count=0
           failures=0
-          for filesystem in adfs bfs efs minix omfs qnx4 qnx6 sysv; do
+          for filesystem in adfs bfs efs omfs qnx4 qnx6 sysv; do
             directory="$GITHUB_WORKSPACE/native/filesystems/$filesystem/linux"
             log="$RUNNER_TEMP/$filesystem-build.log"
             printf '\n=== ORIGINAL SOURCE BUILD: %s ===\n' "$filesystem"
@@ -87,7 +87,7 @@ jobs:
             fi
             echo "$filesystem: source compilation $([[ -s "$directory/$filesystem.ko" ]] && echo present || echo absent)" >> "$GITHUB_STEP_SUMMARY"
           done
-          echo "Compiled $count of 8 original source candidates; failures $failures" >> "$GITHUB_STEP_SUMMARY"
+          echo "Compiled $count of 7 remaining source candidates; failures $failures" >> "$GITHUB_STEP_SUMMARY"
           test "$failures" -eq 0
 
   debian-6-12-symbol-qualified:
@@ -123,7 +123,7 @@ jobs:
           test -s "$headers/Module.symvers"
           echo "DEBIAN_HEADERS=$headers" >> "$GITHUB_ENV"
 
-      - name: Resolve actual exported symbols for eight original drivers
+      - name: Resolve actual exported symbols for seven remaining original drivers
         shell: bash
         run: |
           set -euo pipefail
@@ -131,7 +131,6 @@ jobs:
             [adfs]=CONFIG_ADFS_FS
             [bfs]=CONFIG_BFS_FS
             [efs]=CONFIG_EFS_FS
-            [minix]=CONFIG_MINIX_FS
             [omfs]=CONFIG_OMFS_FS
             [qnx4]=CONFIG_QNX4FS_FS
             [qnx6]=CONFIG_QNX6FS_FS
@@ -139,7 +138,7 @@ jobs:
           )
           failures=0
           count=0
-          for filesystem in adfs bfs efs minix omfs qnx4 qnx6 sysv; do
+          for filesystem in adfs bfs efs omfs qnx4 qnx6 sysv; do
             directory="$GITHUB_WORKSPACE/native/filesystems/$filesystem/linux"
             log="$RUNNER_TEMP/$filesystem-debian-build.log"
             echo "=== DEBIAN REAL SYMBOL BUILD: $filesystem ==="
@@ -157,7 +156,7 @@ jobs:
             printf '%s: %s\n' "$filesystem" \
               "$([[ -s "$directory/$filesystem.ko" ]] && echo 'created (symbol link gate applies)' || echo 'not created')" >> "$GITHUB_STEP_SUMMARY"
           done
-          echo "Debian symbol-resolved modules: $count / 8" >> "$GITHUB_STEP_SUMMARY"
+          echo "Debian symbol-resolved modules: $count / 7" >> "$GITHUB_STEP_SUMMARY"
           test "$failures" -eq 0
 
   remaining-imported-symbol-probe:
@@ -173,13 +172,13 @@ jobs:
       matrix:
         include:
           - group: consumer
-            filesystems: "apfs befs exfat fat hfs hfsplus hpfs ntfs udf ufs"
+            filesystems: "befs hpfs udf"
           - group: journaling
-            filesystems: "btrfs f2fs jfs nilfs2 reiserfs"
+            filesystems: "f2fs jfs nilfs2 reiserfs"
           - group: cluster
             filesystems: "gfs2 ocfs2"
           - group: large
-            filesystems: "bcachefs xfs"
+            filesystems: "bcachefs"
     steps:
       - name: Ensure Git is available for recursive submodule checkout
         shell: bash
@@ -215,17 +214,9 @@ jobs:
         run: |
           set -euo pipefail
           declare -A config=(
-            [apfs]=APFS_ALREADY_OUT_OF_TREE
             [befs]=CONFIG_BEFS_FS
-            [exfat]=CONFIG_EXFAT_FS
-            [fat]=CONFIG_FAT_FS
-            [hfs]=CONFIG_HFS_FS
-            [hfsplus]=CONFIG_HFSPLUS_FS
             [hpfs]=CONFIG_HPFS_FS
-            [ntfs]=CONFIG_NTFS3_FS
             [udf]=CONFIG_UDF_FS
-            [ufs]=CONFIG_UFS_FS
-            [btrfs]=CONFIG_BTRFS_FS
             [f2fs]=CONFIG_F2FS_FS
             [jfs]=CONFIG_JFS_FS
             [nilfs2]=CONFIG_NILFS2_FS
@@ -233,7 +224,6 @@ jobs:
             [gfs2]=CONFIG_GFS2_FS
             [ocfs2]=CONFIG_OCFS2_FS
             [bcachefs]=CONFIG_BCACHEFS_FS
-            [xfs]=CONFIG_XFS_FS
           )
           errors=0
           passed=0
