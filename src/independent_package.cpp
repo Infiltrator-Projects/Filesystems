@@ -4,6 +4,7 @@
 
 #include <glib.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <fstream>
@@ -135,6 +136,15 @@ IndependentObservation inspect(const IndependentSpec& spec,
         expected_digest.pop_back();
     evidence.package_installed = true;
     evidence.valid_declared_digest = valid_sha256(expected_digest);
+    // SHA-256 is hexadecimal, so A-F case must not change whether the
+    // installed bytes match the package's declared digest.
+    if (evidence.valid_declared_digest) {
+        std::transform(expected_digest.begin(), expected_digest.end(),
+                       expected_digest.begin(),
+                       [](const unsigned char c) {
+                           return static_cast<char>(std::tolower(c));
+                       });
+    }
     const std::string path = "/System/Filesystems/" + observation.module;
     const std::string disk_path = backend.module_directory + "/" + observation.module;
 
