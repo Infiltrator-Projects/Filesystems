@@ -6,7 +6,9 @@
 
 #include <glib.h>
 
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -235,6 +237,16 @@ int main(int argc, char** argv)
                 write_all(installed, original);
                 entry.digest = digest(installed);
             };
+
+            // Uppercase SHA-256 metadata is valid and must compare equal to
+            // the same lowercase digest computed from the installed module.
+            std::transform(entry.digest.begin(), entry.digest.end(),
+                           entry.digest.begin(),
+                           [](const unsigned char ch) {
+                               return static_cast<char>(std::toupper(ch));
+                           });
+            check(identity, entry.module, IndependentProof::VerifiedPackage);
+            reset();
 
             entry.missing_package = true;
             check(identity, entry.module, IndependentProof::Missing);
