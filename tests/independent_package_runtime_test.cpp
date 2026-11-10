@@ -164,12 +164,12 @@ int main(int argc, char** argv)
                             args[1]=="-W" && args[2]=="--dyn-syms") {
                             result.stdout_text +=
                                 "  99: 0000000000000100  1 FUNC GLOBAL DEFAULT 12 "
-                                "infiltrator_filesystem_api_v1\\n";
+                                "infiltrator_filesystem_api_v1\n";
                         }
                         if (entry->second.legacy_marker && args.size()==4U &&
                             args[1]=="-p" && args[2]==".ifsmeta") {
                             result.stdout_text +=
-                                "  [ 99]  IFS-MODULE:fat12:common1\\n";
+                                "  [ 99]  IFS-MODULE:fat12:common1\n";
                         }
                     }
                     return result;
