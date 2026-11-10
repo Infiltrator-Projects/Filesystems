@@ -20,7 +20,7 @@ base_manifest = source / "data/native-filesystems.tsv"
 with tempfile.TemporaryDirectory(prefix="filesystems-native-digest-") as tmp:
     temp = Path(tmp)
     package = temp / "usr/lib/filesystems"
-    (package / "native/filesystems/ofs").mkdir(parents=True)
+    (package / "native/filesystems/bfs").mkdir(parents=True)
     (package / "native/platform/linux_kernel").mkdir(parents=True)
     (temp / "unrelated/working-directory").mkdir(parents=True)
     shutil.copy2(base_manifest, package / "native-filesystems.tsv")
@@ -30,19 +30,19 @@ with tempfile.TemporaryDirectory(prefix="filesystems-native-digest-") as tmp:
                      package / helper)
         (package / helper).chmod(0o755)
 
-    # Native OFS code now belongs exclusively to Filesystem-OFS. This test
+    # The manager still owns native BFS module build policy. This test
     # checks the coordinator's source hashing with synthetic build inputs,
     # rather than copying a second format engine into Filesystems.
-    deployed_source = package / "native/filesystems/ofs"
+    deployed_source = package / "native/filesystems/bfs"
     (deployed_source / "core").mkdir()
     (deployed_source / "linux").mkdir()
-    (deployed_source / "core/ofs_primitives.c").write_text(
+    (deployed_source / "core/bfs_primitives.c").write_text(
         '#include "platform/linux_kernel/vfs_compat.h"\n'
-        'int synthetic_ofs_root_check(void) { return 0; }\n'
+        'int synthetic_bfs_root_check(void) { return 0; }\n'
     )
-    (deployed_source / "linux/Makefile").write_text("obj-m += ofs.o\n")
+    (deployed_source / "linux/Makefile").write_text("obj-m += bfs.o\n")
     (deployed_source / "linux/storage.c").write_text(
-        'int synthetic_ofs_module(void) { return 0; }\n'
+        'int synthetic_bfs_module(void) { return 0; }\n'
     )
     shutil.copy2(source / "native/platform/linux_kernel/vfs_compat.h",
                  package / "native/platform/linux_kernel/vfs_compat.h")
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix="filesystems-native-digest-") as tmp:
         )
         return hashlib.sha256(payload).hexdigest()
 
-    def query(cwd: Path, fs: str = "ofs", coordinator: bool = True):
+    def query(cwd: Path, fs: str = "bfs", coordinator: bool = True):
         binary = "native-module-helper" if coordinator else "kernel-module-helper"
         return subprocess.run(
             [str(package / binary), "source-digest", fs],
@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix="filesystems-native-digest-") as tmp:
     assert query(temp).stdout.strip() == expected
 
     # A real input mutation must change the digest regardless of caller cwd.
-    changed_file = deployed_source / "core/ofs_primitives.c"
+    changed_file = deployed_source / "core/bfs_primitives.c"
     original = changed_file.read_bytes()
     changed_file.write_bytes(original + b"\n/* digest regression */\n")
     updated = expected_digest()
