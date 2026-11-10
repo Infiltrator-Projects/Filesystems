@@ -31,7 +31,7 @@ struct IndependentSpec {
 /* Strict V2 means the symbol alone is not an identity: every SO also
  * carries a format-specific, non-executable .ifsmeta marker. Neither test
  * executes a module nor accepts the retired per-format exports. */
-constexpr std::array<IndependentSpec, 13> kIndependent = {{{
+constexpr std::array<IndependentSpec, 13> kIndependent = {{
     {"ext2", "EXT2.so", "infiltrator-filesystem-ext2",
      "infiltrator_filesystem_api_v2", "IFS-MODULE:ext2:common2"},
     {"ext3", "EXT3.so", "infiltrator-filesystem-ext3",
