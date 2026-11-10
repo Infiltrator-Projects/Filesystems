@@ -30,10 +30,20 @@ with tempfile.TemporaryDirectory(prefix="filesystems-native-digest-") as tmp:
                      package / helper)
         (package / helper).chmod(0o755)
 
-    native_source = source / "native/filesystems/ofs"
+    # Native OFS code now belongs exclusively to Filesystem-OFS. This test
+    # checks the coordinator's source hashing with synthetic build inputs,
+    # rather than copying a second format engine into Filesystems.
     deployed_source = package / "native/filesystems/ofs"
-    for kind in ("core", "linux"):
-        shutil.copytree(native_source / kind, deployed_source / kind)
+    (deployed_source / "core").mkdir()
+    (deployed_source / "linux").mkdir()
+    (deployed_source / "core/ofs_primitives.c").write_text(
+        '#include "platform/linux_kernel/vfs_compat.h"\n'
+        'int synthetic_ofs_root_check(void) { return 0; }\n'
+    )
+    (deployed_source / "linux/Makefile").write_text("obj-m += ofs.o\n")
+    (deployed_source / "linux/storage.c").write_text(
+        'int synthetic_ofs_module(void) { return 0; }\n'
+    )
     shutil.copy2(source / "native/platform/linux_kernel/vfs_compat.h",
                  package / "native/platform/linux_kernel/vfs_compat.h")
 
