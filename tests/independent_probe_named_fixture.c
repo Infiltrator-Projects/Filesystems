@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Tiny synthetic ELF identity fixture, NOT a functional filesystem driver.
+// Non-installable ELF inspection fixture: never execute this as a filesystem.
 #if defined(IFS_TEST_FFS)
-__attribute__((visibility("default")))
-int infiltrator_filesystem_ffs_defrag_v1(void) { return 1; }
+#define IFS_TEST_FORMAT_ID "ffs"
 #elif defined(IFS_TEST_EXFAT)
-__attribute__((visibility("default")))
-int infiltrator_filesystem_exfat_defrag_v1(void) { return 1; }
+#define IFS_TEST_FORMAT_ID "exfat"
 #else
 #error "Choose a single fixture format"
 #endif
+__attribute__((used,section(".ifsmeta")))
+static const char test_identity[]="IFS-MODULE:" IFS_TEST_FORMAT_ID ":common2";
+__attribute__((visibility("default")))
+const char *infiltrator_filesystem_api_v2(void) { return test_identity; }
