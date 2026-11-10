@@ -294,6 +294,29 @@ int main(int argc, char** argv)
             check(identity, entry.module, IndependentProof::VerifiedPackage);
         }
 
+        // The coordinator must observe all 23 independently owned .so files,
+        // even though only five have isolated ELF runtime fixtures here.
+        // All newly indexed providers fail closed while not installed.
+        const std::array<std::pair<std::string_view, std::string_view>, 10> added = {{
+            {"xfs", "XFS.so"}, {"btrfs", "BTRFS.so"},
+            {"minix", "MINIX.so"}, {"zfs", "ZFS.so"},
+            {"ufs", "UFS1.so"}, {"ufs", "UFS2.so"},
+            {"hfs", "HFS.so"}, {"hfsplus", "HFSPLUS.so"},
+            {"apfs", "APFS.so"}, {"swap", "SWAP.so"}
+        }};
+        for (const auto& [identity, module] : added) {
+            const auto observations =
+                filesystems::observe_independent_packages_with_backend(
+                    identity, backend);
+            const auto& actual=find_observation(observations,std::string(module));
+            require(actual.proof != IndependentProof::VerifiedPackage,
+                    "uninstalled V2 provider incorrectly qualified: " +
+                    std::string(module));
+        }
+        require(filesystems::observe_independent_packages_with_backend(
+                    "ufs", backend).size()==2U,
+                "UFS1/UFS2 must remain separate modules under one UFS catalogue row");
+
         // Every FAT module must still qualify after independently corrupting
         // and restoring its peers. There is no single blended FAT .so.
         for (const auto& module : {"FAT12.so", "FAT16.so", "FAT32.so"})
