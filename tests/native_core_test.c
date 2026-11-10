@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "infiltratr/fs/byte_reader.h"
-#include "infiltratr/fs/filesystem.h"
+#include <infiltratr/filesystem_module_v2.h>
 #include "infiltratr/fs/io.h"
 
 #include <stdio.h>
@@ -33,6 +33,28 @@ static int fail(const char *message)
     return 1;
 }
 
+/* Filesystems does not define its own filesystem ABI. Common V2 is the
+ * single provider descriptor and capability validator for all consumers. */
+static int v2_probe(const IfsFsHostRuntimeV2 *host, uint32_t *variant)
+{
+    if (!host || !variant || !ifs_fs_host_v2_valid(host))
+        return IFS_FS_INVALID;
+    *variant=0u;
+    return IFS_FS_NOT_FOUND;
+}
+static IfsFsCoreOpsV2 v2_core={
+    .header={IFS_FS_GROUP_ABI_V2,sizeof(IfsFsCoreOpsV2),
+             IFS_FS_GROUP_CORE,0u,IFS_FS_CORE_PROBE},
+    .probe=v2_probe
+};
+static const IfsFsGroupHeaderV2 *v2_query(uint32_t id,
+                                          uint32_t minimum,uint32_t maximum)
+{
+    return id==IFS_FS_GROUP_CORE &&
+           minimum<=IFS_FS_GROUP_ABI_V2 &&
+           maximum>=IFS_FS_GROUP_ABI_V2 ? &v2_core.header : NULL;
+}
+
 int main(void)
 {
     static const unsigned char bytes[] = {
@@ -52,15 +74,13 @@ int main(void)
     const ifs_u8 *taken = NULL;
     ifs_u16 be16 = 0U;
     ifs_u32 le32 = 0U;
-    IfsFilesystemDescriptor descriptor = {
-        .struct_size = sizeof(IfsFilesystemDescriptor),
-        .abi_version = IFS_FILESYSTEM_DESCRIPTOR_ABI,
-        .id = "test",
-        .display_name = "Test",
-        .linux_type_name = "infiltratr-test",
-        .module_name = "infiltratr_test",
-        .capabilities = IFS_CAPABILITY_READ,
-        .probe = NULL
+    IfsFsModuleApiV2 descriptor={
+        .abi_version=IFS_FS_COMMON_ABI_V2,
+        .structure_bytes=sizeof(IfsFsModuleApiV2),
+        .format_id="test",
+        .runtime_profiles=IFS_FS_PROFILE_HOSTED,
+        .group_mask=IFS_FS_GROUP_BIT(IFS_FS_GROUP_CORE),
+        .query_group=v2_query
     };
 
     if (!ifs_io_is_valid(&io))
@@ -98,11 +118,18 @@ int main(void)
     if (ifs_byte_reader_take(&reader, 0U, &taken) != IFS_ERROR_RANGE)
         return fail("invalid reader cursor accepted zero-length take");
 
-    if (!ifs_filesystem_descriptor_is_valid(&descriptor))
-        return fail("valid descriptor rejected");
-    descriptor.capabilities = IFS_CAPABILITY_PROBE;
-    if (ifs_filesystem_descriptor_is_valid(&descriptor))
-        return fail("probe capability accepted without probe function");
+    if (!ifs_fs_api_v2_valid(&descriptor, "test"))
+        return fail("valid Common V2 descriptor rejected");
+    v2_core.probe=NULL;
+    if (ifs_fs_api_v2_valid(&descriptor,"test"))
+        return fail("V2 probe capability accepted without callback");
+    v2_core.probe=v2_probe;
+    v2_core.header.abi_version=1u;
+    if (ifs_fs_api_v2_valid(&descriptor,"test"))
+        return fail("retired group revision accepted");
+    v2_core.header.abi_version=IFS_FS_GROUP_ABI_V2;
+    if (!ifs_fs_api_v2_valid(&descriptor,"test"))
+        return fail("valid V2 descriptor was not restored");
 
     return 0;
 }
