@@ -34,6 +34,8 @@ struct Entry {
     bool bad_status = false;
     bool bad_metadata = false;
     bool fail_readelf = false;
+    bool legacy_export = false;
+    bool legacy_marker = false;
 };
 
 struct TemporaryDirectory {
@@ -154,9 +156,23 @@ int main(int argc, char** argv)
                     const auto entry = by_module.find(module);
                     if (entry != by_module.end() && entry->second.fail_readelf)
                         return fake_error("Fixture readelf command failed");
-                    // Use real readelf on the disposable ELF fixture, so the
-                    // C++ implementation must actually inspect its contents.
-                    return filesystems::run_command(args);
+                    // Use the real ELF, with optional simulated hostile
+                    // readelf output proving V1 symbols/markers are rejected.
+                    auto result=filesystems::run_command(args);
+                    if (entry != by_module.end() && result.succeeded()) {
+                        if (entry->second.legacy_export && args.size()==4U &&
+                            args[1]=="-W" && args[2]=="--dyn-syms") {
+                            result.stdout_text +=
+                                "  99: 0000000000000100  1 FUNC GLOBAL DEFAULT 12 "
+                                "infiltrator_filesystem_api_v1\\n";
+                        }
+                        if (entry->second.legacy_marker && args.size()==4U &&
+                            args[1]=="-p" && args[2]==".ifsmeta") {
+                            result.stdout_text +=
+                                "  [ 99]  IFS-MODULE:fat12:common1\\n";
+                        }
+                    }
+                    return result;
                 }
                 if (args[0] != "dpkg-query" || args.size() < 3U)
                     return fake_error("Unexpected observation command");
@@ -259,6 +275,8 @@ int main(int argc, char** argv)
             entry.missing_listing = false;
             entry.wrong_owner = true; unverified(); entry.wrong_owner = false;
             entry.fail_readelf = true; unverified(); entry.fail_readelf = false;
+            entry.legacy_export = true; unverified(); entry.legacy_export = false;
+            entry.legacy_marker = true; unverified(); entry.legacy_marker = false;
 
             fs::remove(installed);
             unverified();
