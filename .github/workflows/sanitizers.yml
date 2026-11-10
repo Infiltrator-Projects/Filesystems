@@ -6,7 +6,6 @@ on:
       - "CMakeLists.txt"
       - "src/**"
       - "native/**"
-      - "tools/fsinspect/**"
       - "tests/**"
       - ".github/workflows/sanitizers.yml"
   workflow_call:
@@ -61,5 +60,6 @@ jobs:
           ctest --test-dir build-sanitized --output-on-failure
           -E '^filesystems-desktop-install$'
 
-      - name: Run malformed-media corpus through fsinspect
-        run: python3 tests/parser_adversarial_test.py build-sanitized/fsinspect
+      # The format-specific fsinspect executable was extracted and retired.
+      # Hostile-media parsing is qualified by each independent provider's
+      # native SO tests; the coordinator must not rebuild parser engines.
