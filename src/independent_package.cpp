@@ -31,7 +31,7 @@ struct IndependentSpec {
 /* Strict V2 means the symbol alone is not an identity: every SO also
  * carries a format-specific, non-executable .ifsmeta marker. Neither test
  * executes a module nor accepts the retired per-format exports. */
-constexpr std::array<IndependentSpec, 13> kIndependent = {{
+constexpr std::array<IndependentSpec, 23> kIndependent = {{
     {"ext2", "EXT2.so", "infiltrator-filesystem-ext2",
      "infiltrator_filesystem_api_v2", "IFS-MODULE:ext2:common2"},
     {"ext3", "EXT3.so", "infiltrator-filesystem-ext3",
@@ -58,6 +58,26 @@ constexpr std::array<IndependentSpec, 13> kIndependent = {{
      "infiltrator_filesystem_api_v2", "IFS-MODULE:exfat:common2"},
     {"ntfs", "NTFS.so", "infiltrator-filesystem-ntfs",
      "infiltrator_filesystem_api_v2", "IFS-MODULE:ntfs:common2"},
+    {"xfs", "XFS.so", "infiltrator-filesystem-xfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:xfs:common2"},
+    {"btrfs", "BTRFS.so", "infiltrator-filesystem-btrfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:btrfs:common2"},
+    {"minix", "MINIX.so", "infiltrator-filesystem-minix",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:minix:common2"},
+    {"zfs", "ZFS.so", "infiltrator-filesystem-zfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:zfs:common2"},
+    {"ufs", "UFS1.so", "infiltrator-filesystem-ufs1",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ufs1:common2"},
+    {"ufs", "UFS2.so", "infiltrator-filesystem-ufs2",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ufs2:common2"},
+    {"hfs", "HFS.so", "infiltrator-filesystem-hfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:hfs:common2"},
+    {"hfsplus", "HFSPLUS.so", "infiltrator-filesystem-hfsplus",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:hfsplus:common2"},
+    {"apfs", "APFS.so", "infiltrator-filesystem-apfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:apfs:common2"},
+    {"swap", "SWAP.so", "infiltrator-filesystem-swap",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:swap:common2"},
 }};
 
 bool exact_line(const std::string& output, const std::string& expected)
