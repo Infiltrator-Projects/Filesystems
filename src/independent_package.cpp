@@ -95,41 +95,50 @@ bool exact_line(const std::string& output, const std::string& expected)
     return false;
 }
 
-/* readelf --dyn-syms columns: Num Value Size Type Bind Vis Ndx Name.
- * Exact name and defined global FUNC, not a substring or UND import. */
+/* A V2 module must have exactly one public filesystem ABI function.
+ * Accepting one V2 function beside obsolete V1/V3/V4/V5 exports would let
+ * the old architecture be shipped under a misleading V2 label. */
 bool defined_export(const std::string& output, const std::string_view required)
 {
     std::istringstream lines(output);
     std::string line;
     unsigned matches=0u;
-    while(std::getline(lines,line)) {
+    while (std::getline(lines,line)) {
         std::istringstream columns(line);
         std::string number,value,size,type,binding,visibility,section,name,extra;
-        if(!(columns >> number >> value >> size >> type >> binding >>
-             visibility >> section >> name) || columns >> extra)
+        if (!(columns >> number >> value >> size >> type >> binding >>
+              visibility >> section >> name))
             continue;
-        if(name==required && type=="FUNC" && binding=="GLOBAL" &&
-           section!="UND") ++matches;
+        if (name.rfind("infiltrator_filesystem_",0u)==0u) {
+            if (name!=required || type!="FUNC" ||
+                binding!="GLOBAL" || section=="UND" ||
+                (columns >> extra)) return false;
+            ++matches;
+        }
     }
     return matches==1u;
 }
 
-/* readelf -p .ifsmeta shows one printable string after each ']' marker.
- * Requiring the complete string prevents format-ID prefix collisions. */
+/* Format identity is a single exact non-executable marker; reject an ELF
+ * carrying V2 and a hidden old/common1 or foreign format identity together. */
 bool exact_module_marker(const std::string& output, const std::string_view required)
 {
     std::istringstream lines(output);
     std::string line;
-    while(std::getline(lines,line)) {
+    unsigned markers=0u;
+    while (std::getline(lines,line)) {
         const auto close=line.find(']');
-        if(close==std::string::npos || line.find('[',0)>=close)continue;
+        if (close==std::string::npos || line.find('[')>=close) continue;
         const auto first=line.find_first_not_of(" \t\r",close+1u);
-        if(first==std::string::npos)continue;
+        if (first==std::string::npos) continue;
         const auto last=line.find_last_not_of(" \t\r");
-        if(std::string_view(line).substr(first,last-first+1u)==required)
-            return true;
+        const auto marker=std::string_view(line).substr(first,last-first+1u);
+        if (marker.rfind("IFS-MODULE:",0u)==0u) {
+            if (marker!=required) return false;
+            ++markers;
+        }
     }
-    return false;
+    return markers==1u;
 }
 
 bool valid_sha256(const std::string& text)
