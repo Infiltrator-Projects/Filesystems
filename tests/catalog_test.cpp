@@ -192,18 +192,36 @@ int main(int argc, char** argv)
         }
     }
 
+    // Independently owned filesystem libraries must not silently return to
+    // Debian kernel-driver or userspace fallback policy.
+    for (const auto id : {"xfs", "btrfs", "minix", "zfs", "ufs",
+                          "hfs", "hfsplus", "apfs"}) {
+        bool found = false;
+        for (const auto& entry : catalog()) {
+            if (entry.id == id) {
+                found = true;
+                if (entry.provider != filesystems::SupportProvider::Independent ||
+                    !entry.packages.empty() || !entry.modules.empty() ||
+                    entry.project_native_linux) {
+                    return fail("extracted filesystem reverted to non-independent provider");
+                }
+            }
+        }
+        if (!found) return fail("independent filesystem identity disappeared");
+    }
+
     if (hfs_uses_removed_package) {
         return fail("HFS still references hfsutils, which is not in Debian trixie stable");
     }
-    if (kernel_only != 12U || kernel_with_userspace != 11U ||
-        dkms != 3U || userspace != 3U || tools_only != 1U ||
-        independent != 11U) {
+    if (kernel_only != 11U || kernel_with_userspace != 6U ||
+        dkms != 1U || userspace != 3U || tools_only != 1U ||
+        independent != 19U) {
         return fail("support-provider classification counts changed unexpectedly");
     }
 
     if (filesystems::package_is_catalogued("dosfstools") ||
         filesystems::package_is_catalogued("e2fsprogs") ||
-        !filesystems::package_is_catalogued("zfs-dkms") ||
+        filesystems::package_is_catalogued("zfs-dkms") ||
         !filesystems::package_is_catalogued("infiltratorfs") ||
         filesystems::package_is_catalogued("dislocker") ||
         filesystems::package_is_catalogued("sshfs") ||
@@ -241,8 +259,8 @@ int main(int argc, char** argv)
     }
 
     const auto hfs_users = filesystems::catalogue_entries_using_package("hfsprogs");
-    if (hfs_users.size() != 2U) {
-        return fail("shared package impact mapping is incorrect");
+    if (!hfs_users.empty()) {
+        return fail("HFS must be independently packaged rather than depend on hfsprogs");
     }
 
     if (argc != 3) {
