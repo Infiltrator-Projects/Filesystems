@@ -100,7 +100,7 @@ string(APPEND native_policy_header "}};\n\n} // namespace filesystems\n")
 file(WRITE "${FILESYSTEMS_NATIVE_POLICY_HEADER}" "${native_policy_header}")
 
 set(INFILTRATR_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/infiltratr-common")
-set(INFILTRATR_COMMON_EXPECTED_VERSION "1.19.46")
+set(INFILTRATR_COMMON_EXPECTED_VERSION "1.19.84")
 
 if(NOT EXISTS "${INFILTRATR_COMMON_DIR}/VERSION")
     message(FATAL_ERROR "Pinned Libraries submodule is required")
@@ -166,8 +166,7 @@ endfunction()
 add_library(infiltratr-fs-native-core STATIC
     native/core/status.c
     native/core/io.c
-    native/core/byte_reader.c
-    native/core/filesystem.c)
+    native/core/byte_reader.c)
 target_include_directories(infiltratr-fs-native-core
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/native/include")
 target_link_libraries(infiltratr-fs-native-core
