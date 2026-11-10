@@ -395,10 +395,8 @@ if(BUILD_TESTING)
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_source_digest_test.py"
                 "${CMAKE_CURRENT_SOURCE_DIR}")
-        add_test(NAME filesystems-amiga-resize-errors
-            COMMAND "${Python3_EXECUTABLE}"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/amiga_resize_error_test.py"
-                "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_C_COMPILER}")
+        # OFS/FFS VFS resize code has moved to its independent providers.
+        # The manager must neither compile nor test copied filesystem engines.
         add_test(NAME filesystems-package-transactions
             COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_transaction_test.py"
