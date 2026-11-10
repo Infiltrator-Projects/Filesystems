@@ -64,6 +64,50 @@ Twenty-one providers build Linux adapters against the reference kernel. Linux SW
 
 **Until these tests pass, the single-`.so` design is the end goal, not an assertion of present feature completion.** Maintain explicit per-consumer capability and qualification status.
 
+## Common V2 migration checkpoint — 10 November 2026
+
+**Architecture decision:** `Libraries/include/infiltratr/filesystem_module_v2.h`
+is the existing canonical forward ABI, not a reason to create a third API.
+V1 remains binary immutable. V2 offers negotiated, truthful handles,
+metadata, volume, defragmentation, streams, and snapshots groups with a
+freestanding host-services descriptor. All consumers must reject invalid
+capability/callback combinations, protect device identity, and independently
+verify module authenticity and the applicable execution profile.
+
+**Verified source changes on main (not all installed/released):**
+
+| Repository | Common ABI work | Qualification boundary |
+| --- | --- | --- |
+| Libraries | V2 host validation, version/group negotiation, safe V2-to-V1 and format-host conversions | Common CI builds and unit tests; does not load an ELF in kernel or firmware |
+| Filesystem-FAT12 | Existing canonical V1 + negotiated V2 volume check/repair/format/sync | FAT12 media qualification; no general handle/streams/metadata group |
+| Filesystem-FAT16 | V1 canonical FatFs file operations, V2 volume sync/format | Independent filesystem CI; other V2 groups unimplemented |
+| Filesystem-FAT32 | V1 canonical FatFs file operations, V2 volume sync/format | Independent filesystem CI; other V2 groups unimplemented |
+| Filesystem-OFS | V1 canonical native engine adapter, V2 volume sync/check/format | Standalone boot/kernel evidence is separate; no V2 recover claim |
+| Filesystem-exFAT | V1 64-bit file operations, V2 hosted volume sync/format | No direct kernel-execution claim; separate exfat.ko remains transitional |
+| Filesystem-FFS | V1 native reader and bounded overwrite, V2 hosted volume query | No unsupported create/format/recovery claim |
+| Files | Privileged FAT12 formatter negotiates V2 volume format; retains controlled V1 fallback | Physical removable-partition checks remain in host; UI is still FAT12-specific |
+
+**Still unfinished:** The other independently owned formats need real V2
+adapters and independent test-image evidence. Files needs format-neutral
+discovery, file/directory operations, volume mapping and a generic privileged
+host rather than only the FAT12 action. Defragmenter needs to consume the
+negotiated V2 defrag group instead of native per-format interfaces once each
+provider implements qualified planner/move/verification callbacks. BOOT
+already has a tested freestanding ELF loader for its existing Boot ABI;
+adopting V2 negotiation must preserve that verified bootstrap. The Kernel
+still needs an authenticated, direct, in-kernel loader for the single .so
+execution profile, native VFS bindings, safe concurrency and early-root
+bootstrap. Do not use FUSE/daemon proxies or delete any working .ko to
+pretend this is done.
+
+**Migration order:** (1) common version/group validation and host services;
+(2) one provider proving real V2 operations on disposable media; (3) each
+consumer implementing verified negotiation without copied format engines;
+(4) remaining provider migrations, preserving independent ownership;
+(5) direct kernel execution and root-mount qualification; (6) retire
+transitional per-format drivers only after measured equivalence.
+Unsupported capabilities must be omitted, not supplied by no-op stubs.
+
 ## Implementation pilot: FAT12 only (9 November 2026)
 
 The first concrete Common ABI adoption is in `Filesystem-FAT12`. Its **one** `FAT12.so` exports the format-neutral `infiltrator_filesystem_api_v1` defined by Common/Libraries, alongside the currently tested FAT12-specific V1/V3/V4/Defragmenter/Boot interfaces. Common V1 presently exposes FAT12 **probe and constrained reformat only**, not mount/list/read/write/check/repair. Its format callback calls the existing FAT12 V4 engine rather than implementing another formatter. This first reformat adapter requires exclusive access to an **already FAT12** partition; blank-volume geometry and volume-label support need the next versioned host-contract pass.
