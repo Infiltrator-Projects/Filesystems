@@ -38,7 +38,7 @@ int main()
         return fail("child process exit status was not preserved exactly");
     }
 
-    if (!package_is_catalogued("util-linux") ||
+    if (!package_is_catalogued("jfsutils") ||
         package_is_catalogued("definitely-not-catalogued")) {
         return fail("package allowlist is not deny-by-default");
     }
@@ -112,8 +112,8 @@ int main()
         return fail("unmanaged native module action was not denied synchronously");
     }
 
-    const auto hfs_users = catalogue_entries_using_package("hfsprogs");
-    if (hfs_users.size() != 2U) {
+    const auto hfs_users = catalogue_entries_using_package("jfsutils");
+    if (hfs_users.size() != 1U) {
         return fail("shared package impact mapping is incorrect");
     }
 
@@ -141,8 +141,8 @@ int main()
     }
 
     const FilesystemDescriptor* ext3 = find_entry("bfs");
-    const FilesystemDescriptor* apfs = find_entry("apfs");
-    const FilesystemDescriptor* hfs = find_entry("hfs");
+    const FilesystemDescriptor* apfs = find_entry("infiltratorfs");
+    const FilesystemDescriptor* hfs = find_entry("jfs");
     if (ext3 == nullptr || apfs == nullptr || hfs == nullptr) {
         return fail("policy fixtures are missing from the catalogue");
     }
@@ -183,7 +183,7 @@ int main()
     }
 
     ProbeResult hfs_missing;
-    hfs_missing.missing_packages = {"hfsprogs"};
+    hfs_missing.missing_packages = {"jfsutils"};
     const PackageActionPolicy install_userspace =
         package_action_policy(*hfs, hfs_missing);
     if (install_userspace.action != PackageActionKind::Install ||
@@ -204,7 +204,7 @@ int main()
     }
 
     ProbeResult unavailable = hfs_missing;
-    unavailable.unavailable_packages = {"hfsprogs"};
+    unavailable.unavailable_packages = {"jfsutils"};
     const PackageActionPolicy blocked =
         package_action_policy(*hfs, unavailable);
     if (blocked.action != PackageActionKind::None ||
@@ -215,7 +215,7 @@ int main()
     ProbeResult unreliable;
     unreliable.reliable = false;
     unreliable.module_name = "bfs";
-    unreliable.missing_packages = {"hfsprogs"};
+    unreliable.missing_packages = {"jfsutils"};
     const PackageActionPolicy unreliable_package =
         package_action_policy(*hfs, unreliable);
     const ModuleActionPolicy unreliable_module =
