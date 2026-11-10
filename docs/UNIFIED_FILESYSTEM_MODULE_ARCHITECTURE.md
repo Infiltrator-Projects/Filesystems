@@ -115,3 +115,32 @@ The first concrete Common ABI adoption is in `Filesystem-FAT12`. Its **one** `FA
 Migration gates, in order: (1) prove module provenance, identity and capability validation; (2) add Common V1 mount/file operations reusing the authoritative engine and independent image tests; (3) implement true format-specific fsck/check/repair and Defragmenter operation contracts, rejecting unsupported claims; (4) connect Files and other graphical consumers through a trusted generic host, resolving right-click items to their **backing volume** and obtaining exclusive unmounted access for raw mutations; (5) implement and qualify the **generic** kernel ELF/VFS bridge with root/initramfs bootstrapping, failure isolation and physical-media evidence. BOOT's existing verified read-only SO loader remains a separate, already established consumer. None of these gates authorises removal of the Linux `.ko` before equivalent kernel-backed operation is proven.
 
 The single installed module directory is `/System/Filesystems/`; per-format `.so` files own their on-disk algorithms. Host code must never copy those algorithms into GUI, Kernel, BOOT, Defragmenter or Common. **Common's existing ABI is canonical**; do not create another competing filesystem discovery standard in a consumer.
+
+
+## Strict Common V2-only cutover — 10 November 2026
+
+**The software filesystem ABI has no backward-compatibility layer.** The only
+public discovery symbol is `infiltrator_filesystem_api_v2`, and both the module
+descriptor and every advertised group use the exact Common V2 revision.
+Common V1, format-specific V1 worker tables, and silent legacy fallback are
+retired; adapters must not reinterpret an old pointer table as V2. A future
+Common V3 will likewise be an explicit breaking migration, not a promise to
+keep V2 modules loadable.
+
+For userspace package observation, require both a **defined** V2 function
+export and the format-specific, non-executable
+`IFS-MODULE:<format-id>:common2` ELF identity marker, in addition to verified
+package ownership and SHA-256. Read-only ELF inspection does not itself
+authorize executing, mounting, formatting or repairing the module. Actual
+consumer loading additionally requires trusted bytes, a validated executable
+profile, complete callback groups and a genuine exclusive host lease for
+destructive operations.
+
+A V2 provider advertises **only functions which actually work**: read-only
+probe may be qualified before formatting or defragmentation, but must never be
+reported as complete functionality. The direct kernel ELF/VFS loader and
+boot-time module execution remain engineering deliverables, not consequences of
+adding a V2 symbol or passing native .so CI. Coordinated breaking-change PRs
+remain staged until every affected consumer and required provider has passed
+real-media and platform integration tests; an isolated green build is not a
+system-wide cutover.
