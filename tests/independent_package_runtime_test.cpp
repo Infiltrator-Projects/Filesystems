@@ -326,7 +326,7 @@ int main(int argc, char** argv)
             const auto observations =
                 filesystems::observe_independent_packages_with_backend(
                     identity, backend);
-            const auto& actual=find_observation(observations,std::string(module));
+            const auto actual=find_observation(observations,std::string(module));
             require(actual.proof != IndependentProof::VerifiedPackage,
                     "uninstalled V2 provider incorrectly qualified: " +
                     std::string(module));
