@@ -28,22 +28,36 @@ struct IndependentSpec {
 // This is an installed-package observation mapping, not a source, build or
 // dependency mapping. No standalone format code is included or copied here.
 // The classic FAT catalogue identity intentionally groups three distinct SOs.
-constexpr std::array<IndependentSpec, 13> kIndependent = {{
-    {"ext2",  "EXT2.so",  "infiltrator-filesystem-ext2",  "", ""},
-    {"ext3",  "EXT3.so",  "infiltrator-filesystem-ext3",  "", ""},
-    {"ext4",  "EXT4.so",  "infiltrator-filesystem-ext4",  "", ""},
-    {"ofs",   "OFS.so",   "infiltrator-filesystem-ofs",   "", "IFS-MODULE:ofs:1"},
-    {"ffs",   "FFS.so",   "infiltrator-filesystem-ffs",
-        "infiltrator_filesystem_ffs_defrag_v1", ""},
-    {"sfs",   "SFS.so",   "infiltrator-filesystem-sfs",   "", ""},
-    {"sfs2",  "SFS2.so",  "infiltrator-filesystem-sfs2",  "", ""},
-    {"pfs3",  "PFS3.so",  "infiltrator-filesystem-pfs3", "", ""},
-    {"fat16", "FAT12.so", "infiltrator-filesystem-fat12", "", "IFS-MODULE:fat12:1"},
-    {"fat16", "FAT16.so", "infiltrator-filesystem-fat16", "", "IFS-MODULE:fat16:1"},
-    {"fat16", "FAT32.so", "infiltrator-filesystem-fat32", "", "IFS-MODULE:fat32:1"},
+/* Strict V2 means the symbol alone is not an identity: every SO also
+ * carries a format-specific, non-executable .ifsmeta marker. Neither test
+ * executes a module nor accepts the retired per-format exports. */
+constexpr std::array<IndependentSpec, 13> kIndependent = {{{
+    {"ext2", "EXT2.so", "infiltrator-filesystem-ext2",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ext2:common2"},
+    {"ext3", "EXT3.so", "infiltrator-filesystem-ext3",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ext3:common2"},
+    {"ext4", "EXT4.so", "infiltrator-filesystem-ext4",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ext4:common2"},
+    {"ofs", "OFS.so", "infiltrator-filesystem-ofs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ofs:common2"},
+    {"ffs", "FFS.so", "infiltrator-filesystem-ffs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ffs:common2"},
+    {"sfs", "SFS.so", "infiltrator-filesystem-sfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:sfs:common2"},
+    {"sfs2", "SFS2.so", "infiltrator-filesystem-sfs2",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:sfs2:common2"},
+    {"pfs3", "PFS3.so", "infiltrator-filesystem-pfs3",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:pfs3:common2"},
+    {"fat16", "FAT12.so", "infiltrator-filesystem-fat12",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:fat12:common2"},
+    {"fat16", "FAT16.so", "infiltrator-filesystem-fat16",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:fat16:common2"},
+    {"fat16", "FAT32.so", "infiltrator-filesystem-fat32",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:fat32:common2"},
     {"exfat", "exFAT.so", "infiltrator-filesystem-exfat",
-        "infiltrator_filesystem_exfat_defrag_v1", ""},
-    {"ntfs",  "NTFS.so",  "infiltrator-filesystem-ntfs",  "", ""}
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:exfat:common2"},
+    {"ntfs", "NTFS.so", "infiltrator-filesystem-ntfs",
+     "infiltrator_filesystem_api_v2", "IFS-MODULE:ntfs:common2"},
 }};
 
 bool exact_line(const std::string& output, const std::string& expected)
@@ -57,6 +71,43 @@ bool exact_line(const std::string& output, const std::string& expected)
         if (line == expected) {
             return true;
         }
+    }
+    return false;
+}
+
+/* readelf --dyn-syms columns: Num Value Size Type Bind Vis Ndx Name.
+ * Exact name and defined global FUNC, not a substring or UND import. */
+bool defined_export(const std::string& output, const std::string_view required)
+{
+    std::istringstream lines(output);
+    std::string line;
+    unsigned matches=0u;
+    while(std::getline(lines,line)) {
+        std::istringstream columns(line);
+        std::string number,value,size,type,binding,visibility,section,name,extra;
+        if(!(columns >> number >> value >> size >> type >> binding >>
+             visibility >> section >> name) || columns >> extra)
+            continue;
+        if(name==required && type=="FUNC" && binding=="GLOBAL" &&
+           section!="UND") ++matches;
+    }
+    return matches==1u;
+}
+
+/* readelf -p .ifsmeta shows one printable string after each ']' marker.
+ * Requiring the complete string prevents format-ID prefix collisions. */
+bool exact_module_marker(const std::string& output, const std::string_view required)
+{
+    std::istringstream lines(output);
+    std::string line;
+    while(std::getline(lines,line)) {
+        const auto close=line.find(']');
+        if(close==std::string::npos || line.find('[',0)>=close)continue;
+        const auto first=line.find_first_not_of(" \t\r",close+1u);
+        if(first==std::string::npos)continue;
+        const auto last=line.find_last_not_of(" \t\r");
+        if(std::string_view(line).substr(first,last-first+1u)==required)
+            return true;
     }
     return false;
 }
@@ -179,14 +230,14 @@ IndependentObservation inspect(const IndependentSpec& spec,
             const auto symbols = backend.command({"readelf", "-W", "--dyn-syms", disk_path});
             evidence.format_identity_matches =
                 evidence.format_identity_matches && symbols.succeeded() &&
-                symbols.stdout_text.find(spec.required_export) != std::string::npos;
+                defined_export(symbols.stdout_text,spec.required_export);
         }
         if (!spec.required_manifest_marker.empty()) {
             const auto markers = backend.command({"readelf", "-p", ".ifsmeta", disk_path});
             evidence.format_identity_matches =
                 evidence.format_identity_matches && markers.succeeded() &&
-                markers.stdout_text.find(spec.required_manifest_marker) !=
-                    std::string::npos;
+                exact_module_marker(markers.stdout_text,
+                                    spec.required_manifest_marker);
         }
     }
     observation.proof = evaluate_independent_evidence(evidence);
