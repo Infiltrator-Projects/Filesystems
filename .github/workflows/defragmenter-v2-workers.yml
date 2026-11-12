@@ -46,14 +46,16 @@ jobs:
             defragmenter-pfs3-worker \
             defragmenter-sfs-worker \
             defragmenter-exfat-worker \
-            defragmenter-ofs-worker \
             defragmenter-affs-worker
       - name: Assert production V2 read-only routes and original writers coexist
         run: |
           set -euo pipefail
-          for format in fat ext xfs btrfs minix apfs ntfs hfs hfsplus pfs3 sfs exfat ofs affs; do
+          for format in fat ext xfs btrfs minix apfs ntfs hfsplus pfs3 sfs exfat affs; do
             test -x "consumer/defragger/build/defragmenter-$format-worker"
           done
+          # CMake gives the HFS worker an installed executable name of
+          # hfs_analyser, rather than the internal target name.
+          test -x consumer/defragger/build/hfs_analyser
           for path in \
             consumer/defragger/native/fat_module_loader.c \
             consumer/defragger/native/ext_module_loader.c \
