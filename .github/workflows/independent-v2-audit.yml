@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Audit all independent filesystem release ABIs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/independent-v2-audit.yml
+      - tools/common_v2_abi_audit.c
+      - tools/audit-independent-sos.sh
+permissions:
+  contents: read
+jobs:
+  all-independent-sos:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out independent integration host
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Obtain exact qualified native Common V2 header
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Infiltrator-Projects/Libraries
+          ref: 4c92c8dcd7e03afd4bab3105e143dbabd72c8adc
+          path: ci-common
+      - name: Compile C-only Common V2 ELF inspector
+        run: |
+          set -euo pipefail
+          cc -std=c11 -Wall -Wextra -Wpedantic -Werror -O2 \
+            -I ci-common/include tools/common_v2_abi_audit.c \
+            -ldl -o "$RUNNER_TEMP/common-v2-abi-audit"
+      - name: Inspect all 23 independently published SOs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash tools/audit-independent-sos.sh \
+            "$RUNNER_TEMP/common-v2-abi-audit" \
+            "$RUNNER_TEMP/filesystem-common-v2-release-audit.tsv"
+          {
+            echo '## Independent filesystem ABI release audit'
+            echo ''
+            echo 'This is a classification, not a claim of functional V2 defragmentation.'
+            echo 'It uses the published SOs, not source names or stale pins.'
+            echo ''
+            echo '~~~tsv'
+            cat "$RUNNER_TEMP/filesystem-common-v2-release-audit.tsv"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve full release-by-release evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: all-independent-filesystems-common-v2-abi-audit
+          path: ${{ runner.temp }}/filesystem-common-v2-release-audit.tsv
+          if-no-files-found: error
