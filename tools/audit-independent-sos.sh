@@ -64,4 +64,22 @@ for fmt in "${formats[@]}"; do
 done
 printf '\nIndependent filesystem release audit (23 exact repositories):\n'
 column -s $'\t' -t < "$report" || cat "$report"
+# In addition to reporting partial migrations, protect the nine previously
+# independently verified V2-only public ABI providers from silent regression.
+# This is intentionally NOT a declaration that the remaining fourteen have
+# completed their V2 migration.
+if [[ "$(wc -l < "$report")" -ne 24 ]]; then
+  echo "::error::Independent filesystem audit did not cover all 23 providers" >&2
+  exit 1
+fi
+regression=0
+for clean in HFS SFS HFSPlus Swap UFS1 SFS2 PFS3 EXT2 UFS2; do
+  repo="Infiltrator-Projects/Filesystem-$clean"
+  status="$(awk -F '\t' -v repo="$repo" '$1 == repo {print $4}' "$report")"
+  if [[ "$status" != COMMON_V2_VALID ]]; then
+    echo "::error title=$clean public ABI regression::$status (expected Common V2 without legacy V1 export)" >&2
+    regression=1
+  fi
+done
 echo "Results are evidence only: valid Common V2 structure does NOT qualify writes or recovery."
+exit "$regression"
