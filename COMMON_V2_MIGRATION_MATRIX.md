@@ -1,0 +1,58 @@
+# Independent filesystem Common V2 migration matrix
+
+Source audit checkpoint: **2026-11-13**. Scope: all **23** `Infiltrator-Projects/Filesystem-*` GitHub repositories discovered in the organisation. Each filesystem remains independently authoritative for its on-disk format, code, `.so` and `.ko` where applicable. The central `Filesystems` app is an integration host, **not** the canonical home for format decoding.
+
+**Interpretation:** The capability column is a source-level inventory of exported Common V2 implementations located in the independent repository; it is **not** a claim of installed-module readiness, complete filesystem operations, real-hardware qualification, write safety, or release asset publication. Historical green workflows that test pinned V1 providers do **not** qualify current V2. Legacy columns describe code or exported adapter presence, not necessarily that the canonical Common V2 entry point itself is V1. Standard Common V2 `DEFRAG` operation bits are separate: `MAP` does not imply `PLAN`, `EXECUTE`, `VERIFY` or `RECOVER`.
+
+| Independent filesystem | Observed Common V2 source capabilities | Legacy / ownership boundary | Outstanding work before true V2-only defrag |
+|:--|:--|:--|:--|
+| [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | CORE probe/mount, VOLUME query | Legacy V1 worker/fixture remains | Native metadata-backed file MAP, then qualified writer/recovery |
+| [Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | CORE probe/mount, VOLUME query (single-device, recorded totals) | Legacy V1 analyser/transaction code remains | Extent/root ownership, multidevice validation, MAP and safe transactions |
+| [EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | CORE namespace read/write, VOLUME query/sync, DEFRAG MAP | Separate legacy V1 worker exists | Independently qualify PLAN/EXECUTE/VERIFY/RECOVER, stage/rollback |
+| [EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | CORE probe/mount, VOLUME query (recorded block totals) | Legacy journalled V1 writer remains | Native journal-aware MAP, safe transaction/recovery |
+| [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | CORE probe/mount, VOLUME query (64-bit count validation) | Legacy extents/journal V1 writer remains | Native extent-tree MAP, journal-aware transactions and recovery |
+| [FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | CORE namespace operations, VOLUME query/check/repair/format | Portable FatFs is V2; older defrag adapter separately present | Native verified MAP/PLAN/EXECUTE/RECOVER through Common V2 |
+| [FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | CORE namespace operations, VOLUME query/sync/format | Portable FatFs is V2; legacy FAT defrag adapter separately present | Native verified MAP and transactional operations through Common V2 |
+| [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | CORE namespace operations, VOLUME query/sync/format | Portable FatFs is V2; V1 ABI regression/test code remains | Remove retired runtime dependencies only after full MAP/writer parity |
+| [FFS](https://github.com/Infiltrator-Projects/Filesystem-FFS) | CORE namespace read/overwrite, VOLUME query/sync, DEFRAG MAP | Module retains old V1/V2 export surfaces | Close transactional DEFRAG gaps; distinguish old adapter from Common V2 |
+| [HFS](https://github.com/Infiltrator-Projects/Filesystem-HFS) | CORE probe/mount, VOLUME query | Legacy HFS worker/fixture source remains | Source-owned file B-tree MAP and proven journal/recovery if applicable |
+| [HFSPlus](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus) | CORE probe/mount, VOLUME query (HFS+/HFSX) | Legacy HFS+ worker/fixture source remains | Allocation/catalog/extents MAP, journal/recovery qualification |
+| [Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | CORE namespace read/write, VOLUME query/sync, DEFRAG MAP | Older module export and V1 transactional worker retained | PLAN/EXECUTE/VERIFY/RECOVER via V2; avoid confusing Minix on-disk V1/V2/V3 with ABI |
+| [NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | CORE probe/mount, VOLUME query | Older NTFS worker/fixture bridge retained | Runlist-owned file MAP, `$LogFile` and safe transactional recovery |
+| [OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | CORE namespace read/write/create etc, VOLUME query/sync/check/format | Boot V3 plus old OFS V1 adapter coexist; Boot V3 not Common ABI V1 | Native allocation and file-chain MAP, preserve Boot V3 and verified recoverability |
+| [PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | CORE probe/mount, VOLUME query | Older PFS3 worker/fixture code retained | Native file MAP and validated writable/recovery operations |
+| [SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | CORE probe/mount, VOLUME query | Older SFS worker/fixture code retained | Native object and allocation MAP, planning and recovery |
+| [SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | CORE probe/mount, VOLUME query | No V1 export seen in canonical `module/sfs2_module.c` | Native file/map group plus verified transaction/recovery |
+| [Swap](https://github.com/Infiltrator-Projects/Filesystem-Swap) | CORE probe, VOLUME format; no file namespace | Legacy swap CLI analysis exists outside Common V2 SO | Separate V2 swap read-only analysis contract; DEFRAG operations N/A |
+| [UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1) | CORE probe/mount, VOLUME query, DEFRAG MAP | Legacy writer + staging/recovery maintained separately | Source-owned PLAN/EXECUTE/VERIFY/RECOVER with power-failure qualification |
+| [UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2) | CORE probe/mount, VOLUME query, DEFRAG MAP | Legacy writer + staging/recovery maintained separately | Source-owned PLAN/EXECUTE/VERIFY/RECOVER with power-failure qualification |
+| [XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | CORE probe/mount, VOLUME query (v4/v5, CRC-verified v5) | Legacy worker/fixture code retained | Source-owned AG/Btree file MAP; mutation and log consistency |
+| [ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | CORE probe only | Same `.so` still exports V1 analyser interface | V2-native read-only analysis/MOS + space maps; file DEFRAG generally not applicable |
+| [exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | CORE namespace operations, VOLUME query/sync/format | Legacy defrag V1 adapter retained separately | Native extent/bitmap MAP, qualified transactional relocation/recovery |
+
+## Changes made during 13 November 2026 continuation
+
+The independent repositories below were changed on **`main`**; existing format-native read/write, journalling and recovery engines were deliberately left unchanged:
+
+- **EXT3 1.0.9:** [commit `8aa8f72`](https://github.com/Infiltrator-Projects/Filesystem-EXT3/commit/8aa8f72cfd6690f25927bcba197ad82d53eccc5d) adds read-only CORE mount/unmount and VOLUME query using the established canonical EXT3 feature/geometry checks; rejects free blocks greater than total; tests stale handles, busy session and unsupported format.
+- **EXT4 1.0.9:** [commit `5afd3f1`](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/5afd3f10633f8e774d0b753c3987b9a224347ec2) adds equivalent lifecycle and validates high 64-bit EXT4 block counts when the 64-bit incompat bit is set; tests impossible media geometry.
+- **Btrfs 1.0.9:** [commit `ca581cf`](https://github.com/Infiltrator-Projects/Filesystem-Btrfs/commit/ca581cf35ba6031d691d98448b97df9690f126f7) adds CRC32C-based single-device read-only mount/volume query. Reports recorded logical totals only, not independently scanned free extents or multidevice usable space.
+- **XFS 1.0.10:** [commit `eace38f`](https://github.com/Infiltrator-Projects/Filesystem-XFS/commit/eace38fb9959328647b45087a007a6c568a39737) adds read-only mount/query, version 4/5 geometry checks and the existing native v5 superblock CRC, rejecting inconsistent recorded free blocks.
+
+At the time of writing: independent `.so` tests at these heads have **passed for EXT3, EXT4 and Btrfs**; XFS tests and all four exact-head package/kernel/release qualification pipelines were not all complete. Record the CI status from GitHub Actions separately and update on new evidence; never fill 'green' based on a previous commit.
+
+## Prior already-qualified progress
+
+- UFS1 [v1.0.11](https://github.com/Infiltrator-Projects/Filesystem-UFS1/releases/tag/v1.0.11): genuine read-only Common V2 `DEFRAG.MAP` using native UFS1 inode inventory; synthetic on-disk inode/dirent tests and independent CI qualified.
+- UFS2 [v1.0.16](https://github.com/Infiltrator-Projects/Filesystem-UFS2/releases/tag/v1.0.16): genuine read-only V2 `DEFRAG.MAP`, additionally tested through Defragmenter against a real UFS2 image with >32 extents, negative corruption tests and enforced non-mutation.
+- Defragmenter [v1.8.0-299](https://github.com/Infiltrator-Projects/Defragmenter/releases/tag/v1.8.0-299): green project quality gate and published at that checkpoint. Its current success does **not** establish an entirely V2-only codebase.
+
+## Release gates and non-negotiable acceptance criteria
+
+1. **Producer-owned code:** Format-specific parsing, allocation, extent translation, journalling, mutation and recovery stay in the independent filesystem repository. The Defragmenter host only performs authenticated provider discovery, target identity and mount checks, cancellation, signed action consent and policy enforcement.
+2. **V2 capabilities must be true:** advertise only actual implemented operations, with real negative tests for unsupported paths and malformed/mounted/changed media; never stub a V2 call or silently use V1.
+3. **Functional parity before removing V1:** for a format with legacy native analyse, compact, growth/defrag, format or recovery functionality, port and test it through real Common V2 entry points **before** deleting the legacy implementation; preserve failure/recovery guarantees and on-disk data.
+4. **Evidence per format:** build and test actual current `.so` with `-Werror`; create an independently verified disposable filesystem image; exercise its V2 consumer in Defragmenter; test corrupt geometry and cross-format rejection, no-write/read-only mode, cancellation and modified target identity; for writers include power-loss replay, verify and rollback. Check independent `.ko` compilation/ABI, release `.deb`, native `.run` and documentation separately. An absent capability must remain unavailable.
+5. **Release integrity:** all changes go to the existing `main`; no PR branches, frozen V1 pinned integration falsely marked as V2, artificial CI passes, installed filesystem writes or new Python dependencies.
+
+Central issue for follow-through: [Filesystems #80](https://github.com/Infiltrator-Projects/Filesystems/issues/80). This matrix records the whole set but **does not** mean the 23 separate migrations have completed.
