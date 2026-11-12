@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Real-media consumer qualification for four independently owned Common V2
+# read-only providers. This workflow does NOT replace format-owned tests,
+# qualify DEFRAG writes/recovery, or install any provider on the runner.
+name: Qualify independent Common V2 read-only volumes
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/common-v2-readonly-four.yml'
+      - 'COMMON_V2_MIGRATION_MATRIX.md'
+permissions:
+  contents: read
+
+jobs:
+  real-volume-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - format: ext3
+            repo: Infiltrator-Projects/Filesystem-EXT3
+            ref: 8aa8f72cfd6690f25927bcba197ad82d53eccc5d
+            so: EXT3.so
+            foreign: ext4
+            magic_offset: 1080
+            image_size: 128M
+          - format: ext4
+            repo: Infiltrator-Projects/Filesystem-EXT4
+            ref: 5afd3f10633f8e774d0b753c3987b9a224347ec2
+            so: EXT4.so
+            foreign: ext3
+            magic_offset: 1080
+            image_size: 128M
+          - format: btrfs
+            repo: Infiltrator-Projects/Filesystem-Btrfs
+            ref: ca581cf35ba6031d691d98448b97df9690f126f7
+            so: BTRFS.so
+            foreign: xfs
+            magic_offset: 65600
+            image_size: 256M
+          - format: xfs
+            repo: Infiltrator-Projects/Filesystem-XFS
+            ref: eace38fb9959328647b45087a007a6c568a39737
+            so: XFS.so
+            foreign: btrfs
+            magic_offset: 0
+            image_size: 512M
+    steps:
+      - name: Checkout authoritative independent provider
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: ${{ matrix.repo }}
+          ref: ${{ matrix.ref }}
+          path: provider
+      - name: Checkout qualified universal Defragmenter V2 host
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: Infiltrator-Projects/Defragmenter
+          ref: 5770613fddc6ceae174781f9a600a50f89817ee7
+          path: consumer
+          submodules: recursive
+      - name: Install native toolchain and disposable image generators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config jq \
+            libgtk-3-dev libssl-dev libsqlite3-dev libext2fs-dev \
+            e2fsprogs btrfs-progs xfsprogs
+      - name: Build and independently test filesystem .so
+        run: |
+          set -euo pipefail
+          test "$(git -C provider rev-parse HEAD)" = "${{ matrix.ref }}"
+          cmake -S provider -B provider/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake --build provider/build --parallel 2
+          ctest --test-dir provider/build --output-on-failure
+          test -s "provider/build/${{ matrix.so }}"
+          nm -D "provider/build/${{ matrix.so }}" | grep -F 'infiltrator_filesystem_api_v2'
+          # Some formats still ship legacy V1 workers; this does not
+          # represent full V2 migration and is not concealed by this test.
+      - name: Build universal strict Common V2 consumer with isolated modules
+        run: |
+          set -euo pipefail
+          mkdir -p consumer/defragger/build/module-test/Filesystems
+          cmake -S consumer/defragger -B consumer/defragger/build \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DLD_ENABLE_WERROR=ON \
+            -DOFS_DEFRAG_TEST_MODULE_PARENT="$PWD/consumer/defragger/build/module-test"
+          cmake --build consumer/defragger/build --parallel 2 \
+            --target defragmenter-operation-engine-v2-test
+          install -m 0644 "provider/build/${{ matrix.so }}" \
+            "consumer/defragger/build/module-test/Filesystems/${{ matrix.so }}"
+      - name: Construct disposable real on-disk filesystem
+        run: |
+          set -euo pipefail
+          truncate -s "${{ matrix.image_size }}" "$PWD/test.img"
+          case "${{ matrix.format }}" in
+            ext3) mkfs.ext3 -F -q "$PWD/test.img" ;;
+            ext4) mkfs.ext4 -F -q "$PWD/test.img" ;;
+            btrfs) mkfs.btrfs -f -m single -d single -L V2READ "$PWD/test.img" ;;
+            xfs) mkfs.xfs -f -m crc=1 -s size=512 -L V2READ "$PWD/test.img" ;;
+            *) echo "Unqualified format" >&2; exit 1 ;;
+          esac
+          test -s "$PWD/test.img"
+      - name: Verify actual Common V2 query, corruption and no-write refusal
+        run: |
+          set -euo pipefail
+          root="$PWD"
+          consumer="$root/consumer/defragger/build/defragmenter-operation-engine-v2-test"
+          image="$root/test.img"
+          export IFS_TEST_MODULE_PARENT="$root/consumer/defragger/build/module-test"
+          before="$(sha256sum "$image" | cut -d ' ' -f1)"
+          "$consumer" --list-installed-modules > inventory.json
+          jq -e --arg fs "${{ matrix.format }}" \
+            '.modules | any(.format_id == $fs and .abi == 2)' inventory.json
+          "$consumer" volume-info "$image" --filesystem "${{ matrix.format }}" > info.json
+          jq -e --arg fs "${{ matrix.format }}" \
+            '.filesystem == $fs and .abi == 2 and .total_bytes > 0 and
+             .free_bytes >= 0 and .free_bytes <= .total_bytes and
+             .block_bytes >= 512 and .source == "Common V2 VOLUME_QUERY"' info.json
+          # These four providers do not advertise DEFRAG or write capability.
+          if "$consumer" map "$image" --filesystem "${{ matrix.format }}" \
+              --path /; then
+            echo "ERROR: non-MAP provider returned success" >&2; exit 1
+          fi
+          if "$consumer" volume-info "$image" --filesystem "${{ matrix.format }}" --write; then
+            echo "ERROR: read-only query accepted --write" >&2; exit 1
+          fi
+          if "$consumer" defrag "$image" --filesystem "${{ matrix.format }}" \
+              --write --confirm "$image"; then
+            echo "ERROR: unqualified DEFRAG writer accepted target" >&2; exit 1
+          fi
+          if "$consumer" volume-info "$image" --filesystem "${{ matrix.foreign }}"; then
+            echo "ERROR: foreign provider identified this medium" >&2; exit 1
+          fi
+          cp --sparse=always "$image" "$root/corrupt.img"
+          printf '\000' | dd of="$root/corrupt.img" bs=1 \
+            seek="${{ matrix.magic_offset }}" conv=notrunc status=none
+          if "$consumer" volume-info "$root/corrupt.img" --filesystem "${{ matrix.format }}"; then
+            echo "ERROR: corrupted superblock identified as sound" >&2; exit 1
+          fi
+          mkdir -p "$root/empty-modules/Filesystems"
+          if IFS_TEST_MODULE_PARENT="$root/empty-modules" "$consumer" \
+              volume-info "$image" --filesystem "${{ matrix.format }}"; then
+            echo "ERROR: missing provider fell back to V1" >&2; exit 1
+          fi
+          test "$before" = "$(sha256sum "$image" | cut -d ' ' -f1)"
+          echo "REAL-MEDIA-${{ matrix.format }}-COMMON-V2-READONLY-PASS"
