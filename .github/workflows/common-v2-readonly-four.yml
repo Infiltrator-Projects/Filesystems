@@ -60,7 +60,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: Infiltrator-Projects/Defragmenter
-          ref: 5770613fddc6ceae174781f9a600a50f89817ee7
+          ref: 4927ae20413ba3543b55e43e55afd5e7ee145df2
           path: consumer
           submodules: recursive
       - name: Install native toolchain and disposable image generators
@@ -89,6 +89,12 @@ jobs:
             -DOFS_DEFRAG_TEST_MODULE_PARENT="$PWD/consumer/defragger/build/module-test"
           cmake --build consumer/defragger/build --parallel 2 \
             --target defragmenter-operation-engine-v2-test
+          case "${{ matrix.format }}" in
+            ext3|ext4)
+              cmake --build consumer/defragger/build --parallel 2 --target defragmenter-ext-test-worker ;;
+            xfs)
+              cmake --build consumer/defragger/build --parallel 2 --target defragmenter-xfs-test-worker ;;
+          esac
           install -m 0644 "provider/build/${{ matrix.so }}" \
             "consumer/defragger/build/module-test/Filesystems/${{ matrix.so }}"
       - name: Construct disposable real on-disk filesystem
@@ -115,6 +121,18 @@ jobs:
           jq -e --arg fs "${{ matrix.format }}" \
             '.modules | any(.format_id == $fs and .abi == 2)' inventory.json
           "$consumer" volume-info "$image" --filesystem "${{ matrix.format }}" > info.json
+          # Exercise installed worker entrypoints and reject an accidental
+          # fallback to their retired private V1 module interface.
+          case "${{ matrix.format }}" in
+            ext3|ext4) worker="$root/consumer/defragger/build/defragmenter-ext-test-worker" ;;
+            xfs) worker="$root/consumer/defragger/build/defragmenter-xfs-test-worker" ;;
+            *) worker="" ;;
+          esac
+          if test -n "$worker"; then
+            "$worker" volume-info "$image" > worker.json
+            jq -e --arg fs "${{ matrix.format }}"               '.filesystem == $fs and .abi == 2 and
+               .source == "Common V2 VOLUME_QUERY"' worker.json
+          fi
           jq -e --arg fs "${{ matrix.format }}" \
             '.filesystem == $fs and .abi == 2 and .total_bytes > 0 and
              .free_bytes >= 0 and .free_bytes <= .total_bytes and
