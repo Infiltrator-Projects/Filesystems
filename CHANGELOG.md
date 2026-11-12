@@ -2,7 +2,7 @@
 
 ## 0.5.106 — 2026-10-29 (OFS existing-file V2 write foundation)
 
-- Preserve the read-only V1 ABI and implement a bounded V2 existing-file overwrite spanning multiple authentic 488-byte OFS data blocks, preflighting the whole destination chain before mutation and using the canonical resolver/checksum logic rather than creating a second parser.
+- Preserve the original read-only interface and implement a bounded V2 existing-file overwrite spanning multiple authentic 488-byte OFS data blocks, preflighting the whole destination chain before mutation and using the canonical resolver/checksum logic rather than creating a second parser.
 - Require a separately supplied write and durable sync callback, verify the rewritten 512-byte data block by rereading it and reject out-of-file offsets, corrupt layout, unsupported namespaces and allocation changes.
 - Add genuine positive and negative tests on disposable media. No allocation, create/delete/rename, general formatter, crash-safe recovery, kernel/BOOT SO loader or physical-drive write support is claimed.
 
@@ -22,9 +22,9 @@
 
 ## 0.5.100 — 2026-10-28 (MINIX V2 bounded data overwrites)
 
-- Add a genuine optional MINIX V2 ABI with existing-file bounded writes for allocated, regular-file zones across V1/V2/V3 volumes. Leave the V1 read-only interface untouched.
+- Add a genuine optional MINIX V2 ABI with existing-file bounded writes for allocated, regular-file zones across V1/V2/V3 volumes. Preserve the original read-only interface.
 - Re-validate live superblock/inode metadata, preflight every destination zone and reject holes, metadata, forged inode maps, out-of-bounds regions and missing write/flush callbacks. No allocations or rollback are claimed on I/O failure.
-- Exercise cross-zone writes, V1 readback and negative mutation cases in synthetic image tests; require V2 symbol and metadata in standalone CI. No production physical-media write qualification.
+- Exercise cross-zone writes, readback through the original interface and negative mutation cases in synthetic image tests; require V2 symbol and metadata in standalone CI. No production physical-media write qualification.
 
 ## 0.5.99 — 2026-10-28 (MINIX V1/V2/V3 standalone engine)
 

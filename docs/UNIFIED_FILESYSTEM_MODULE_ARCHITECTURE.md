@@ -11,7 +11,7 @@ applies to every other independent repository. Internal regression binaries
 
 ## Non-negotiable product contract
 
-**One on-disk filesystem identity → one authoritative filesystem implementation → one user-distributed, independently installed `.so` → any qualified consumer.** FAT12 and FAT16 are different identities and therefore have separate `FAT12.so` and `FAT16.so`. UFS1 and UFS2 are separately identified on-disk formats and likewise belong in `UFS1.so` and `UFS2.so`; the software interface ABI V1/V2 numbering does not define an on-disk format. The default native location is `/System/Filesystems/<format>.so`. An end user does not install a per-format `.ko`, a per-format `.efi`, and a per-format `.so` as three filesystem products. Each independent filesystem repository owns its implementation, tests and release.
+**One on-disk filesystem identity → one authoritative filesystem implementation → one user-distributed, independently installed `.so` → any qualified consumer.** FAT12 and FAT16 are different identities and therefore have separate `FAT12.so` and `FAT16.so`. UFS1 and UFS2 are separately identified on-disk formats and likewise belong in `UFS1.so` and `UFS2.so`; the software interface revision does not define an on-disk format. The default native location is `/System/Filesystems/<format>.so`. An end user does not install a per-format `.ko`, a per-format `.efi`, and a per-format `.so` as three filesystem products. Each independent filesystem repository owns its implementation, tests and release.
 
 The filesystem-specific code owns format detection, allocation and directory semantics, file reads/writes, formatting, recovery, defragmentation and format-specific metadata where qualified. Filesystems, BOOT, the kernel and applications **consume** that implementation through versioned contracts. They must not grow their own competing FAT12/FAT16/etc. engines simply to work around current platform interfaces. Shared *platform plumbing* belongs to its appropriate generic loader, not to a copy in each format.
 
@@ -64,83 +64,28 @@ Twenty-one providers build Linux adapters against the reference kernel. Linux SW
 
 **Until these tests pass, the single-`.so` design is the end goal, not an assertion of present feature completion.** Maintain explicit per-consumer capability and qualification status.
 
-## Common V2 migration checkpoint — 10 November 2026
+## Common V2 filesystem contract
 
-**Architecture decision:** `Libraries/include/infiltratr/filesystem_module_v2.h`
-is the existing canonical forward ABI, not a reason to create a third API.
-V1 remains binary immutable. V2 offers negotiated, truthful handles,
-metadata, volume, defragmentation, streams, and snapshots groups with a
-freestanding host-services descriptor. All consumers must reject invalid
-capability/callback combinations, protect device identity, and independently
-verify module authenticity and the applicable execution profile.
+Common owns `Libraries/include/infiltratr/filesystem_module_v2.h` and the
+`infiltrator_filesystem_api_v2` discovery symbol. Providers advertise their
+implemented CORE, VOLUME and optional operation groups. Hosts validate the
+descriptor and callbacks, verify the module and execution profile, and keep
+device identity and access under their control.
 
-**Verified source changes on main (not all installed/released):**
+Package inspection checks that the Common export is a defined function and
+checks the format-specific ELF identity marker where present. Consumers
+validate the actual descriptor and callback groups before use. Mutation
+requires an exclusive host lease.
 
-| Repository | Common ABI work | Qualification boundary |
+| Consumer | Current Common V2 use | Remaining qualification |
 | --- | --- | --- |
-| Libraries | V2 host validation, version/group negotiation, safe V2-to-V1 and format-host conversions | Common CI builds and unit tests; does not load an ELF in kernel or firmware |
-| Filesystem-FAT12 | Existing canonical V1 + negotiated V2 volume check/repair/format/sync | FAT12 media qualification; no general handle/streams/metadata group |
-| Filesystem-FAT16 | V1 canonical FatFs file operations, V2 volume sync/format | Independent filesystem CI; other V2 groups unimplemented |
-| Filesystem-FAT32 | V1 canonical FatFs file operations, V2 volume sync/format | Independent filesystem CI; other V2 groups unimplemented |
-| Filesystem-OFS | V1 canonical native engine adapter, V2 volume sync/check/format | Standalone boot/kernel evidence is separate; no V2 recover claim |
-| Filesystem-exFAT | V1 64-bit file operations, V2 hosted volume sync/format | No direct kernel-execution claim; separate exfat.ko remains transitional |
-| Filesystem-FFS | V1 native reader and bounded overwrite, V2 hosted volume query | No unsupported create/format/recovery claim |
-| Files | Privileged FAT12 formatter negotiates V2 volume format; retains controlled V1 fallback | Physical removable-partition checks remain in host; UI is still FAT12-specific |
+| InfiltratorOS | Verifies installed filesystem packages and stages verified modules with BOOT | Release and physical deployment qualification |
+| BOOT | Generic ELF loader and read-only UEFI filesystem bridge | Firmware-compatible profiles for additional formats and physical firmware |
+| Files | Detects the selected removable partition and calls the installed provider's format operation | Each provider must implement and qualify its own formatter |
+| Defragmenter and Test Media | Common V2 volume queries, selected file maps and media fixture operations | Port and qualify the remaining relocation and recovery operations before retiring their dedicated adapters |
+| Linux kernel | Stock Linux still uses its existing filesystem drivers | Authenticated in-kernel shared-object loader, native VFS binding and early-root tests |
 
-**Still unfinished:** The other independently owned formats need real V2
-adapters and independent test-image evidence. Files needs format-neutral
-discovery, file/directory operations, volume mapping and a generic privileged
-host rather than only the FAT12 action. Defragmenter needs to consume the
-negotiated V2 defrag group instead of native per-format interfaces once each
-provider implements qualified planner/move/verification callbacks. BOOT
-already has a tested freestanding ELF loader for its existing Boot ABI;
-adopting V2 negotiation must preserve that verified bootstrap. The Kernel
-still needs an authenticated, direct, in-kernel loader for the single .so
-execution profile, native VFS bindings, safe concurrency and early-root
-bootstrap. Do not use FUSE/daemon proxies or delete any working .ko to
-pretend this is done.
-
-**Migration order:** (1) common version/group validation and host services;
-(2) one provider proving real V2 operations on disposable media; (3) each
-consumer implementing verified negotiation without copied format engines;
-(4) remaining provider migrations, preserving independent ownership;
-(5) direct kernel execution and root-mount qualification; (6) retire
-transitional per-format drivers only after measured equivalence.
-Unsupported capabilities must be omitted, not supplied by no-op stubs.
-
-## Implementation pilot: FAT12 only (9 November 2026)
-
-The first concrete Common ABI adoption is in `Filesystem-FAT12`. Its **one** `FAT12.so` exports the format-neutral `infiltrator_filesystem_api_v1` defined by Common/Libraries, alongside the currently tested FAT12-specific V1/V3/V4/Defragmenter/Boot interfaces. Common V1 presently exposes FAT12 **probe and constrained reformat only**, not mount/list/read/write/check/repair. Its format callback calls the existing FAT12 V4 engine rather than implementing another formatter. This first reformat adapter requires exclusive access to an **already FAT12** partition; blank-volume geometry and volume-label support need the next versioned host-contract pass.
-
-Migration gates, in order: (1) prove module provenance, identity and capability validation; (2) add Common V1 mount/file operations reusing the authoritative engine and independent image tests; (3) implement true format-specific fsck/check/repair and Defragmenter operation contracts, rejecting unsupported claims; (4) connect Files and other graphical consumers through a trusted generic host, resolving right-click items to their **backing volume** and obtaining exclusive unmounted access for raw mutations; (5) implement and qualify the **generic** kernel ELF/VFS bridge with root/initramfs bootstrapping, failure isolation and physical-media evidence. BOOT's existing verified read-only SO loader remains a separate, already established consumer. None of these gates authorises removal of the Linux `.ko` before equivalent kernel-backed operation is proven.
-
-The single installed module directory is `/System/Filesystems/`; per-format `.so` files own their on-disk algorithms. Host code must never copy those algorithms into GUI, Kernel, BOOT, Defragmenter or Common. **Common's existing ABI is canonical**; do not create another competing filesystem discovery standard in a consumer.
-
-
-## Strict Common V2-only cutover — 10 November 2026
-
-**The software filesystem ABI has no backward-compatibility layer.** The only
-public discovery symbol is `infiltrator_filesystem_api_v2`, and both the module
-descriptor and every advertised group use the exact Common V2 revision.
-Common V1, format-specific V1 worker tables, and silent legacy fallback are
-retired; adapters must not reinterpret an old pointer table as V2. A future
-Common V3 will likewise be an explicit breaking migration, not a promise to
-keep V2 modules loadable.
-
-For userspace package observation, require both a **defined** V2 function
-export and the format-specific, non-executable
-`IFS-MODULE:<format-id>:common2` ELF identity marker, in addition to verified
-package ownership and SHA-256. Read-only ELF inspection does not itself
-authorize executing, mounting, formatting or repairing the module. Actual
-consumer loading additionally requires trusted bytes, a validated executable
-profile, complete callback groups and a genuine exclusive host lease for
-destructive operations.
-
-A V2 provider advertises **only functions which actually work**: read-only
-probe may be qualified before formatting or defragmentation, but must never be
-reported as complete functionality. The direct kernel ELF/VFS loader and
-boot-time module execution remain engineering deliverables, not consequences of
-adding a V2 symbol or passing native .so CI. Coordinated breaking-change PRs
-remain staged until every affected consumer and required provider has passed
-real-media and platform integration tests; an isolated green build is not a
-system-wide cutover.
+[The migration matrix](../COMMON_V2_MIGRATION_MATRIX.md) tracks the
+independently owned producers and their operation gaps. The
+[released-binary audit](INDEPENDENT_COMMON_V2_STATUS.md) records which
+capabilities the inspected package bytes actually advertise.

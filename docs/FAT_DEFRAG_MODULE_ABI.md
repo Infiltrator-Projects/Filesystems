@@ -1,6 +1,6 @@
 # FAT defragmentation module interface
 
-The FAT12 and FAT16 shared objects export `infiltrator_filesystem_defrag_v1`
+The FAT12 and FAT16 shared objects supply a dedicated relocation and recovery interface
 in addition to their filesystem APIs. The same entry point is included in the
 existing FAT32 shared object to preserve Defragmenter's FAT32 support. The
 filesystem-specific analysis, relocation, directory updates and durable
@@ -10,7 +10,7 @@ was migrated from Defragmenter's native FAT engine and remains GPL-3.0-or-later.
 The versioned interface in `native/filesystems/fat/defrag/fat_defrag_abi.h`
 exposes the module's FAT width, a read-only geometry probe and a worker entry
 point. The caller supplies operating-system functions and generic device,
-memory, timing, Stop and Common services in `IfsFatDefragHostV1`. This keeps
+memory, timing, Stop and Common services through its host service table. This keeps
 the `.so` self-contained: production builds have no undefined symbols or
 `DT_NEEDED` dependencies. The host and module must agree on the ABI version and
 structure size. The ABI is a Linux process interface; it is not the kernel or

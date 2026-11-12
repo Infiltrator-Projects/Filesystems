@@ -9,7 +9,7 @@ This document records the initial, non-destructive extraction of Defragmenter/Fi
 | New repository | Source imported | Independent .so build | Existing regression in new repo |
 |---|---|---|---|
 | [Filesystem-NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | Defragmenter NTFS native engine; Filesystems design | No | No |
-| [Filesystem-EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | Filesystems canonical core, V1 module + synthetic-volume test | Yes — EXT2.so | GitHub CI passed |
+| [Filesystem-EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | Filesystems canonical core, original module and synthetic-volume test | Yes — EXT2.so | GitHub CI passed |
 | [Filesystem-EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | Filesystems EXT3 format core | No | No |
 | [Filesystem-EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | Filesystems EXT4 format core; shared EXT2/3/4 Defragmenter relocation snapshot | No | No |
 | [Filesystem-XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | Defragmenter XFS native engine; Filesystems design | No | No |
@@ -20,7 +20,7 @@ This document records the initial, non-destructive extraction of Defragmenter/Fi
 | [Filesystem-SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | Filesystems SFS0 core; combined SFS0/SFS2 Defragmenter relocation reference | No | No |
 | [Filesystem-SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | Filesystems distinct SFS2 core/design | No | No |
 | [Filesystem-PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | Filesystems PFS3 core; Defragmenter PFS3 native engine | No | No |
-| [Filesystem-Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | Filesystems V1/V2 standalone module + test; Defragmenter Minix engine reference | Yes — MINIX.so | GitHub CI passed |
+| [Filesystem-Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | Filesystems standalone read/overwrite module and test; Defragmenter Minix engine reference | Yes — MINIX.so | GitHub CI passed |
 | [Filesystem-UFS](https://github.com/Infiltrator-Projects/Filesystem-UFS) | Defragmenter UFS1/UFS2 native engine | No | No |
 | [Filesystem-ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | Defragmenter bounded ZFS member analysis | No | No |
 | [Filesystem-Swap](https://github.com/Infiltrator-Projects/Filesystem-Swap) | Defragmenter swap-space analysis | No | No |

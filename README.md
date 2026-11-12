@@ -68,7 +68,7 @@ privileged loading still requires a separately defined trust policy.
 > repositories own these implementations now.
 
 The source builds an independent read-only `OFS.so` and separate
-`FAT12.so` and `FAT16.so` artifacts. Each FAT module retains a legacy V1
+`FAT12.so` and `FAT16.so` artifacts. Each FAT module then retained its original
 read-only API and also embeds the portable FAT engine behind the V3 API.
 V3 supports long names, nested directories, reading, file creation and
 allocation, writing, truncation, rename and deletion. V4 adds partition formatting, file attributes, modification
@@ -118,7 +118,7 @@ selected `/System/Filesystems/MINIX.so` from application-owned sources.
 
 The installed MINIX module is independent of Linux `minix.ko`. Synthetic
 images and separately formatted `mkfs.minix` images provide source and
-interoperability coverage. The V1 interface remains read-only. Optional V2 permits **only flush-backed,
+interoperability coverage. The original interface was read-only. The overwrite extension permits **only flush-backed,
 bounded overwrites of existing, allocated bytes in regular files**. It
 revalidates live geometry and inode pointers, checks the entire destination
 before the first write, and refuses sparse holes, directory writes, growth

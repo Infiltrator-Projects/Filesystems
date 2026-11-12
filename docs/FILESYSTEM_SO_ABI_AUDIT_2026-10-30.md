@@ -18,15 +18,15 @@ The exported symbol names, the volume-relative bounded read callback pattern, an
 
 | Existing .so identity | Source / latest observed entry point | Shared operations seen in its native ABI | Important non-uniformity |
 |---|---|---|---|
-| FAT12 | Filesystem-FAT12, V1/V3/V4 | Probe, root listing/read; newer path, write and format APIs | FAT12-only geometry, vintage V1 root/8.3 API, later FatFs calls |
-| FAT16 | Filesystem-FAT16, V1/V3/V4/V5 | Probe, root listing/read; newer path, write/format/metadata APIs | Same classic V1 shape as FAT12; V5 metadata extension |
-| FAT32 | Filesystem-FAT32, V1/V3/V4 | Probe, root listing/read; newer path, write and format APIs | V1 root/8.3 API; FAT32 allocation rules |
-| OFS | Filesystem-OFS, V1/V2/V3 | Mount/lookup/list/read; V2 bounded overwrite; V3 extended write/format/check/recover | Per-disk DOS0/2/4/6 variants and name limits; V3 uses a different I/O and volume lifecycle |
-| FFS | Filesystem-FFS, V1/V2 | Mount/lookup/list/read, V2 allocated-data overwrite | FFS data block semantics; narrower V2 write surface |
+| FAT12 | Filesystem-FAT12 | Probe, root listing/read; newer path, write and format APIs | FAT12-only geometry, original root/8.3 API, later FatFs calls |
+| FAT16 | Filesystem-FAT16 | Probe, root listing/read; newer path, write/format/metadata APIs | Same original reader shape as FAT12; V5 metadata extension |
+| FAT32 | Filesystem-FAT32 | Probe, root listing/read; newer path, write and format APIs | original root/8.3 API; FAT32 allocation rules |
+| OFS | Filesystem-OFS | Mount/lookup/list/read; V2 bounded overwrite; V3 extended write/format/check/recover | Per-disk DOS0/2/4/6 variants and name limits; V3 uses a different I/O and volume lifecycle |
+| FFS | Filesystem-FFS | Mount/lookup/list/read, V2 allocated-data overwrite | FFS data block semantics; narrower V2 write surface |
 | exFAT | Filesystem-exFAT, V3/V4/V5 | Mount/list/read/write/create/rename/format; V5 64-bit file operations | Per-module FatFs state, V5 delegates to V4; no generic host volume handle |
-| EXT2 | Filesystems, V1 | Mount/lookup/list/read, bounded existing-file overwrite | Requires caller scratch buffers/inode objects |
-| SCO BFS | Filesystems, V1 | Mount/root listing/lookup/read, bounded overwrite | SCO BFS, **not** BeOS BeFS |
-| Minix | Filesystems, V1/V2 | Mount/list/lookup/read, bounded overwrite | Minix V1/V2/V3 on-disk variants; V2 has additional write I/O |
+| EXT2 | Filesystems | Mount/lookup/list/read, bounded existing-file overwrite | Requires caller scratch buffers/inode objects |
+| SCO BFS | Filesystems | Mount/root listing/lookup/read, bounded overwrite | SCO BFS, **not** BeOS BeFS |
+| Minix | Filesystems | Mount/list/lookup/read, bounded overwrite | Minix V1/V2/V3 on-disk variants; V2 has additional write I/O |
 
 This is an **inspection of source interfaces**, not a claim that every advertised operation passes an independent real-media test.
 
@@ -34,7 +34,7 @@ This is an **inspection of source interfaces**, not a claim that every advertise
 
 - The new format-neutral `include/infiltratr/filesystem_module.h` defines identical new host I/O callbacks, status values, feature bits, per-mounted-volume variant information, opaque volume ownership and optional operation signatures for any conforming format.
 - The interface explicitly distinguishes `format_id` from a disk's detected `variant`. An OFS DOS0 volume therefore cannot inherit DOS6 filename rules merely because one library supports both.
-- The new `include/infiltratr/filesystem_module_loader.h` and `src/filesystem_module_loader.c` provide a format-neutral **actual loaded-module inspection** function. It accepts only an already opened/trust-verified module handle, checks for `infiltrator_filesystem_api_v1`, or falls back to the highest compatible existing `infiltrator_filesystem_module_vN` table (V1 through V8). It validates ABI version, table size and requested format identity. For legacy modules it returns an opaque native table; it never invents a common capability mask or calls incompatible native methods.
+- The new `include/infiltratr/filesystem_module_loader.h` and `src/filesystem_module_loader.c` provide a format-neutral **actual loaded-module inspection** function. It accepts only an already opened/trust-verified module handle, checked for the then-current Common export and otherwise selected a recognised format-specific table. It validates ABI version, table size and requested format identity. For legacy modules it returns an opaque native table; it never invents a common capability mask or calls incompatible native methods.
 - `tests/filesystem_module_smoke.c` and `tests/filesystem_module_loader_smoke.c`, with both common/legacy compiled fixtures, are wired into Libraries CMake tests. Invalid identities, mismatched versions, missing capability callbacks and undeclared defrag operations fail closed.
 
 ## Qualification boundary
