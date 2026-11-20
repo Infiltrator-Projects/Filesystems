@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/independent-boot-acceptance.yml
       - tools/audit-independent-boot-modules.sh
+      - docs/COMMON_V2_BOOT_COMPATIBILITY_2026-11-20.md
   workflow_dispatch:
 permissions:
   contents: read
