@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Classify 23 published Common V2 SOs against real BOOT validator
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/independent-boot-acceptance.yml
+      - tools/audit-independent-boot-modules.sh
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  boot-releases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Fetch checksum-verified, unchanged production BOOT validator
+        run: |
+          set -euo pipefail
+          directory="$RUNNER_TEMP/production-boot"
+          mkdir -p "$directory"
+          filename=infiltrator-boot_0.1.69_amd64.deb
+          curl -fsSL --retry 3 \
+            "https://github.com/Infiltrator-Projects/Boot/releases/download/v0.1.69/$filename" \
+            -o "$directory/$filename"
+          printf '%s  %s\n' \
+            73429727974a902372f7d2644d00bb1f527e42b4454f9f3cafbf8ef1ad6c9a8e \
+            "$directory/$filename" | sha256sum -c -
+          dpkg-deb -x "$directory/$filename" "$directory/package"
+          test -x "$directory/package/usr/lib/infiltrator-boot/validate-module"
+      - name: Audit actual latest release binaries of all 23 providers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          bash tools/audit-independent-boot-modules.sh \
+            "$RUNNER_TEMP/production-boot/package/usr/lib/infiltrator-boot/validate-module" \
+            "$RUNNER_TEMP/common-v2-boot-actual-releases.tsv"
+          {
+            echo '## Actual filesystem release BOOT validator matrix'
+            echo ''
+            echo 'Production BOOT v0.1.69 checks immutable released Debian binaries.'
+            echo 'The Zabbix VM and its ESP are never inspected or modified.'
+            echo ''
+            echo '~~~tsv'
+            cat "$RUNNER_TEMP/common-v2-boot-actual-releases.tsv"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: all-23-filesystems-boot-validator-releases
+          path: ${{ runner.temp }}/common-v2-boot-actual-releases.tsv
+          if-no-files-found: error
