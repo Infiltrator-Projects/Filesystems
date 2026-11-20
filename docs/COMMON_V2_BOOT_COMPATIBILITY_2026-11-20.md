@@ -1,0 +1,42 @@
+# Common V2 BOOT migration ledger — 20 November 2026
+
+Scope: all 23 independent format-owned filesystem repositories. This is a source/CI state ledger, **not** a statement that firmware qualification is complete. BOOT and the running machine are outside this change set.
+
+Contract: `Libraries/include/infiltratr/filesystem_module_v2.h`; unmodified production loader/validator: `Boot/boot/so_elf.c`, `Boot/packaging/validate-module.c`. Firmware ELF must be loadable without hosted libraries, and its V2 CORE must have genuine PROBE, MOUNT/UNMOUNT, STAT, LIST and READ. A hosted V2-only export is insufficient. The hosted package carries its freestanding executable in `.infiltrator_boot`. Every filesystem must reject corrupt/unsupported media instead of fabricating success.
+
+Columns: **ABI** is source-level public interface evidence (unresolved historical exports must still be checked on final release binaries); **hosted** is actual V2 CORE source capability; **firmware** is source/qualification, not a profile flag; **validator** is the *user-reported* installed VM result, not an independently repeated run; **tests** reflects only evidence checked in this task. **Version** is the repository's `VERSION`, not proof of a published artifact or installed package.
+
+| Repository | ABI | Hosted V2 | Firmware V2 | Validator (reported) | Tests | Version | Blockers before acceptance |
+|:--|:--|:--|:--|:--|:--|:--|:--|
+| [Filesystem-FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | V2; other exports not re-audited | Native namespace | Reported working | Pass | OVMF not rerun | 0.1.27 | Preserve current loader; repeat actual package validation and read tests |
+| [Filesystem-FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | V2; other exports not re-audited | Native namespace | Reported working | Pass | OVMF not rerun | 0.1.19 | Repeat actual package and 4Kn / large-file tests |
+| [Filesystem-FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | V2; other exports not re-audited | Native namespace | Reported working | Pass | OVMF not rerun | 0.1.15 | Re-qualify real package, corruption and large files |
+| [Filesystem-OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | V2; other exports not re-audited | Native namespace | Reported working | Pass | OVMF not rerun | 0.1.16 | Preserve working firmware and independently qualify installed image |
+| [Filesystem-EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | V2; other exports not re-audited | Native namespace | Embedded reader present | Pass | Existing OVMF workflow; not rerun | 1.0.16 | Repeat latest-package/BOOT qualification; preserve checksums and journal rejection |
+| [Filesystem-APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.12 | Qualified container/checkpoint selection; full encrypted/unsupported-feature handling; namespace and firmware reader |
+| [Filesystem-Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.11 | Real tree traversal, checksum/CoW support, multi-device policy, firmware read |
+| [Filesystem-exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | Hosted V2 + production compat code | Native namespace | Absent | Fail | Not run | 0.1.14 | Remove production compat runtime; freestanding native engine, media corruption and BOOT test |
+| [Filesystem-EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | V2 only | Native namespace | Freestanding engine integrated; OVMF pending | Fail on old installed binary | Hosted regression green; OVMF running | 1.0.13 | Prove packaged validator, OVMF kernel/initramfs, corruption and immutable release |
+| [Filesystem-EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.12 | Journal-recovery policy, native namespace and firmware payload |
+| [Filesystem-FFS](https://github.com/Infiltrator-Projects/Filesystem-FFS) | Hosted V2 + historical code | Native namespace | Absent | Fail | Not run | 1.0.9 | Remove legacy adapters only with parity; native freestanding, file/dir, OVMF |
+| [Filesystem-HFSPlus](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.10 | Catalog/extents B-tree and journal policy; freestanding namespace |
+| [Filesystem-HFS](https://github.com/Infiltrator-Projects/Filesystem-HFS) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.10 | Native B-tree directory/file reader with supported character mappings; EFI |
+| [Filesystem-Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | Hosted V2 + historical code | Native namespace | Absent | Fail | Not run | 1.0.12 | Minix v1/v2/v3 image tests, remove legacy adapters and add firmware payload |
+| [Filesystem-NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | Hosted V2 + historical code | Probe/mount + bitmap/map | Absent | Fail | Not run | 1.0.18 | MFT/runlist namespace, resident files, index walk, unsupported compression policy, EFI |
+| [Filesystem-PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.10 | Actual PFS3 directory/file structures, safety checks, firmware |
+| [Filesystem-SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | Hosted V2 | Probe/mount | Absent | Fail | Not run | 0.1.7 | Genuine namespace and freestanding support |
+| [Filesystem-SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.10 | Genuine namespace and freestanding support |
+| [Filesystem-Swap](https://github.com/Infiltrator-Projects/Filesystem-Swap) | V2 only | Probe/format (no namespace) | Not applicable: not bootable | Fail (correct rejection) | Existing V2 tests; not rerun | 1.0.10 | Keep nonbootable; test V2 probe/format and malformed SWAP independently |
+| [Filesystem-UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1) | Hosted V2 + historical code | Probe/mount + map | Absent | Fail | Not run | 1.0.11 | Real inode/directory block traversal and firmware image |
+| [Filesystem-UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2) | Hosted V2 + historical code | Probe/mount + map | Absent | Fail | Not run | 1.0.16 | Real inode/directory block traversal and firmware image |
+| [Filesystem-XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | Hosted V2 + historical code | Probe/mount | Absent | Fail | Not run | 1.0.12 | Real AG, inode, extent and directory readers; CRC feature policy; EFI |
+| [Filesystem-ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | V2-only production source as of this task | Probe (no mount) | Absent | Fail | Hosted/build/package CI green | 1.0.10 | Genuine dataset namespace, supported pool/topology/feature policy, freestanding reader and OVMF tests |
+
+## Implementation changes made in this task
+
+- [EXT2 `5be0bc0`](https://github.com/Infiltrator-Projects/Filesystem-EXT2/commit/5be0bc0bb1d9a4ec79bc1516f83154657b12fc10): preserve real IO/not-found/corrupt errors through V2 and add regression tests.
+- [EXT2 `b28e8b1`](https://github.com/Infiltrator-Projects/Filesystem-EXT2/commit/b28e8b1fd6bd4596afed60e5cd4ac6ad78220dad): freestanding profile using native core and embedded `.infiltrator_boot`; followed by compiler fix.
+- [EXT2 `cedaf14`](https://github.com/Infiltrator-Projects/Filesystem-EXT2/commit/cedaf14da941c8d2f48d3c463bdce38ea99832b1): real packaged validator + disposable OVMF kernel and initramfs qualification workflow. Qualification remains pending until run success.
+- [ZFS `daacb9b`](https://github.com/Infiltrator-Projects/Filesystem-ZFS/commit/daacb9b3b26450858e368c1bb89de7cdc826faf2): retire shipped V1 descriptor, worker and fixture bridge; retain original worker as noninstalled test-only program. Hosted CI and native-release qualification succeeded.
+
+Release gate: **none of the 18 reported failures is reclassified complete** until its actual released binary passes the unmodified target BOOT validator and, for boot-capable formats, OVMF actual file handoff. No changes to BOOT, the Zabbix VM, ESP, boot order or certificates are part of this ledger.
