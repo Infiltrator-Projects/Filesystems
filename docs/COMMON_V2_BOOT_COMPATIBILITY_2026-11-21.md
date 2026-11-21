@@ -16,7 +16,7 @@ Historical published asset lists must be audited separately from current main.
 | [FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | 0.1.19 | V2 source, published old kernel/EFI assets | Namespace read | Local working (not rerun) | PASS | Latest release workflow failed; validate package on current production BOOT |
 | [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | 0.1.15 | V2 source, legacy tests/assets | Namespace read | Local working (not rerun) | PASS | Latest release workflow failed; validate package and eliminate .ko/.efi as substitutes |
 | [OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | 0.1.16 | V2 source; legacy published kernel asset | Namespace read | Local working (not rerun) | PASS | Latest release workflow failed; preserve qualified SO and remove non-V2 runtime |
-| [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | 1.0.16 | Production V2; legacy code test-only | Probe/mount/stat/list/read | Embedded freestanding reader, firmware CI red | PASS | Exact-head package + production validator/OVMF requalification |
+| [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | 1.0.16 | Production V2; legacy code test-only | Probe/mount/stat/list/read, error-safe output | Native freestanding ELF exercised on media and embedded exactly; OVMF blocked by BOOT | PASS | Hosted + both package profiles and corruption tests passed on current source; BOOT v0.1.119 has no validate-module; no new firmware-qualified release |
 | [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | 1.0.12 | V2-only production; historical test code | Probe/mount/query only | No freestanding reader | FAIL | APFS host I/O error propagation fixed in 1ddc6b37; native catalog/path/extent reader, feature policy and OVMF still missing |
 | [Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | 1.0.11 | V2-only production; historical test code | Probe/mount/query only | No freestanding reader | FAIL | Implement chunk tree, FS tree, directory/extent reads, supported feature checks |
 | [exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | 0.1.16 | V2-only production; historical workers separate | Namespace read | Freestanding ELF embedded; firmware CI red | FAIL | Resolve external validator availability; exact-release OVMF/corruption qualification |
@@ -42,6 +42,32 @@ Historical published asset lists must be audited separately from current main.
 - [SFS `9249561f`](https://github.com/Infiltrator-Projects/Filesystem-SFS/commit/9249561f0a0ebe88acf8ef78d8991ef343911531): Same invariant qualified independently for classic SFS0 metadata/layout with eight checksum-valid corruption cases through the production V2 API. Exact-head hosted source and DEB/native RUN package workflows both passed. No firmware release published.
 
 - [APFS `1ddc6b37`](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/1ddc6b37f1a85831f480971202da874062f90f6e): The actual hosted Common V2 mount now preserves a failed checkpoint read as `IFS_FS_IO_ERROR`, rather than falsely reporting disk corruption. Native code still enforces genuine APFS checkpoint/volume checks. A regression injects an I/O failure after a checksum-valid superblock probe, through CORE.MOUNT. Exact-commit hosted source and DEB/RUN workflows both passed. Full APFS namespace, firmware ELF and BOOT compatibility remain unimplemented.
+
+## EXT4 continuation — 21 November 2026
+
+The independent EXT4 provider now returns `IFS_FS_NO_SPACE` for small
+STAT/LIST/label output buffers and preserves true Common V2 host I/O
+failure codes in tests. The actual freestanding ELF exports the V2 API,
+has no hosted imports, is byte-identical to `.infiltrator_boot` inside the
+production SO, and is exercised through V2 against an independently
+formatted EXT4 namespace with 512-byte/4Kn I/O, a checksum-protected
+indexed HTree directory, real file payloads, and corrupted metadata.
+New commits: [b75739d0](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/b75739d08b1e37df05c9e098cb7e126128f53deb),
+[0d01cdfe](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/0d01cdfedf0be946a8141423fbf42ef4f4f0bec4),
+[99fb2265](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/99fb22657822c13be1072ba9cc1d6d3267410f22),
+and [a99dbb40](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/a99dbb40e73b0dac25085870c3a5541c988b792c).
+
+The previously dead BOOT references in both EXT4 CI workflows have
+been removed; CI now verifies the genuine published BOOT release
+DEB checksum and demands its production validator/EFI loader before
+any OVMF qualification or release publication. The real v0.1.119
+package download succeeds but **does not ship validate-module**;
+therefore BOOT qualification remains blocked by that external
+contract. The hosted CI suite passes. The portable and CPU-native RUN
+packages also pass their build/functional checks, but the release job
+does not publish because the BOOT gate cannot run. Existing v1.0.16
+release assets remain unchanged. No fake validator, V1 fallback, kernel
+filesystem adapter or live-device modification was introduced.
 
 ## Current external BOOT validator dependency
 
