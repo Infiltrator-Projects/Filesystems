@@ -102,3 +102,49 @@ nonbootable exception: its V2 probe/format must work and BOOT must reject it.
 
 No machine configuration, ESP, Secure Boot keys, GRUB fallback or firmware
 boot order was altered in this checkpoint.
+
+## Independent 23-repository checkpoint — 21 November 2026, later source revisions
+
+These rows track independent repositories and their current published version; an existing release can predate the new `main` fixes. The validator column is **the user's Zabbix baseline, never a rerun**. `PASS` here does **not** mean acceptance under the stricter release/OVMF criteria. Every production ABI listed is Common V2; historical test-only V1 source and old `.ko` release assets must not be mistaken for runtime interfaces.
+
+| Module / independent repository | Latest published tag | Hosted Common V2 | Firmware source | Zabbix validator baseline | Current test/packaging evidence | Remaining production blocker |
+|---|---|---|---|---|---|---|
+| [FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | v0.1.28 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | v0.1.20 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | v0.1.16 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | v0.1.17 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | v1.0.17 | V2 namespace + error-safe reads | Embedded freestanding reader | PASS | Published DEB/RUN; hosted+package CI green | Exact production validator unavailable in BOOT package; OVMF unqualified |
+| [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | v1.0.12 | V2 probe/mount/query; new sector alignment fix | No firmware reader | FAIL | Hosted+package CI green (4fc3df18) | Native catalog/path/extent reader, ELF, BOOT and OVMF |
+| [Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | v1.0.11 | V2 probe/mount/query; new feature/geometry checks | No firmware reader | FAIL | Hosted+package CI green (6616b211) | Chunk/root trees, namespace, ELF, BOOT and OVMF |
+| [exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | v0.1.16 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted CI green; firmware/BOOT gates red | Released validator, OVMF/corrupt-media qualification |
+| [EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | v1.0.15 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted CI green; BOOT gates red | Pinned BOOT package checksum mismatch; validator/OVMF |
+| [EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | v1.0.14 | V2 clean-volume namespace | Embedded freestanding ELF | FAIL | Hosted+package CI green; BOOT gate red | Production validator/OVMF; fail closed on dirty journal |
+| [FFS](https://github.com/Infiltrator-Projects/Filesystem-FFS) | v1.0.12 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted/firmware/package CI green | Production BOOT validator and OVMF on exact release |
+| [HFSPLUS](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus) | v1.0.11 | V2 catalog/extent namespace subset | Embedded freestanding ELF | FAIL | Hosted/firmware/package CI green | Qualified format coverage; validator/OVMF |
+| [HFS](https://github.com/Infiltrator-Projects/Filesystem-HFS) | v1.0.12 | V2 catalog/extent namespace subset | Embedded freestanding ELF | FAIL | Hosted/firmware/package CI green | MacRoman/overflow boundaries; validator/OVMF |
+| [MINIX](https://github.com/Infiltrator-Projects/Filesystem-Minix) | v1.0.15 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted/firmware/package CI green | Real production BOOT validator and OVMF |
+| [NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | v1.0.18 | Hosted V2 MFT namespace with ntfs-3g | No no-import freestanding ELF | FAIL | Hosted+package CI green | Replace ntfs-3g runtime with native freestanding MFT/index/runlist reader |
+| [PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | v1.0.11 | V2 direct-index namespace subset | Embedded freestanding ELF | FAIL | Hosted/firmware/package CI green | Large-sector/superindex coverage; validator/OVMF |
+| [SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | v0.1.7 | V2 native namespace and corruption checks | Embedded freestanding ELF | FAIL | Hosted+package CI green | Production validator/OVMF; old release has KO |
+| [SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | v1.0.10 | V2 native namespace and corruption checks | Embedded freestanding ELF | FAIL | Hosted+package CI green | Production validator/OVMF; old release has KO |
+| [SWAP](https://github.com/Infiltrator-Projects/Filesystem-Swap) | v1.0.11 | V2 probe/format, deliberately no namespace | Not applicable; nonbootable | FAIL expected | V2 tests/build pass; BOOT-rejection gate red | Production validator must prove intentional rejection |
+| [UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1) | v1.0.12 | V2 native inode namespace; updated SDK pin | Embedded freestanding ELF | FAIL | Hosted CI green; firmware/package BOOT gate red | Production BOOT validator/OVMF; unqualified release |
+| [UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2) | v1.0.19 | V2 native inode namespace; updated SDK pin | Embedded freestanding ELF | FAIL | Hosted CI green; firmware/package BOOT gate red | Production BOOT validator/OVMF; unqualified release |
+| [XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | v1.0.13 | V2 probe/mount/query; new feature checks | No firmware reader | FAIL | Hosted+package CI green (31f0addf) | Native AG/inode/directory/extents, ELF, validator/OVMF |
+| [ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | v1.0.10 | V2 probe; label I/O propagation; updated SDK pin | No firmware reader | FAIL | Hosted CI green; package after new pin pending | Native MOS/dataset/dnode/block-pointer namespace, ELF, BOOT/OVMF |
+
+### Filesystem-repository main commits at this checkpoint
+
+- Btrfs `6616b211ec7ae031d3f375e51cde74918d5daf7b`: fail closed for unsupported V2 on-disk features/geometry; source + DEB/RUN Actions both green.
+- XFS `03415cb64d7f93187b235e50cd0ca5db07047b23` plus compiler correction `315cf438b38cbc8c240a07804dab541e8b22b690`: fail closed on incomplete/unsupported CRC-valid v5 volumes; `31f0addf9f61450009adaf4f7e12033e8b86c137` removes the premature hosted release job. New source and package Actions both green; no new version published.
+- APFS `4fc3df182c1b2cd21d05b7dfd497eb8e8e276625`: Common V2 sector-aligned NXSB reads for >=8 KiB sectors, checksum failure/nonmutation regression; hosted and package Actions green.
+- ZFS `1a78b5a5e575631c97e6d77463cbf03dce8b89d2`: propagate an I/O failure reading vdev label configuration after committed uberblock discovery; initial hosted/package Actions green. `bb83d5c37d491e5c8219801686df2d5e05a34644` updates the SDK pin to current Common V2; independent validation is separate.
+- UFS1 `184f48cded86d4a6f63afc6241fee649e69d5214` and UFS2 `38f70872cf611fcfefe3a76cb66ef0db4575e5e6`: pin current Common V2 SDK; hosted CI green, existing firmware workflows still blocked on their unchanged BOOT validator step.
+
+### External validator contract — do not fake or weaken
+
+The available released BOOT DEB pinned in multiple independent firmware workflows (`0.1.77`) has no `/usr/lib/infiltrator-boot/validate-module`. EXT4 uses `0.1.119` with the same missing executable, and EXT2's pinned `0.1.72` DEB has a release checksum mismatch. These are concrete external release-contract blockers, **not evidence that a specific module is V1**. The live Zabbix module binaries and installed validator were not available in this GitHub-only task, so no new module was asserted to pass that validator. No BOOT, VM, ESP, Secure Boot, GRUB or firmware boot-order changes have been made.
+
+### Acceptance policy
+
+No module has been newly designated complete by this checkpoint. `main` source/package success is only the first qualification layer. Each boot-capable released SO still requires byte-for-byte packaged firmware payload verification, the production validator, real OVMF kernel+initramfs reads, valid/invalid media, nonmutation, and matching green CI/release. SWAP remains intentionally nonbootable.
