@@ -109,9 +109,9 @@ These rows track independent repositories and their current published version; a
 
 | Module / independent repository | Latest published tag | Hosted Common V2 | Firmware source | Zabbix validator baseline | Current test/packaging evidence | Remaining production blocker |
 |---|---|---|---|---|---|---|
-| [FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | v0.1.28 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
-| [FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | v0.1.20 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
-| [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | v0.1.16 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | v0.1.29 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | v0.1.21 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
+| [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | v0.1.17 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
 | [OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | v0.1.17 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
 | [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | v1.0.17 | V2 namespace + error-safe reads | Embedded freestanding reader | PASS | Published DEB/RUN; hosted+package CI green | Exact production validator unavailable in BOOT package; OVMF unqualified |
 | [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | v1.0.12 | V2 probe/mount/query; new sector alignment fix | No firmware reader | FAIL | Hosted+package CI green (4fc3df18) | Native catalog/path/extent reader, ELF, BOOT and OVMF |
@@ -173,3 +173,5 @@ The following repairs were committed to the independent filesystem repositories 
 | HFSPLUS | [3275b249](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus/commit/3275b24995b4aa091ae44fc4c8601360499d817e), [2c694c06](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus/commit/2c694c06dd15a7b6ad948b1bf33e4f54b0c5dc71): preflight full UTF-16BE surrogate validity/UTF-8 length before writing, regression through V2 STAT/LIST | Hosted, freestanding and package qualification green; publishing blocked because v1.0.11 tag belongs to older commit | Complete HFS+ Unicode feature support, production validator, exact release and OVMF |
 
 For Minix, exact-head source, native freestanding and DEB/RUN Actions are now green at `0d3fb3ad`; production BOOT/OVMF remains unqualified. Do not infer completion from a successful source build or package job.
+
+The published-release inventory was rechecked against the 23 independent GitHub repositories on 21 November 2026; FAT12 v0.1.29, FAT16 v0.1.21 and FAT32 v0.1.17 supersede prior matrix versions. The original five Zabbix validator PASS results are the user's observations, not a rerun through live installed BOOT.
