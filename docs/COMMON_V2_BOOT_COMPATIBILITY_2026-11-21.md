@@ -114,7 +114,7 @@ These rows track independent repositories and their current published version; a
 | [FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | v0.1.17 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
 | [OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | v0.1.17 | V2 namespace | Working per baseline | PASS | Published DEB/RUN; source/release CI green | Recheck exact release with validator and OVMF |
 | [EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | v1.0.17 | V2 namespace + error-safe reads | Embedded freestanding reader | PASS | Published DEB/RUN; hosted+package CI green | Exact production validator unavailable in BOOT package; OVMF unqualified |
-| [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | v1.0.12 | V2 probe/mount/query; new sector alignment fix | No firmware reader | FAIL | Hosted+package CI green (4fc3df18) | Native catalog/path/extent reader, ELF, BOOT and OVMF |
+| [APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | v1.0.12 | V2 probe/mount/query; strict NX/APSB object identity and unsupported-feature refusal | No firmware reader | FAIL | Production real-media V2/ASan and DEB/RUN CI green (8fc4c83c) | Native directory/path/extent reads, freestanding ELF, BOOT validator and OVMF |
 | [Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | v1.0.11 | V2 probe/mount/query; new feature/geometry checks | No firmware reader | FAIL | Hosted+package CI green (6616b211) | Chunk/root trees, namespace, ELF, BOOT and OVMF |
 | [exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | v0.1.16 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted CI green; firmware/BOOT gates red | Released validator, OVMF/corrupt-media qualification |
 | [EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | v1.0.15 | V2 namespace | Embedded freestanding ELF | FAIL | Hosted and Defragmenter CI green at e25ef963; DEB/RUN qualification green, publication gate blocked | Pinned BOOT package checksum mismatch; validator/OVMF |
@@ -175,3 +175,25 @@ The following repairs were committed to the independent filesystem repositories 
 For Minix, exact-head source, native freestanding and DEB/RUN Actions are now green at `0d3fb3ad`; production BOOT/OVMF remains unqualified. Do not infer completion from a successful source build or package job.
 
 The published-release inventory was rechecked against the 23 independent GitHub repositories on 21 November 2026; FAT12 v0.1.29, FAT16 v0.1.21 and FAT32 v0.1.17 supersede prior matrix versions. The original five Zabbix validator PASS results are the user's observations, not a rerun through live installed BOOT.
+
+## Top-six focused follow-up — 21 November 2026
+
+The requested first six are FAT12, FAT16, FAT32, OFS, EXT4 and APFS.
+No BOOT repository, Zabbix VM, EFI system partition, firmware configuration
+or live filesystem was changed.
+
+| Module | Audited current `main` | Latest published tag | Follow-up result |
+|---|---|---|---|
+| FAT12 | `cc97ad5f` | `v0.1.29` | Existing V2 reader retained. CI green. Three commits after release remove non-shipped retired V1 defrag code; package/BOOT acceptance not rerun. |
+| FAT16 | `7547009c` | `v0.1.21` | Existing V2 reader retained. CI green. Three post-release commits remove retired V1 source; no filesystem reader change identified. |
+| FAT32 | `8a93b385` | `v0.1.17` | Existing V2 reader retained. CI green. Three post-release commits remove retired V1 source; no filesystem reader change identified. |
+| OFS | `75739768` | `v0.1.17` | Existing V2 reader retained. CI green. Five post-release commits include mount/session and failed-flush correctness repairs; the published tag still predates these changes. |
+| EXT4 | `7939eb92` | `v1.0.17` | Existing V2 source and freestanding payload retained. Hosted/package CI green and release head matches current source; production BOOT/OVMF gate still not independently available. |
+| APFS | `8fc4c83c` tested source, with subsequent documentation commit | `v1.0.12` | Real production repairs: [c8c38cad](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/c8c38cada3a1da4de7af42e07d089b6fedf46aad) requires physical NX identity, active-checkpoint identity and APSB type, rejects every unsupported volume-incompatible bit; [de0b818b](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/de0b818b5e03ccc3450b80097772ff562874f7c5) returns V2 UNSUPPORTED separately from corruption/I/O; [8fc4c83c](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/8fc4c83c8f1c1526fe2259a1560aab5e34dfb3c9) qualifies production V2 on independent disposable APFS media with checksum-valid corrupt/unsupported variants. Hosted, AddressSanitizer and package CI passed; firmware reading is **not implemented**. |
+
+These rows describe audited source and published artifact revisions separately.
+The five original `PASS` values are the previously supplied Zabbix validator
+observations. There has been no new production BOOT validation or OVMF
+qualification. **APFS is not complete** and must not be advertised or released
+as BOOT compatible. Release/version changes require their applicable
+validation gates, not merely a successful host compilation.
