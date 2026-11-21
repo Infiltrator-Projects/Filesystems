@@ -126,3 +126,76 @@ Only fully qualified BOOT formats may be presented as BOOT-ready. SWAP must rema
 ### Completed MINIX v1.0.14 release
 
 The immutable [MINIX v1.0.14](https://github.com/Infiltrator-Projects/Filesystem-Minix/releases/tag/v1.0.14) is confirmed on GitHub at source 3144342a1771611c63817634e1110a4b75ec9a7c. Production BOOT/OVMF test logged MINIX_COMMON_V2_LINUX_HANDOFF_PASS and MINIX_COMMON_V2_CORRUPT_SUPERBLOCK_REFUSED. Source-only V2, native DEB/RUN, checksum, all four workflows passed and no .ko shipped. The historical installed Zabbix failure is not a release-head failure.
+
+
+## 21 November 2026 live source/CI reconciliation (supersedes stale source statuses above)
+
+This is a **source and GitHub Actions snapshot**, not a recheck of the Zabbix VM, the
+machine's installed package set or the ESP. The "VM" column is the 21 November
+reported `validate-module` baseline, *not* a result of these commits. Versions
+are the source `VERSION` files, not an assertion of currently published tags.
+"FW built" means a freestanding reader and its canonical carrier are present
+in the source/build workflow; it does **not** mean production BOOT or OVMF
+acceptance. Tests labelled green were seen in GitHub Actions; "historical"
+refers to earlier qualified releases against a former BOOT contract.
+
+| Module (repository suffix) | Source VERSION | Production ABI | Hosted Common V2 | Firmware V2 | VM | Tests / latest qualification | Remaining blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| APFS | 1.0.12 | V2; legacy V1 source test-only | Probe/mount/volume | None | Fail | Hosted/package green | Real path/list/read and freestanding reader |
+| Btrfs | 1.0.11 | V2; legacy V1 source test-only | Probe/mount/volume | None | Fail | Hosted/package green | Real tree/extent/checksum namespace and firmware |
+| exFAT | 0.1.16 | V2 | Stat/list/read | Built/embedded | Fail | Historic OVMF pass; latest BOOT gate fails | BOOT loader/validator unavailable; rerun exact release |
+| EXT2 | 1.0.15 | V2; historical fixtures only | Stat/list/read | Built/embedded | Fail | Historic OVMF pass; latest BOOT gate fails | BOOT contract and exact-head requalification |
+| EXT3 | 1.0.14 | V2 | Stat/list/read | Built/embedded | Fail | Historic OVMF pass; hosted/package green | BOOT contract and exact-head requalification |
+| EXT4 | 1.0.16 | V2 | Stat/list/read | Built/embedded | Pass | Previous firmware gate green; latest fails | BOOT consumer interface regression |
+| FAT12 | 0.1.27 | V2 | Stat/list/read | Built/embedded | Pass | Historical green; latest consumer-check fails | BOOT consumer interface regression |
+| FAT16 | 0.1.19 | V2 | Stat/list/read | Built/embedded | Pass | Historical green; latest consumer-check fails | BOOT consumer interface regression |
+| FAT32 | 0.1.15 | V2 | Stat/list/read | Built/embedded | Pass | Historical green; latest consumer-check fails | BOOT consumer interface regression |
+| FFS | 1.0.11 | V2 | Stat/list/read | Built/embedded | Fail | Historical OVMF pass; latest BOOT gate fails | BOOT contract and exact-head requalification |
+| HFS | 1.0.11 | V2 | Stat/list/read | Built/embedded | Fail | Hosted green; historical firmware green; latest BOOT failure | BOOT validator and OVMF gate |
+| HFSPLUS | 1.0.10 | V2 | Stat/list/read | Built/embedded | Fail | Hosted/real-media green; latest BOOT failure | BOOT validator and OVMF gate |
+| MINIX | 1.0.14 | V2 | Stat/list/read | Built/embedded | Fail | Historical OVMF pass; latest BOOT gate fails | BOOT contract and exact-head requalification |
+| NTFS | 1.0.18 | V2; legacy V1 test fixtures | Stat/list/read; hosted only | None | Fail | Native hosted/package green | Freestanding source-owned decoder, UEFI tests |
+| OFS | 0.1.16 | V2 | Stat/list/read | Built/embedded | Pass | Previous green; latest consumer-check fails | BOOT consumer interface regression |
+| PFS3 | 1.0.10 | V2 | Stat/list/read | Built/embedded | Fail | Four genuine V2 CTests pass on 21 Nov | BOOT validator and real OVMF kernel/initramfs |
+| SFS | 1.0.10 | V2 | Stat/list/read | Built/embedded | Fail | Hosted/package green | BOOT validator and real OVMF kernel/initramfs |
+| SFS2 | 0.1.7 | V2 | Stat/list/read | Built/embedded | Fail | Both actual packaged module profiles green on 21 Nov | BOOT validator and real OVMF kernel/initramfs |
+| SWAP | 1.0.11 | V2 | Appropriate non-namespace operations | Not bootable | Fail (expected) | Hosted package green | No BOOT read namespace by design |
+| UFS1 | 1.0.12 | V2 | Stat/list/read | Built/embedded | Fail | Hosted/ELF build green; validator blocked | BOOT validator missing from verified package |
+| UFS2 | 1.0.19 | V2 | Stat/list/read | Built/embedded | Fail | Hosted/ELF build green; validator blocked | BOOT validator missing from verified package |
+| XFS | 1.0.13 | V2 | Probe/mount/volume | None | Fail | Hosted/5 CTests/package green | Real directory/extent namespace and freestanding |
+| ZFS | 1.0.10 | V2 | Probe only | None | Fail | Hosted/package green | Genuine pool/dataset namespace and firmware |
+
+### Confirmed integration failure, no validator bypass
+
+The current `Infiltrator-Projects/Boot` `main` does not contain
+`boot/so_elf.c` or `packaging/validate-module.c`. Its Debian builder stages
+preview files under `/usr/share/infiltrator-boot`, without the expected
+`/usr/lib/infiltrator-boot/validate-module`. GitHub release BOOT v0.1.77's
+published Debian asset SHA-256 is
+`c70fd0bec2d6a2728e9ceddb4149c58ef63955ecfe42184a18ea960ede6a1c5c`.
+UFS1 and UFS2 workflows were corrected to pin this real digest rather than
+the obsolete `4b2fa8...` value. Their reruns now authenticate the package
+and then **correctly fail** at the missing validator. exFAT CI also tries to
+compile the deleted BOOT validator sources from current `main` and fails.
+The separate BOOT work must restore a specified and released production V2
+loader/validator interface; filesystem tests must not replace, stub or
+bypass it. No BOOT, host, firmware or ESP configuration was changed here.
+
+### Filesystem commits made during this reconciliation
+
+- SFS2 `04a6cbb`: return `IFS_FS_NO_SPACE` for short directory entry
+  name buffers in the native V2 reader.
+- SFS2 `7a9c30b`: regression cases for those errors and ability to load and
+  exercise an arbitrary *actual packaged* hosted V2 shared object.
+- SFS2 `8e72fc3`: package CI extracts both DEB and native-RUN modules,
+  exercises Common V2 real-media namespace reads in each hosted library and
+  each embedded freestanding ELF; resulting qualification workflow passed.
+- UFS1 `e5ba4c8`, `eb0b787`; UFS2 `7543309`, `a4d9310`:
+  restore strict BOOT 0.1.77 artifact SHA-256 pin to the published digest;
+  the failed BOOT validator gate remains mandatory.
+- PFS3 `a42f5ae`: firmware qualification enables CTest and requires both
+  the V2 multi-volume and genuine native namespace tests. Four tests passed,
+  with the subsequent BOOT validator gate correctly failing closed.
+
+No version was bumped, no incomplete firmware compatibility was declared, no
+new BOOT-ready release was published and no user's live machine was touched.
