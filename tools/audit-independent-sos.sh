@@ -84,7 +84,7 @@ for fmt in "${formats[@]}"; do
         # Installed module spelling follows the canonical project identifier.
         # The SFS0 and HFSPLUS aliases are handled by the file's own name.
         case "$fmt:$(basename "$so")" in
-            SFS:SFS.so|HFSPlus:HFSPLUS.so|Btrfs:BTRFS.so|Minix:MINIX.so|exFAT:EXFAT.so) ;;
+            SFS:SFS.so|HFSPlus:HFSPLUS.so|Btrfs:BTRFS.so|Minix:MINIX.so|Swap:SWAP.so|exFAT:EXFAT.so) ;;
             *) printf '%s\t%s\t%s\tWRONG_SO_FILENAME\t-\t-\t-\t-\t-\t-\n' \
                     "$repo" "$tag" "$(basename "$so")" >> "$report"; continue ;;
         esac
