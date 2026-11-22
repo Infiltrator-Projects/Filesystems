@@ -45,9 +45,20 @@ for fmt in "${formats[@]}"; do
   fi
   so="${sos[0]}"
   exports="$(nm -D --defined-only "$so" 2>/dev/null || true)"
-  legacy="$(printf '%s\n' "$exports" | grep -Ec 'infiltrator_filesystem_.*_v1|infiltrator_filesystem_module_v1' || true)"
+  legacy="$(printf '%s\n' "$exports" | grep -Ec 'infiltrator_filesystem_.*_v(1|3|4|5)|infiltrator_filesystem_module_v[135]' || true)"
+  # A module with V2 and any other globally visible symbol is not V2-only,
+  # regardless of whether that second symbol is a known retired interface.
+  unexpected="$(printf '%s\n' "$exports" | awk 'NF >= 3 {print $3}' |
+    sed 's/@.*//' | grep -vFx 'infiltrator_filesystem_api_v2' |
+    LC_ALL=C sort -u | paste -sd, - || true)"
   if ! grep -qE ' [TW] infiltrator_filesystem_api_v2$' <<< "$exports"; then
     printf '%s\t%s\t%s\tMISSING_COMMON_V2\t-\t-\t-\t-\t-\t%s\n' \
+      "$repo" "$tag" "$(basename "$so")" "$legacy" >> "$report"
+    continue
+  fi
+  if [[ -n "$unexpected" ]]; then
+    echo "::error title=$fmt extra public filesystem ABI exports::$unexpected" >&2
+    printf '%s\t%s\t%s\tUNEXPECTED_PUBLIC_EXPORTS\t-\t-\t-\t-\t-\t%s\n' \
       "$repo" "$tag" "$(basename "$so")" "$legacy" >> "$report"
     continue
   fi
