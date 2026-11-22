@@ -94,3 +94,59 @@ These are **not** included in the 23 independent modules above. The table was ob
 5. **Release integrity:** all changes go to the existing `main`; no PR branches, reporting old integration tests as Common V2 evidence, artificial CI passes, installed filesystem writes or new Python dependencies.
 
 Central issue for follow-through: [Filesystems #80](https://github.com/Infiltrator-Projects/Filesystems/issues/80). This matrix records the whole set but **does not** mean the 23 separate migrations have completed.
+
+
+## 22 November 2026: 23-repository Common V2 qualification ledger
+
+This is a **source and GitHub Actions snapshot**, not a result copied from
+Zabbix. The current BOOT implementation is not yet Common V2-capable: **none of
+these modules is declared BOOT-compatible here**. A module can implement both
+hosted and freestanding V2 now and still be unqualified for BOOT execution.
+The former installed-validator pass/fail count of 5/18 has not been replayed
+against the original binaries, and is not substituted by source inspection or
+green build jobs. SWAP is intentionally nonbootable.
+
+The ABI column records source-level Common V2 exports; the hosted/firmware
+columns record implemented source profiles, **not** acceptance by a production
+BOOT loader. "RO subset" means native on-disk operations and
+unsupported-feature rejection, not unlimited coverage of every format variant.
+"Carrier" means the sole installed .so itself is a freestanding module;
+"embedded" means the installed .so contains the freestanding ELF in its
+`.infiltrator_boot` section. The versions below are repository VERSION
+files inspected on 22 November; existing release tags may be older.
+Main workflow observations precede the APFS changes listed below.
+
+| Independent repository | ABI source | Hosted V2 operations | Firmware V2 source | Actual current BOOT V2 validator | GitHub tests / build at checkpoint | VERSION | Remaining format-specific qualification |
+|:--|:--|:--|:--|:--|:--|:--|:--|
+| Filesystem-APFS | V2 | RO subset STAT/LIST/READ; constrained catalog | Embedded ELF, RO subset | Not executable against current BOOT | Previous main green; 22 Nov corruption-fix CI queued | 1.0.13 | Checkpoint/tree-height, encrypted, snapshots/clone feature subsets; packaged media and independent UEFI handoff |
+| Filesystem-Btrfs | V2 | RO subset STAT/LIST/READ | Embedded ELF, RO subset | Not executed | Main hosted/firmware media CI green | 1.0.12 | Multidevice/chunk profiles, unsupported tree features and real UEFI handoff |
+| Filesystem-EXT2 | V2 | RO namespace and native engine | Embedded ELF | Not executed | Main SO and package CI green | 1.0.16 | Exact packaged binary/OVMF handoff and unsupported feature cases |
+| Filesystem-EXT3 | V2 | RO namespace on clean supported journals | Embedded ELF | Not executed | Main native/package CI green | 1.0.15 | Journal dirty/replay denial, OVMF and shipped module proof |
+| Filesystem-EXT4 | V2 | RO namespace, extents and indirect blocks | Embedded ELF | Not executed | Main SO and release CI green | 1.0.19 | Unsupported features and exact packaged firmware execution |
+| Filesystem-FAT12 | V2 | Native FAT namespace | Freestanding single-file SO | Not executed | Main release CI green | 0.1.30 | Firmware path and exact kernel/initramfs byte comparison |
+| Filesystem-FAT16 | V2 | Native FAT namespace | Freestanding single-file SO | Not executed | Main release CI green | 0.1.22 | Firmware path and exact kernel/initramfs byte comparison |
+| Filesystem-FAT32 | V2 | Native FAT namespace | Freestanding single-file SO | Not executed | Main release CI green | 0.1.18 | Firmware path and exact kernel/initramfs byte comparison |
+| Filesystem-FFS | V2 | Native Amiga read-only namespace; limited write separately | Embedded ELF | Not executed | Main freestanding/package CI green | 1.0.13 | Feature-specific real media and firmware handoff |
+| Filesystem-HFS | V2 | Classic HFS RO namespace | Embedded ELF | Not executed | Main hosted/firmware/package CI green | 1.0.13 | MacRoman, overflow extents and current BOOT-independent firmware execution proof |
+| Filesystem-HFSPlus | V2 | HFS+/HFSX RO subset | Embedded ELF | Not executed | Main hosted/firmware/package CI green | 1.0.12 | Overflow extents, Unicode collation and real UEFI handoff |
+| Filesystem-Minix | V2 | Minix V1/V2/V3 native namespace | Embedded ELF | Not executed | Main freestanding/SO/package CI green | 1.0.16 | All supported on-disk variants and exact packaged UEFI qualification |
+| Filesystem-NTFS | V2 | Native NTFS RO namespace | Embedded ELF | Not executed | Main SO/package CI green | 1.0.20 | Unclean/logged media, unsupported attributes and UEFI byte comparison |
+| Filesystem-OFS | V2 | Native Amiga namespace | Freestanding single-file SO | Not executed | Main publication CI green | 0.1.17 | Block size/feature boundaries, boot read execution |
+| Filesystem-PFS3 | V2 | PFS1/2 direct-index RO subset | Embedded ELF | Not executed | Main hosted/firmware/package CI green | 1.0.12 | Superindexes/large files and OVMF production handoff |
+| Filesystem-SFS | V2 | SFS0 RO namespace | Embedded ELF | Not executed | Main hosted/package CI green | 1.0.11 | Exact package and production validator plus UEFI handoff |
+| Filesystem-SFS2 | V2 | SFS2 RO namespace | Embedded ELF | Not executed | Main hosted/package CI green | 0.1.8 | Exact package and production validator plus UEFI handoff |
+| Filesystem-Swap | V2 | SWAPSPACE2 PROBE / FORMAT; no file namespace | Not applicable: no files | **N/A — must reject as boot volume** | Main media/package CI green | 1.0.12 | Maintain no namespace, no firmware profile and no fake boot capability |
+| Filesystem-UFS1 | V2 | Native UFS1 RO namespace / MAP | Embedded ELF | Not executed on current BOOT | Main SO/firmware/package CI green | 1.0.13 | Independent current packaged UEFI handoff and variant boundaries |
+| Filesystem-UFS2 | V2 | Native UFS2 RO namespace / MAP | Embedded ELF | Not executed on current BOOT | Main SO/firmware/package CI green | 1.0.20 | Independent current packaged UEFI handoff and variant boundaries |
+| Filesystem-XFS | V2 | V4/V5 RO namespace and journal cleanliness checks | Embedded ELF | Not executed | Main native/firmware/package CI green | 1.0.14 | Supported AG, Btree, dirty-log and exact packaged UEFI qualification |
+| Filesystem-ZFS | V2 | Pool/label PROBE only | Freestanding PROBE only; **no namespace** | Not applicable for current payload | Main pool probe/independent SO CI green | 1.0.10 | Native dataset and ZAP/dnode file namespace with real file reads, then boot-file tests |
+| Filesystem-exFAT | V2 | Native exFAT namespace | Freestanding V2 source profile | Not executed | Main native/freestanding CI green | 0.1.17 | Exact packaged image, corruption and UEFI handoff |
+
+### Changes committed in this checkpoint
+
+- APFS [`530b711`](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/530b71109e71b16548a8f1dbd8a3693147471012): a checksummed catalogue with two identical parent/name directory keys now returns `IFS_FS_CORRUPT` rather than choosing the first child.
+- APFS [`2b85b7a`](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/2b85b7ac583684b99dc4b81c45d877710f5ce4c7): exercise the duplicate directory corruption via the same firmware/Common V2 ABI.
+- APFS [`7756b3d`](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/7756b3d522b64b8bc630559aed46d5a9cc422b31) and [`654865c`](https://github.com/Infiltrator-Projects/Filesystem-APFS/commit/654865c601b574dfa2fdfe8493e77e8afb37156a): duplicate inode keys fail closed and gain an independent checksummed V2 corruption case.
+- These changes touch only the independent filesystem code and CI tests; **BOOT is unchanged**.
+- Do not mark the repairs qualified until the GitHub workflow on the last APFS main SHA completes successfully. A subsequent production BOOT validator/OVMF test belongs to the separate future BOOT integration qualification.
+
