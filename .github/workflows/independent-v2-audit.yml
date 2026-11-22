@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+# The inspector must use the exact Common V2 header blob pinned by current
+# independent filesystem firmware and hosted providers, never an old SDK.
 name: Audit all independent filesystem release ABIs
 on:
   workflow_dispatch:
@@ -21,7 +23,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: Infiltrator-Projects/Libraries
-          ref: 4c92c8dcd7e03afd4bab3105e143dbabd72c8adc
+          ref: d23a52693fd3212368d327e1c1302e07ae9510ec
           path: ci-common
       - name: Compile C-only Common V2 ELF inspector
         run: |
