@@ -23,6 +23,14 @@ for fmt in "${formats[@]}"; do
     printf '%s\t-\t-\tNO_RELEASE\t-\t-\t-\t-\t-\t-\n' "$repo" >> "$report"
     continue
   fi
+  # Never mistake the last green release for the current main revision.
+  # Each change to an independent .so must get its own tested immutable tag.
+  main_version="$(gh api "repos/$repo/contents/VERSION?ref=main" --jq '.content' 2>/dev/null |
+                  base64 -d 2>/dev/null | tr -d '\r\n' || true)"
+  if [[ -z "$main_version" || "$tag" != "v$main_version" ]]; then
+    printf '%s\t%s\t-\tRELEASE_BEHIND_MAIN_VERSION\t-\t-\t-\t-\t-\t-\n' "$repo" "$tag" >> "$report"
+    continue
+  fi
   # Each release must contain one native source RUN and one portable DEB.
   asset_names="$(gh api "repos/$repo/releases/tags/$tag" --jq '.assets[].name' 2>/dev/null || true)"
   runs="$(printf '%s\n' "$asset_names" | grep -Ec '\.run
