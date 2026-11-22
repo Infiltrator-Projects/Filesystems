@@ -10,6 +10,7 @@ on:
       - .github/workflows/independent-v2-audit.yml
       - tools/common_v2_abi_audit.c
       - tools/audit-independent-sos.sh
+      - COMMON_V2_MIGRATION_MATRIX.md
 permissions:
   contents: read
 jobs:
