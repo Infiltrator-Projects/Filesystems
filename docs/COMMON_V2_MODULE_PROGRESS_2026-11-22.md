@@ -1,47 +1,47 @@
-# Common V2 module progress — 22 November 2026
+# Current Common V2 filesystem work — 22 November 2026
 
-## Evidence and qualification rules
+## Qualification boundaries
 
-All **23** current filesystem main-branch source trees export the Common V2 entry point (infiltrator_filesystem_api_v2). This is a **source capability review**, not a certificate for released ELF payloads. For the full contract see [Libraries Common V2](https://github.com/Infiltrator-Projects/Libraries/blob/main/include/infiltratr/filesystem_module_v2.h). A green main Actions workflow does not demonstrate an end-to-end boot.
+The canonical interface is [Libraries Common V2](https://github.com/Infiltrator-Projects/Libraries/blob/main/include/infiltratr/filesystem_module_v2.h). Every source-tree provider currently exposes `infiltrator_filesystem_api_v2`. This document records **current source capabilities**, actual latest **GitHub release versions**, and observable tests. It does not equate compilation with a successful boot.
 
-The VM validator column reproduces **owner-reported historical Zabbix validation**, not verification against a V2 BOOT consumer. BOOT itself is being migrated elsewhere and was not modified. Hosted/firmware columns record the capabilities advertised by current source. “Namespace” means source declares CORE PROBE, MOUNT, STAT, LIST and READ, with important documented feature limits. “CI” is the number of inspected latest-revision workflows reporting success, **not** kernel/initramfs-in-OVMF proof. “Release” is the latest immutable GitHub release tag, which may predate the main-branch implementation.
+**BOOT is being migrated separately and was not modified.** Its final authenticated Common V2 loader and OVMF kernel/initramfs handoff have not been exercised against these released modules, so no boot-capable provider is yet marked end-to-end accepted. Firmware “namespace” means the source advertises and tests the genuine V2 PROBE/MOUNT/STAT/LIST/READ callbacks on supported on-disk features; `SWAP` must not implement a fake namespace. Historical machine-specific validator observations are intentionally excluded.
 
-## Provider matrix
+## Module-by-module progress
 
-| Repository | ABI on main | Hosted V2 source | Firmware V2 source | VM validator (reported) | CI successful | Release | Remaining blockers |
+| Repository | ABI on main | Hosted Common V2 | Freestanding Common V2 | Published tag | Actual tests | Remaining implementation / acceptance gap |
 |---|---|---|---|---|---|---|---|
-| [Filesystem-APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | Common V2 | Namespace (flat-tree subset) | Namespace (flat-tree subset) | FAIL | 2/2 | v1.0.12 | Multilevel APFS; old released V1/.ko; actual V2 BOOT/OVMF |
-| [Filesystem-Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | Common V2 | Namespace (subset) | Namespace (subset) | FAIL | 2/2 | v1.0.11 | Old release .ko; qualifying current feature subset in V2 BOOT/OVMF |
-| [Filesystem-exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | Common V2 | Namespace | Namespace | FAIL | 3/3 | v0.1.16 | Newer source vs released carrier; V2 BOOT/OVMF |
-| [Filesystem-EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | Common V2 | Namespace; DEFRAG map only | Namespace | FAIL | 4/4 | v1.0.15 | DEFRAG mutation missing; V2 BOOT/OVMF |
-| [Filesystem-EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | Common V2 | Namespace; DEFRAG map only | Namespace | FAIL | 2/2 | v1.0.14 | Journal variants; DEFRAG mutation; V2 BOOT/OVMF |
-| [Filesystem-EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | Common V2 | Namespace | Namespace | PASS | 2/2 | v1.0.19 | New V2-only fix released; V2 BOOT/OVMF still untested |
-| [Filesystem-FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | Common V2 | Namespace | Namespace | PASS | 1/1 | v0.1.30 | V2 BOOT/OVMF |
-| [Filesystem-FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | Common V2 | Namespace | Namespace | PASS | 1/1 | v0.1.22 | V2 BOOT/OVMF |
-| [Filesystem-FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | Common V2 | Namespace | Namespace | PASS | 1/1 | v0.1.18 | V2 BOOT/OVMF |
-| [Filesystem-FFS](https://github.com/Infiltrator-Projects/Filesystem-FFS) | Common V2 | Namespace | Namespace | FAIL | 4/4 | v1.0.13 | Released carrier and V2 BOOT/OVMF |
-| [Filesystem-HFS](https://github.com/Infiltrator-Projects/Filesystem-HFS) | Common V2 | Namespace | Namespace | FAIL | 3/3 | v1.0.12 | Released carrier and V2 BOOT/OVMF |
-| [Filesystem-HFSPlus](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus) | Common V2 | Namespace | Namespace | FAIL | 3/3 | v1.0.11 | HFS+/HFSX feature subsets; V2 BOOT/OVMF |
-| [Filesystem-Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | Common V2 | Namespace | Namespace | FAIL | 4/4 | v1.0.15 | Native format variants; V2 BOOT/OVMF |
-| [Filesystem-NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | Common V2 | Namespace (NTFS-3G) | **PROBE only** | FAIL | 2/2 | v1.0.18 | **Portable MFT/index/file reader absent in firmware**; old released V1/.ko |
-| [Filesystem-OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | Common V2 | Namespace | Namespace | PASS | 1/1 | v0.1.17 | V2 BOOT/OVMF; separate Defragmenter ABI integration |
-| [Filesystem-PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | Common V2 | Namespace (subset) | Namespace (subset) | FAIL | 3/3 | v1.0.11 | Index/large volume features; V2 BOOT/OVMF |
-| [Filesystem-SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | Common V2 | Namespace | Namespace | FAIL | 2/2 | v1.0.10 | Old released .ko; V2 BOOT/OVMF |
-| [Filesystem-SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | Common V2 | Namespace | Namespace | FAIL | 1/1 | v0.1.7 | Old released .ko; V2 BOOT/OVMF |
-| [Filesystem-Swap](https://github.com/Infiltrator-Projects/Filesystem-Swap) | Common V2 | PROBE and FORMAT; no files | **N/A** | FAIL (expected) | 2/2 | v1.0.11 | Explicit nonbootable exclusion, not file namespace |
-| [Filesystem-UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1) | Common V2 | Namespace | Namespace | FAIL | 3/3 | v1.0.12 | UFS variant fixtures; V2 BOOT/OVMF |
-| [Filesystem-UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2) | Common V2 | Namespace | Namespace | FAIL | 3/3 | v1.0.19 | Released carrier; V2 BOOT/OVMF |
-| [Filesystem-XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | Common V2 | Namespace (subset) | Namespace (subset) | FAIL | 2/2 | v1.0.13 | Fragmented B-tree real media; V2 BOOT/OVMF |
-| [Filesystem-ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | Common V2 | **PROBE only** | **PROBE only** | FAIL | 2/2 | v1.0.10 | **Dataset mount, directory traversal and file reads absent** |
+| [Filesystem-APFS](https://github.com/Infiltrator-Projects/Filesystem-APFS) | V2 | Namespace, flat-tree subset | Namespace, flat-tree subset | v1.0.13 | Package + embedded reader tests green | Multilevel catalogue trees, unsupported APFS features; future V2 BOOT |
+| [Filesystem-Btrfs](https://github.com/Infiltrator-Projects/Filesystem-Btrfs) | V2 | Namespace, bounded feature subset | Namespace, bounded subset | v1.0.12 | Hosted and freestanding real-image tests green | Additional Btrfs feature variants; future V2 BOOT |
+| [Filesystem-exFAT](https://github.com/Infiltrator-Projects/Filesystem-exFAT) | V2 | Namespace | Namespace | v0.1.17 | V2 hosted/firmware, read/write/corruption CI green | Future V2 BOOT consumer |
+| [Filesystem-EXT2](https://github.com/Infiltrator-Projects/Filesystem-EXT2) | V2 | Namespace; DEFRAG_MAP | Namespace read-only | v1.0.16 | Native media and freestanding source CI green | V2 DEFRAG mutation/recovery; future V2 BOOT |
+| [Filesystem-EXT3](https://github.com/Infiltrator-Projects/Filesystem-EXT3) | V2 | Namespace; DEFRAG_MAP | Namespace read-only | v1.0.15 | Native and package CI green | Journal variants, V2 DEFRAG mutation/recovery; future V2 BOOT |
+| [Filesystem-EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4) | V2 | Namespace | Namespace read-only | v1.0.19 | Canonical core, real images, package CI green | Future V2 BOOT; legacy DEFRAG migration |
+| [Filesystem-FAT12](https://github.com/Infiltrator-Projects/Filesystem-FAT12) | V2 | Namespace | Namespace | v0.1.30 | Current main package CI green | Future V2 BOOT |
+| [Filesystem-FAT16](https://github.com/Infiltrator-Projects/Filesystem-FAT16) | V2 | Namespace | Namespace | v0.1.22 | Current main package CI green | Future V2 BOOT |
+| [Filesystem-FAT32](https://github.com/Infiltrator-Projects/Filesystem-FAT32) | V2 | Namespace | Namespace | v0.1.18 | Current main package CI green | Future V2 BOOT |
+| [Filesystem-FFS](https://github.com/Infiltrator-Projects/Filesystem-FFS) | V2 | Namespace | Namespace | v1.0.13 | Hosted and firmware CI green | Future V2 BOOT |
+| [Filesystem-HFS](https://github.com/Infiltrator-Projects/Filesystem-HFS) | V2 | Namespace | Namespace | v1.0.13 | Real image and freestanding CI green | Future V2 BOOT |
+| [Filesystem-HFSPlus](https://github.com/Infiltrator-Projects/Filesystem-HFSPlus) | V2 | Namespace | Namespace | v1.0.12 | HFS+/HFSX hosted and freestanding CI green | Supported-feature coverage; future V2 BOOT |
+| [Filesystem-Minix](https://github.com/Infiltrator-Projects/Filesystem-Minix) | V2 | Namespace | Namespace | v1.0.16 | Independent variant and firmware CI green | Future V2 BOOT on supported MINIX versions |
+| [Filesystem-NTFS](https://github.com/Infiltrator-Projects/Filesystem-NTFS) | V2 | Namespace via ntfs-3g | Namespace via native C reader | v1.0.18 (1.0.19 qualification underway) | Firmware real-image and corrupt/dirty tests green; new release not yet verified | Unify hosted/native source, full feature variants, future V2 BOOT; old 1.0.18 .ko superseded when released |
+| [Filesystem-OFS](https://github.com/Infiltrator-Projects/Filesystem-OFS) | V2 | Namespace | Namespace (direct profile) | v0.1.17 | V2 real boot files CI green | Migrate separate Defrag host API; future V2 BOOT |
+| [Filesystem-PFS3](https://github.com/Infiltrator-Projects/Filesystem-PFS3) | V2 | Namespace, supported subset | Namespace, supported subset | v1.0.12 | Packaged and firmware CI green | Large index variants; future V2 BOOT |
+| [Filesystem-SFS](https://github.com/Infiltrator-Projects/Filesystem-SFS) | V2 | Namespace | Namespace | v1.0.11 | Actual packaged firmware namespace CI green | Future V2 BOOT |
+| [Filesystem-SFS2](https://github.com/Infiltrator-Projects/Filesystem-SFS2) | V2 | Namespace | Namespace | v0.1.8 | Actual packaged V2 read-only CI green | Future V2 BOOT |
+| [Filesystem-Swap](https://github.com/Infiltrator-Projects/Filesystem-Swap) | V2 | PROBE + format, no file namespace | Not applicable | v1.0.12 | Swap V2 tests and packages green | Correctly exclude SWAP as boot volume, not a missing reader |
+| [Filesystem-UFS1](https://github.com/Infiltrator-Projects/Filesystem-UFS1) | V2 | Namespace | Namespace | v1.0.13 | Freestanding and package CI green | Native feature variants; future V2 BOOT |
+| [Filesystem-UFS2](https://github.com/Infiltrator-Projects/Filesystem-UFS2) | V2 | Namespace | Namespace | v1.0.20 | Freestanding and package CI green | Future V2 BOOT |
+| [Filesystem-XFS](https://github.com/Infiltrator-Projects/Filesystem-XFS) | V2 | Namespace, bounded features | Namespace, bounded features | v1.0.14 | Both packaged readers, real boot files and corrupt images CI green | Additional XFS variants; future V2 BOOT |
+| [Filesystem-ZFS](https://github.com/Infiltrator-Projects/Filesystem-ZFS) | V2 | PROBE only | PROBE only | v1.0.10 | Verified OpenZFS label, checksum and V2 probe CI green | Implement native dataset mount, ZAP directory traversal and real file reads |
 
-## Implementation verified this checkpoint
+## Changes committed and released in this qualification cycle
 
-EXT4 main commit [7310afae](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/7310afae5284365ebc7fd2e3df596e43ddaffb33) fixes a real link regression: the canonical-core unit test tried to import private symbols from the V2-only public ELF. It now tests the **identical canonical source** also compiled into EXT4.so, preserving the production V2-only export map. Both build/test and native/portable packaging CI passed. Commit [8e663c5d](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/8e663c5d5a87fd466c178911ec2725a7fc11b421) then bumped the release to [v1.0.19](https://github.com/Infiltrator-Projects/Filesystem-EXT4/releases/tag/v1.0.19), containing the .deb and native .run. Both latest main Actions workflows finished successfully.
+EXT4's canonical-core unit test was repaired without leaking V1/private symbols ([commit](https://github.com/Infiltrator-Projects/Filesystem-EXT4/commit/7310afae5284365ebc7fd2e3df596e43ddaffb33)); release v1.0.19 and both build/release workflows passed. Newly qualified, published `.deb` and native `.run` assets are also available for APFS v1.0.13, Btrfs v1.0.12, exFAT v0.1.17, EXT2 v1.0.16, EXT3 v1.0.15, HFS v1.0.13, HFSPlus v1.0.12, Minix v1.0.16, PFS3 v1.0.12, SFS v1.0.11, SFS2 v0.1.8, Swap v1.0.12, UFS1 v1.0.13, UFS2 v1.0.20, and XFS v1.0.14. The new releases omit old `.ko` assets.
 
-## Defragmenter ABI2 consumer blocker
+NTFS's current main source includes a real bounded freestanding Common V2 MFT, INDEX_ROOT/INDEX_ALLOCATION and data-stream reader in `native/ntfs_ro_v2.c` linked into the packaged firmware ELF. Real 512/4096-byte geometry, kernel and initramfs reads, MFT fixup and dirty-volume corruption checks run through the actual extracted package binary. NTFS release 1.0.19 is **not recorded as published until GitHub completes final immutable release qualification**. The hosted path still uses ntfs-3g; full source convergence is not yet complete. See [NTFS V2 status](https://github.com/Infiltrator-Projects/Filesystem-NTFS/blob/main/docs/COMMON_V2_BOOT_STATUS.md).
 
-The Defragmenter repository has Common V2 discovery/operations in defragger/native/filesystem_module_host.c, **but defragger/native/ext_module_loader.c still calls infiltrator_filesystem_ext_v1 and ifs_defrag_services_v1() for its regular operations**. A number of filesystem V2 DEFRAG groups advertise only MAP, not PLAN/EXECUTE/VERIFY/RECOVER. Removing those working legacy operations outright would break existing functionality. Consequently Defragmenter is **not yet V2-only**.
+Defragmenter current main already contains a Common V2 discovery and execution consumer. A correctness repair in [commit d4fcce82](https://github.com/Infiltrator-Projects/Defragmenter/commit/d4fcce822dd543c4ead30e26e36ea43f37209e5b) now requires `IFS_FS_END` before claiming an extent map complete, with a deliberately broken-page regression fixture. **Defragmenter's EXT worker still invokes retired V1 runtime services** for operations lacking complete provider-owned V2 DEFRAG PLAN/EXECUTE/VERIFY/RECOVER; it is not yet a V2-only application. Those native mutation operations require real implementation, not a renamed adapter or deleted functionality.
 
-## Release and BOOT acceptance
+## Release rule
 
-No filesystem is marked fully BOOT-accepted without the **unchanged production V2 consumer** authenticating and executing its **actual release binary** in a disposable OVMF/UEFI environment, including real read-only mount, kernel and initramfs reads, directory traversal, negative/corrupt metadata and unchanged image tests. SWAP is inherently nonbootable. No claim is made of machine-level BOOT, Zabbix, ESP, NVRAM or Secure Boot changes. No BOOT repository code has been touched.
+Do not mark a module fully BOOT-qualified until its exact published `.so` has passed the unmodified future production Common V2 BOOT validator and real OVMF read-only mounting, directory listing, kernel/initramfs reads, corrupt-feature refusal and unchanged-image qualification. No user's machines or BOOT Git repository code were changed.
