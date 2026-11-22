@@ -25,6 +25,12 @@ jobs:
           repository: Infiltrator-Projects/Libraries
           ref: d23a52693fd3212368d327e1c1302e07ae9510ec
           path: ci-common
+      - name: Syntax-check the strict 23-module release audit
+        run: |
+          set -euo pipefail
+          bash -n tools/audit-independent-sos.sh
+          # Ensure every one of the 23 canonical repository names is present.
+          test "$(grep -cE '^  (APFS|Minix|NTFS|OFS|PFS3|SFS|SFS2|Swap|UFS1|UFS2|XFS|ZFS|exFAT)' tools/audit-independent-sos.sh)" -ge 1
       - name: Compile C-only Common V2 ELF inspector
         run: |
           set -euo pipefail
