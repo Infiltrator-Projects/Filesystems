@@ -1,5 +1,7 @@
 # Filesystems
 
+[Independent filesystem engineering references (PDF and editable text)](docs/INDEPENDENT_ENGINEERING_REFERENCES.md). This navigation index supersedes historical central manual links for the extracted repositories; it does not change their implementation or product catalogue authority.
+
 > **Retirement in progress (November 2026).** The filesystem engines have been moved into independently owned `Filesystem-*` repositories. This repository no longer contains their FAT, EXT, OFS, FFS, SFS, PFS3, NTFS, exFAT, HFS, UFS, Btrfs, APFS, ZFS or Swap implementations or any filesystem provider submodules. The central package and remaining source catalog are transitional only; new filesystem binaries, kernel modules, firmware drivers and PDFs are released by the individual repositories and installed by InfiltratorOS. Historical sections below may describe superseded central builds.
 
 **Resume work here:** [Filesystem extraction handover and verified recovery points](docs/FILESYSTEMS_EXTRACTION_HANDOVER_2026-11-07.md) · [Open continuity issue #79](https://github.com/Infiltrator-Projects/Filesystems/issues/79). **Do not retire this repository or reintroduce copied filesystem engines.**

@@ -1,5 +1,7 @@
 # Filesystem Design Documents
 
+For independently maintained filesystem manuals, use the [engineering reference index](INDEPENDENT_ENGINEERING_REFERENCES.md). This document retains the historical central-source design scope and is not a live inventory of independent module capabilities.
+
 Filesystem design documents record on-media format facts, current ownership state and the intended canonical-engine/platform-adapter boundary. A design document does not by itself claim that the filesystem has been rewritten, made writable, made bootable or qualified as an InfiltratorOS root.
 
 ## Authorities
