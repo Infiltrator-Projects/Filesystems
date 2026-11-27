@@ -1,10 +1,10 @@
 # Independent filesystem engineering references
 
-This is a documentation navigation index, not a new filesystem identity, deployment, ABI, capability or qualification manifest. Each independent repository owns its own manual and original-format research. Central historical files are retained for provenance and do not override the independent references.
+This is a documentation navigation index, not a new filesystem identity, deployment, ABI, capability or qualification manifest. Each independent repository owns its own manual and original-format research. Central historical files are retained for provenance and do not override the independent references. The source-tree links do not imply that a new package version has been published; check the exact release and its qualification evidence.
 
 The manual update inventory contains 44 Filesystem-* repositories and the separate InfiltratorFS project. This count does not replace the historical manager's 41-format product catalogue. Swap documents a paging area rather than claiming ordinary filesystem semantics.
 
-| Format | Published PDF in source tree | Editable engineering reference |
+| Format | Manual PDF in source tree | Editable engineering reference |
 | --- | --- | --- |
 | ADFS | [PDF](https://github.com/Infiltrator-Projects/Filesystem-ADFS/blob/main/docs/ADFS.pdf) | [Reference](https://github.com/Infiltrator-Projects/Filesystem-ADFS/blob/main/docs/ADFS-TECHNICAL-REFERENCE.md) |
 | APFS | [PDF](https://github.com/Infiltrator-Projects/Filesystem-APFS/blob/main/docs/APFS.pdf) | [Reference](https://github.com/Infiltrator-Projects/Filesystem-APFS/blob/main/docs/APFS-TECHNICAL-REFERENCE.md) |
@@ -52,8 +52,8 @@ The manual update inventory contains 44 Filesystem-* repositories and the separa
 | ZFS | [PDF](https://github.com/Infiltrator-Projects/Filesystem-ZFS/blob/main/docs/ZFS.pdf) | [Reference](https://github.com/Infiltrator-Projects/Filesystem-ZFS/blob/main/docs/ZFS-TECHNICAL-REFERENCE.md) |
 | InfiltratorFS | [PDF](https://github.com/Infiltrator-Projects/InfiltratorFS/blob/main/docs/InfiltratorFS.pdf) | [Reference](https://github.com/Infiltrator-Projects/InfiltratorFS/blob/main/docs/USER-GUIDE.md) |
 
-## Documentation boundary
+## Documentation ownership and release boundary
 
-The independent references expand field layouts, addressing, allocation, namespace, integrity, recovery and worked examples. Each manual integrates historical development, technical structures, worked examples, and implementation boundaries into one sequence of chapters. Superseded editions remain in Git history, not inside the current PDFs. Editable PDF drawing sources use `.pdfstreams`; these are plain text, not Apple Pages documents. The InfiltratorFS installed manual now integrates the operational guide and engineering reference, distinguishing Format 0.19 from the proposed 0.20. Normative design documents retain their separate authority.
+The independent references expand field layouts, addressing, allocation, namespace, integrity, recovery and worked examples. Each manual integrates historical development, technical structures, worked examples, and implementation boundaries into one sequence of chapters. Superseded editions remain in Git history, not inside the current PDFs. Each independently installed filesystem package owns its own manual at the package's documented installation path. The central project is an index, not an additional duplicate manual or a combined-manual assembler. Editable PDF drawing sources use `.pdfstreams`; these are plain text, not Apple Pages documents. The InfiltratorFS installed manual now integrates the operational guide and engineering reference, distinguishing Format 0.19 from the proposed 0.20. Normative design documents retain their separate authority.
 
 An expanded reference is not proof of full independent read/write implementation, safe recovery, installer qualification, or bootability. Original specifications and pinned source references remain authoritative; unsupported variants and unverified recovery behavior must be explicitly identified. Do not use historical central capability statements as a live release ledger.

@@ -1,5 +1,7 @@
 # EXT4 Native Filesystem
 
+> **Historical central-source design record.** The implementation and deployment statements below describe the central-tree architecture, not current qualification of the independent Common V2 provider. The canonical on-media engineering manual is maintained in [Filesystem-EXT4](https://github.com/Infiltrator-Projects/Filesystem-EXT4/blob/main/docs/EXT4-TECHNICAL-REFERENCE.md); its [PDF](https://github.com/Infiltrator-Projects/Filesystem-EXT4/blob/main/docs/EXT4.pdf) is the independent resource manual. Retain this record as provenance rather than treating it as a competing current manual.
+
 ## Purpose
 
 Filesystems owns one EXT4 implementation.

@@ -2,7 +2,7 @@
 
 For independently maintained filesystem manuals, use the [engineering reference index](INDEPENDENT_ENGINEERING_REFERENCES.md). This document retains the historical central-source design scope and is not a live inventory of independent module capabilities.
 
-Filesystem design documents record on-media format facts, current ownership state and the intended canonical-engine/platform-adapter boundary. A design document does not by itself claim that the filesystem has been rewritten, made writable, made bootable or qualified as an InfiltratorOS root.
+Filesystem design documents record on-media format facts, historical central-tree ownership state and the intended canonical-engine/platform-adapter boundary. A design document does not by itself claim that the filesystem has been rewritten, made writable, made bootable or qualified as an InfiltratorOS root.
 
 ## Authorities
 
@@ -12,13 +12,13 @@ Filesystem-set membership is not maintained in this document.
 - [`../data/native-filesystems.tsv`](../data/native-filesystems.tsv) is the sole authority for project-native Linux deployment membership and module identity.
 - [`../data/desktop-filesystems.tsv`](../data/desktop-filesystems.tsv) is the sole authority for per-filesystem desktop integration membership.
 - [`FILESYSTEMS_MATRIX.md`](FILESYSTEMS_MATRIX.md), together with the compiled catalogue identity/policy join, records the selectable product catalogue and current provider/capability state.
-- Each `native/filesystems/<id>/DESIGN.md` is authoritative for that format's implementation/provenance state.
+- Each `native/filesystems/<id>/DESIGN.md` describes this central tree's implementation/provenance state. Independently maintained Common V2 repositories own their own implementation, capability and qualification evidence.
 
 This index therefore does not repeat a second complete filesystem list. CI validates the source manifest against the directory tree and requires every source filesystem to carry a non-empty `DESIGN.md`.
 
-## Active project-native formats
+## Central-tree deployment manifest
 
-The current native deployment manifest contains the independently qualified EXT2, EXT3, EXT4, Amiga OFS, FFS, SFS, SFS2, PFS3, Minix, BFS, NTFS3, exFAT and UDF implementations. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
+The central native deployment manifest records the historical deployment of EXT2, EXT3, EXT4, Amiga OFS, FFS, SFS, SFS2, PFS3, Minix, BFS, NTFS3, exFAT and UDF implementations. Their design documents define filesystem-specific semantics and ownership; the deployment manifest defines only the Linux filesystem/module pairs.
 
 These are deliberately independent filesystem implementations. Similarity between related formats is not, by itself, a reason to merge their persistent semantics or runtime state. Only mechanisms that are genuinely filesystem-neutral belong in shared native/platform code.
 
@@ -61,8 +61,8 @@ A filesystem design document must distinguish, where applicable:
 
 Those states are not interchangeable. A format can be well documented but unimplemented, mountable but not safely writable, writable but not suitable as `/`, or root-capable in Linux while still lacking an EFI reader.
 
-## Bootable-root rule
+## Historical bootable-root contract
 
-For the InfiltratorOS setup path, the format design is only one part of the contract. A filesystem is offered as an installation target only after its formatter, Linux root semantics, early-boot module availability and matching rEFInd/EFI reader are qualified together.
+The central setup contract historically used the following rules; present qualification must be established from the current independent filesystem, BOOT and installer repositories. Format design alone does not qualify a bootable root. A filesystem is offered as an installation target only after its formatter, Linux root semantics, early-boot module availability and matching rEFInd/EFI reader are qualified together.
 
 The setup shell consumes the same stable format identity contract as the desktop manager. It does not maintain a second filesystem list.
