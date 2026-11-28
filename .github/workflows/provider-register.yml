@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Verify provider register and pinned production packages
+on:
+  push:
+    branches: [main]
+    paths:
+      - data/provider-register.json
+      - docs/PROVIDER_REGISTER.md
+      - tools/render_provider_register.py
+      - tools/qualify_provider_probe.c
+      - tools/verify_provider_releases.py
+      - .github/workflows/provider-register.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  all-providers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate coverage, credit and totals
+        run: python3 tools/render_provider_register.py --check
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Infiltrator-Projects/Libraries
+          ref: 3c771c83a3b41bf57e8ca6527e7ec84465800381
+          path: ci-common
+          persist-credentials: false
+      - name: Build the read-only Common V2 probe
+        run: cc -std=c11 -Wall -Wextra -Wpedantic -Werror -O2 -Ici-common/include tools/qualify_provider_probe.c -ldl -o "$RUNNER_TEMP/qualify-probe"
+      - name: Verify recorded release assets and exercise each qualified public module
+        run: python3 tools/verify_provider_releases.py "$RUNNER_TEMP/qualify-probe"
